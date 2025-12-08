@@ -12,49 +12,24 @@ class StudentController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function stepOne()
+    public function index()
     {
         return Inertia::render('Register/StepOne/Index');
     }
 
-    public function stepTwo()
+    public function validateStepOne(Step1Request $request)
     {
-        return Inertia::render('Register/StepTwo/Index');
+        return $request;
     }
 
-    public function storeStepOne(Step1Request $request)
+    public function validateStepTwo(Step1Request $request)
     {
-        $validated = $request->validated();
-
-        session()->put('stepOne_data', $validated);
-
-        return redirect()->route('register.stepTwo');
+        return $request;
     }
 
-
-    public function storeStepTwo()
-    {
-
-        $stepOne = session('stepOne_data');
-
-        dd($stepOne);
-
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        // $this->validateStepOne($request);
     }
 
     /**
@@ -65,21 +40,6 @@ class StudentController extends Controller
         //
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Student $student)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Student $student)
-    {
-        //
-    }
 
     /**
      * Remove the specified resource from storage.

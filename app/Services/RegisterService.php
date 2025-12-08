@@ -8,8 +8,7 @@ class RegisterService
 {
     public function __construct(
         protected StudentRepository $studentRepository
-    ) {
-    }
+    ) {}
 
     public function getAllUsers()
     {

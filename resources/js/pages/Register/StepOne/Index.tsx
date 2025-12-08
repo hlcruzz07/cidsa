@@ -41,11 +41,31 @@ import RegisterLayout from '@/layouts/register-layout';
 import { cn } from '@/lib/utils';
 import { Check, ChevronsUpDown } from 'lucide-react';
 
-export default function Index({
-    onSendValue,
-}: {
-    onSendValue: (value: any) => void;
-}) {
+// Type for a Municipality
+type Municipality = {
+    barangay_list: string[];
+};
+
+// Type for a Province
+type Province = {
+    municipality_list: {
+        [municipalityName: string]: Municipality;
+    };
+};
+
+// Type for a Region
+type Region = {
+    province_list: {
+        [provinceName: string]: Province;
+    };
+};
+
+// The locations object
+type Locations = {
+    [regionName: string]: Region;
+};
+
+export default function Index() {
     const { auth } = usePage<SharedData>().props;
     const [locations, setLocations] = useState({});
     const [open, setOpen] = useState(false);
@@ -58,14 +78,9 @@ export default function Index({
     const [isCityDisabled, setIsCityDisabled] = useState(true);
     const [isBarangayDisabled, setIsBarangayDisabled] = useState(true);
 
-    // College & Program
-    const [selectedCollege, setSelectedCollege] = useState('');
     const [isCollegeDisabled, setIsCollegeDisabled] = useState(true);
-
-    const [selectedProgram, setSelectedProgram] = useState('');
     const [isProgramDisabled, setIsProgramDisabled] = useState(true);
 
-    const [selectedMajor, setSelectedMajor] = useState('');
     const [isMajorDisabled, setIsMajorDisabled] = useState(true);
 
     // Selected Handlers
@@ -117,8 +132,9 @@ export default function Index({
         'Spouse',
     ];
 
-    const provinces = Object.values(locations)
-        .flatMap((region: any) =>
+    // Example usage with typing
+    const provinces = Object.values(locations as Locations)
+        .flatMap((region) =>
             Object.keys(region.province_list).map((province) => ({
                 value: province,
                 label: province,
@@ -127,11 +143,11 @@ export default function Index({
         .sort((a, b) => a.label.localeCompare(b.label));
 
     const cities = selectedProvince
-        ? Object.values(locations)
-              .flatMap((region: any) =>
+        ? Object.values(locations as Locations)
+              .flatMap((region) =>
                   Object.entries(region.province_list)
                       .filter(([provName]) => provName === selectedProvince)
-                      .flatMap(([_, province]: any) =>
+                      .flatMap(([, province]) =>
                           Object.keys(province.municipality_list),
                       ),
               )
@@ -139,17 +155,16 @@ export default function Index({
         : [];
 
     const barangays = selectedCity
-        ? Object.values(locations)
-              .flatMap((region: any) =>
-                  Object.values(region.province_list).flatMap((province: any) =>
+        ? Object.values(locations as Locations)
+              .flatMap((region) =>
+                  Object.values(region.province_list).flatMap((province) =>
                       Object.entries(province.municipality_list)
                           .filter(
                               ([municipalityName]) =>
                                   municipalityName === selectedCity,
                           )
                           .flatMap(
-                              ([_, municipality]: any) =>
-                                  municipality.barangay_list,
+                              ([, municipality]) => municipality.barangay_list,
                           ),
                   ),
               )
@@ -722,7 +737,8 @@ export default function Index({
                                 id="middle_init"
                                 placeholder="(Optional)"
                                 onInput={(e) => {
-                                    let v = e.currentTarget.value.toUpperCase();
+                                    const v =
+                                        e.currentTarget.value.toUpperCase();
                                     e.currentTarget.value = v.slice(0, 1);
                                 }}
                                 onChange={(e) =>
@@ -801,7 +817,8 @@ export default function Index({
                                 placeholder="(Optional)"
                                 value={data.emergency_middle_init ?? ''}
                                 onInput={(e) => {
-                                    let v = e.currentTarget.value.toUpperCase();
+                                    const v =
+                                        e.currentTarget.value.toUpperCase();
                                     e.currentTarget.value = v.slice(0, 1);
                                 }}
                                 onChange={(e) =>

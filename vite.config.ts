@@ -9,18 +9,17 @@ export default defineConfig({
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
             ssr: 'resources/js/ssr.tsx',
-            refresh: true,
+            refresh: true, // Blade full reload
         }),
-        react({
-            babel: {
-                plugins: ['babel-plugin-react-compiler'],
-            },
-        }),
+        react(), // HMR for React TSX
         tailwindcss(),
-        wayfinder({
-            formVariants: true,
-        }),
+        wayfinder({ formVariants: true }),
     ],
+    server: {
+        watch: {
+            usePolling: true, // optional for Windows
+        },
+    },
     esbuild: {
         jsx: 'automatic',
     },
