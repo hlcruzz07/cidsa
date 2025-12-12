@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Registration\Step1Request;
+use App\Http\Requests\Registration\Step2Request;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,17 +15,18 @@ class StudentController extends Controller
      */
     public function index()
     {
-        return Inertia::render('Register/StepOne/Index');
+        return Inertia::render('Home/Index');
     }
 
     public function validateStepOne(Step1Request $request)
     {
-        return $request;
+        return back()->with('success', 'Step one completed');
     }
 
-    public function validateStepTwo(Step1Request $request)
+    public function validateStepTwo(Step2Request $request)
     {
-        return $request;
+
+        return back()->with('success', 'Step two completed');
     }
 
     public function store(Request $request)
