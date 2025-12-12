@@ -23,14 +23,18 @@ class Step1Request extends FormRequest
     {
         return [
             'id_type' => 'required|in:new,replacement',
-            'id_number' => 'required|unique:students,id_number',
+            'id_number' => 'required|unique:students,id_number|max:25',
+            'affidavit_img' => 'required_if:id_type,replacement|nullable|mimes:jpg,jpeg|max:5120',
+            'receipt_img' => 'required_if:id_type,replacement|nullable|mimes:jpg,jpeg|max:5120',
             'first_name' => 'required',
             'middle_name' => 'nullable|alpha|size:1',
             'last_name' => 'required',
+            'suffix' => 'nullable',
             'emergency_first_name' => 'required',
             'emergency_middle_init' => 'nullable|alpha|size:1',
             'emergency_last_name' => 'required',
-            'relationship' => 'required',
+            'emergency_suffix' => 'nullable',
+            'relationship' => 'required|in:Father,Mother,Brother,Sister,Uncle,Aunt,Cousin,Spouse',
             'contact_number' => 'required|digits:10|starts_with:9',
             'province' => 'required',
             'city' => 'required',
@@ -95,7 +99,6 @@ class Step1Request extends FormRequest
             'year_level.digits' => 'Year level must be a single digit only.',
 
             'section.required' => 'Section is required.',
-            'section.size' => 'Section must be a single letter.',
         ];
     }
 
