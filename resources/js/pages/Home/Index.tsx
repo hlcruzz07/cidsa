@@ -9,6 +9,8 @@ import RegisterLayout from '@/layouts/register-layout';
 import { SharedData } from '@/types';
 import { useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { toast } from 'sonner';
+import { route } from 'ziggy-js';
 import { ReplacementModal } from './ReplacementModal';
 import StepOne from './StepOne';
 import StepThree from './StepThree';
@@ -19,45 +21,39 @@ export default function Index() {
     const [step, setStep] = useState(1);
     const [isShow, setIsShow] = useState(false);
 
-    const { data, setData, processing, errors, post } = useForm({
-        //step 1
-        id_type: '',
-        id_number: '',
-        affidavit_img: null as File | null,
-        receipt_img: null as File | null,
-        first_name: '',
-        middle_init: null as string | null,
-        last_name: '',
-        suffix: null as string | null,
-        emergency_first_name: '',
-        emergency_middle_init: null as string | null,
-        emergency_last_name: '',
-        emergency_suffix: null as string | null,
-        relationship: '',
-        contact_number: null as number | null,
-        province: '',
-        city: '',
-        barangay: '',
-        zip_code: '',
-        campus: '',
-        college: '',
-        college_name: '',
-        program: '',
-        hasMajor: false,
-        major: null as string | null,
-        year_level: null as number | null,
-        section: '',
-
-        //step 2
-        picture: null as File | null,
-        e_signature: null as File | null,
-
-        //step 3
-        confirm_info: false,
-        data_privacy: false,
-    });
-
-    console.log(data);
+    const { data, setData, processing, errors, post, clearErrors, reset } =
+        useForm({
+            id_type: '',
+            id_number: '',
+            affidavit_img: null as File | null,
+            receipt_img: null as File | null,
+            first_name: '',
+            middle_init: null as string | null,
+            last_name: '',
+            suffix: null as string | null,
+            emergency_first_name: '',
+            emergency_middle_init: null as string | null,
+            emergency_last_name: '',
+            emergency_suffix: null as string | null,
+            relationship: '',
+            contact_number: null as number | null,
+            province: '',
+            city: '',
+            barangay: '',
+            zip_code: '',
+            campus: '',
+            college: '',
+            college_name: '',
+            program: '',
+            hasMajor: false,
+            major: null as string | null,
+            year_level: null as number | null,
+            section: '',
+            picture: null as File | null,
+            e_signature: null as File | null,
+            confirm_info: false,
+            data_privacy: false,
+        });
 
     const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -65,31 +61,64 @@ export default function Index() {
         if (processing) return;
 
         if (step === 1) {
-            post('/validate/1', {
+            post(route('validateStepOne'), {
                 preserveScroll: true,
                 onSuccess: () => setStep((prev) => prev + 1),
-                onError: (errors) => console.log('error', errors),
+                onError: (errors) => {
+                    Object.values(errors).forEach((messages) => {
+                        if (Array.isArray(messages)) {
+                            messages.forEach((message) => {
+                                toast.error(message);
+                            });
+                        } else {
+                            toast.error(messages);
+                        }
+                    });
+                },
             });
             return;
         }
 
         if (step === 2) {
-            post('/validate/2', {
+            post(route('validateStepTwo'), {
                 preserveScroll: true,
                 onSuccess: () => setStep((prev) => prev + 1),
-                onError: (errors) => console.log('error', errors),
+                onError: (errors) => {
+                    Object.values(errors).forEach((messages) => {
+                        if (Array.isArray(messages)) {
+                            messages.forEach((message) => {
+                                toast.error(message);
+                            });
+                        } else {
+                            toast.error(messages);
+                        }
+                    });
+                },
             });
             return;
         }
 
-        post('/register', {
+        post(route('register.student'), {
             preserveScroll: true,
-            onSuccess: () => setStep(1),
-            onError: (errors) => console.log('error', errors),
+            onSuccess: () => {
+                clearErrors();
+                reset();
+                setStep(1);
+            },
+            onError: (errors) => {
+                Object.values(errors).forEach((messages) => {
+                    if (Array.isArray(messages)) {
+                        messages.forEach((message) => {
+                            toast.error(message);
+                        });
+                    } else {
+                        toast.error(messages);
+                    }
+                });
+            },
         });
     };
 
-    console.log(step);
     return (
         <>
             <ReplacementModal
@@ -118,11 +147,12 @@ export default function Index() {
                                 <p>Student Information</p>
                             </TooltipContent>
                         </Tooltip>
+
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Badge
                                     variant="secondary"
-                                    className={`${step >= 2 ? 'bg-green-600 text-white' : 'bg-green-200 text-gray-400'} text-sm hover:cursor-default md:text-lg`}
+                                    className={` ${step >= 2 ? 'bg-green-600 text-white' : 'bg-green-200 text-gray-400 dark:bg-green-950'} text-sm hover:cursor-default md:text-lg`}
                                 >
                                     2
                                 </Badge>
@@ -131,11 +161,12 @@ export default function Index() {
                                 <p>Photo & E-Signature Upload</p>
                             </TooltipContent>
                         </Tooltip>
+
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Badge
                                     variant="secondary"
-                                    className={`${step === 3 ? 'bg-green-600 text-white' : 'bg-green-200 text-gray-400'} text-sm hover:cursor-default md:text-lg`}
+                                    className={` ${step === 3 ? 'bg-green-600 text-white' : 'bg-green-200 text-gray-400 dark:bg-green-950'} text-sm hover:cursor-default md:text-lg`}
                                 >
                                     3
                                 </Badge>
