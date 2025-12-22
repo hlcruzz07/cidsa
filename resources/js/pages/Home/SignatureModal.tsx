@@ -145,14 +145,15 @@ export default function SignatureModal({
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4">
-                    <div className="flex justify-center overflow-hidden border">
+                    <div className="flex justify-center overflow-hidden border bg-white">
                         <SignatureCanvas
                             ref={sigCanvas}
                             penColor="black"
                             minWidth={2}
                             maxWidth={4}
                             canvasProps={{
-                                className: 'sigCanvas',
+                                className:
+                                    'sigCanvas border border-gray-300 dark:border-gray-600', // optional border
                                 width: 370,
                                 height: 120,
                             }}

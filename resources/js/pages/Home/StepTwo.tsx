@@ -201,7 +201,7 @@ export default function StepTwo({
                 },
             );
 
-            const filename = `20250431.jpg`;
+            const filename = `${data.id_number}.jpg`;
 
             setData(
                 'picture',
@@ -246,18 +246,18 @@ export default function StepTwo({
                 description="Upload your 1×1 ID photo and provide your electronic signature to proceed with your application."
             />
             <div className="grid gap-5 lg:grid-cols-2">
-                <div className="rounded-2xl border bg-gray-50 p-6">
-                    <h1 className="flex items-center gap-3 text-2xl font-bold text-[var(--main-color)]">
+                <div className="rounded-2xl border bg-gray-50 p-6 dark:border-gray-600 dark:bg-gray-800">
+                    <h1 className="flex items-center gap-3 text-2xl font-bold text-[var(--main-color)] dark:text-[var(--main-color)]">
                         Picture Guidelines
                         <InfoIcon />
                     </h1>
 
                     <div className="mt-3 space-y-4">
                         {/* 1 */}
-                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm">
+                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
                             <div className="flex gap-3">
                                 <Camera className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
-                                <p className="m-0 p-0">
+                                <p className="m-0 p-0 dark:text-gray-100">
                                     The photo must show a frontal pose looking
                                     directly at the camera, with your full face,
                                     both ears, and shoulders clearly visible.
@@ -266,10 +266,10 @@ export default function StepTwo({
                         </div>
 
                         {/* 2 */}
-                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm">
+                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
                             <div className="flex gap-3">
                                 <Smile className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
-                                <p className="m-0 p-0">
+                                <p className="m-0 p-0 dark:text-gray-100">
                                     Maintain a neutral expression with both eyes
                                     open and mouth closed.
                                 </p>
@@ -277,10 +277,10 @@ export default function StepTwo({
                         </div>
 
                         {/* 3 */}
-                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm">
+                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
                             <div className="flex gap-3">
                                 <Ban className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
-                                <p className="m-0 p-0">
+                                <p className="m-0 p-0 dark:text-gray-100">
                                     Remove accessories such as caps, headbands,
                                     sunglasses, or face masks before taking the
                                     photo.
@@ -289,10 +289,10 @@ export default function StepTwo({
                         </div>
 
                         {/* 4 */}
-                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm">
+                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
                             <div className="flex gap-3">
                                 <Square className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
-                                <p className="m-0 p-0">
+                                <p className="m-0 p-0 dark:text-gray-100">
                                     The photo must be taken in front of a plain
                                     white or off-white background.
                                 </p>
@@ -300,10 +300,10 @@ export default function StepTwo({
                         </div>
 
                         {/* 5 */}
-                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm">
+                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
                             <div className="flex gap-3">
                                 <Shirt className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
-                                <p className="m-0 p-0">
+                                <p className="m-0 p-0 dark:text-gray-100">
                                     Wear appropriate attire and ensure proper
                                     grooming.
                                 </p>
@@ -311,10 +311,10 @@ export default function StepTwo({
                         </div>
 
                         {/* 6 */}
-                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm">
+                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
                             <div className="flex gap-3">
                                 <ImageIcon className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
-                                <p className="m-0 p-0">
+                                <p className="m-0 p-0 dark:text-gray-100">
                                     File Requirements: The image must be in
                                     JPEG/JPG format and cropped to a 1×1 photo
                                     dimension.
@@ -323,11 +323,12 @@ export default function StepTwo({
                         </div>
                     </div>
                 </div>
+
                 <div className="grid gap-3">
                     <img
                         src={previewUrl}
                         alt="Preview"
-                        className="h-auto w-full border object-contain"
+                        className="h-auto w-full border object-contain dark:border-gray-600"
                     />
                     <Input
                         type="file"
@@ -363,7 +364,7 @@ export default function StepTwo({
                     />
                 </div>
 
-                <div className="mt-3 flex h-56 items-center justify-center border">
+                <div className="mt-3 flex h-56 items-center justify-center border dark:bg-white">
                     {data.e_signature ? (
                         <>
                             <img

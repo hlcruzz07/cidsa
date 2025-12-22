@@ -25,7 +25,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
-import { cn } from '@/lib/utils';
+import { cn, processAndCompressImage, toTitleCase } from '@/lib/utils';
 import {
     ArrowBigRight,
     AsteriskIcon,
@@ -33,8 +33,8 @@ import {
     ChevronsUpDown,
     ImageUpIcon,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
-
+import { ChangeEvent, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 // Types
 type Municipality = {
     barangay_list: string[];
@@ -54,18 +54,6 @@ type Region = {
 
 type Locations = {
     [regionName: string]: Region;
-};
-
-type CampusData = {
-    campus: string;
-    colleges: {
-        value: string;
-        name: string;
-        programs: {
-            name: string;
-            majors: string[];
-        }[];
-    }[];
 };
 
 type FormData = {
@@ -109,360 +97,7 @@ interface StepOneProps {
     onShowReplacementModal: () => void;
 }
 
-const campusDirectoryArr: CampusData[] = [
-    {
-        campus: 'Talisay',
-        colleges: [
-            {
-                value: 'CAS',
-                name: 'College of Arts & Sciences',
-                programs: [
-                    {
-                        name: 'Bachelor of Arts in English Language',
-                        majors: [],
-                    },
-                    {
-                        name: 'Bachelor of Arts in Social Science',
-                        majors: [],
-                    },
-                    {
-                        name: 'Bachelor of Public Administration',
-                        majors: [],
-                    },
-                    {
-                        name: 'Bachelor of Science in Applied Mathematics',
-                        majors: [],
-                    },
-                    {
-                        name: 'Bachelor of Science in Psychology',
-                        majors: [],
-                    },
-                    {
-                        name: 'Master in Public Administration',
-                        majors: [
-                            'Human Resource Management',
-                            'Urban Planning and Management',
-                        ],
-                    },
-                    {
-                        name: 'Doctor in Public Administration',
-                        majors: ['Professional Track'],
-                    },
-                ],
-            },
-            {
-                value: 'CBMA',
-                name: 'College of Business Management & Accountancy',
-                programs: [
-                    {
-                        name: 'Bachelor of Science in Hospitality Management',
-                        majors: [],
-                    },
-                ],
-            },
-            {
-                value: 'CCS',
-                name: 'College of Computer Studies',
-                programs: [
-                    {
-                        name: 'Bachelor of Science in Information Systems',
-                        majors: [],
-                    },
-                ],
-            },
-            {
-                value: 'COED',
-                name: 'College of Education',
-                programs: [
-                    {
-                        name: 'Bachelor of Early Childhood Education',
-                        majors: [],
-                    },
-                    {
-                        name: 'Bachelor of Elementary Education',
-                        majors: ['General Education'],
-                    },
-                    { name: 'Bachelor of Physical Education', majors: [] },
-                    {
-                        name: 'Bachelor of Secondary Education',
-                        majors: [
-                            'English',
-                            'Filipino',
-                            'Mathematics',
-                            'Science',
-                        ],
-                    },
-                    {
-                        name: 'Bachelor of Special Needs Education',
-                        majors: ['Generalist'],
-                    },
-                    {
-                        name: 'Bachelor of Technology and Livelihood Education',
-                        majors: ['Home Economics', 'Industrial'],
-                    },
-                    {
-                        name: 'Teacher Certificate Program (Supplementals)',
-                        majors: [],
-                    },
-                    {
-                        name: 'Master of Arts in Education',
-                        majors: ['Educational Management'],
-                    },
-                    {
-                        name: 'Master of Arts in Education (Academic Track)',
-                        majors: [
-                            'Educational Management',
-                            'English',
-                            'General Science',
-                            'Mathematics',
-                            'Physical Education',
-                            'Technology and Livelihood Education',
-                        ],
-                    },
-                    {
-                        name: 'Doctor of Education',
-                        majors: ['Educational Management'],
-                    },
-                ],
-            },
-            {
-                value: 'COE',
-                name: 'College of Engineering',
-                programs: [
-                    {
-                        name: 'Bachelor of Science in Civil Engineering',
-                        majors: [],
-                    },
-                ],
-            },
-            {
-                value: 'CIT',
-                name: 'College of Industrial Technology',
-                programs: [
-                    {
-                        name: 'Bachelor of Industrial Technology',
-                        majors: [
-                            'Apparel & Fashion Technology',
-                            'Architectural Drafting Technology',
-                            'Automotive Technology',
-                            'Culinary Technology',
-                            'Electrical Technology',
-                            'Electronics Technology',
-                            'HVACR Technology',
-                            'Mechanical Technology',
-                        ],
-                    },
-                    {
-                        name: 'Bachelor of Science in Industrial Technology',
-                        majors: [
-                            'Apparel & Fashion Technology',
-                            'Architectural Drafting Technology',
-                            'Automotive Technology',
-                            'Culinary Technology',
-                            'Electrical Technology',
-                            'Electronics Technology',
-                            'HVACR Technology',
-                            'Mechanical Technology',
-                        ],
-                    },
-                    { name: 'Master in Technology Management', majors: [] },
-                    {
-                        name: 'Doctor in Philosophy in Technology Management',
-                        majors: [],
-                    },
-                ],
-            },
-        ],
-    },
-
-    {
-        campus: 'Binalbagan',
-        colleges: [
-            {
-                value: 'CBMA',
-                name: 'College of Business Management & Accountancy',
-                programs: [
-                    {
-                        name: 'Bachelor of Science in Hospitality Management',
-                        majors: ['Financial Management'],
-                    },
-                ],
-            },
-            {
-                value: 'CCS',
-                name: 'College of Computer Studies',
-                programs: [
-                    {
-                        name: 'Bachelor of Science in Information Technology',
-                        majors: [],
-                    },
-                ],
-            },
-            {
-                value: 'CCJ',
-                name: 'College of Criminal Justice',
-                programs: [
-                    {
-                        name: 'Bachelor of Science in Criminology',
-                        majors: [],
-                    },
-                ],
-            },
-            {
-                value: 'COED',
-                name: 'College of Education',
-                programs: [
-                    {
-                        name: 'Bachelor of Elementary Education',
-                        majors: ['General Education'],
-                    },
-                    {
-                        name: 'Bachelor of Secondary Education',
-                        majors: ['Science'],
-                    },
-                    {
-                        name: 'Bachelor of Technology and Livelihood Education',
-                        majors: ['Home Economics'],
-                    },
-                ],
-            },
-            {
-                value: 'COF',
-                name: 'College of Fisheries',
-                programs: [
-                    {
-                        name: 'Bachelor of Science in Fisheries',
-                        majors: [],
-                    },
-                ],
-            },
-        ],
-    },
-
-    {
-        campus: 'Fortune Towne',
-        colleges: [
-            {
-                value: 'CBMA',
-                name: 'College of Business Management & Accountancy',
-                programs: [
-                    {
-                        name: 'Bachelor of Science in Accountancy',
-                        majors: [],
-                    },
-                    {
-                        name: 'Bachelor of Science in Business Administration',
-                        majors: ['Financial Management'],
-                    },
-                    {
-                        name: 'Bachelor of Science in Entrepreneurship',
-                        majors: [],
-                    },
-                    {
-                        name: 'Bachelor of Science in Management Accounting',
-                        majors: [],
-                    },
-                    {
-                        name: 'Bachelor of Science in Office Administration',
-                        majors: [],
-                    },
-                    {
-                        name: 'Master of Business Administration',
-                        majors: [],
-                    },
-                    { name: 'Master of Public Administration', majors: [] },
-                ],
-            },
-            {
-                value: 'CCS',
-                name: 'College of Computer Studies',
-                programs: [
-                    {
-                        name: 'Bachelor of Science in Information Systems',
-                        majors: [],
-                    },
-                ],
-            },
-        ],
-    },
-
-    {
-        campus: 'Alijis',
-        colleges: [
-            {
-                value: 'CCS',
-                name: 'College of Computer Studies',
-                programs: [
-                    {
-                        name: 'Bachelor of Science in Information Systems',
-                        majors: [],
-                    },
-                    {
-                        name: 'Bachelor of Science in Information Technology',
-                        majors: [],
-                    },
-                ],
-            },
-            {
-                value: 'COE',
-                name: 'College of Engineering',
-                programs: [
-                    {
-                        name: 'Bachelor of Science in Computer Engineering',
-                        majors: [],
-                    },
-                    {
-                        name: 'Bachelor of Science in Electronics Engineering',
-                        majors: [],
-                    },
-                ],
-            },
-            {
-                value: 'CIT',
-                name: 'College of Industrial Technology',
-                programs: [
-                    {
-                        name: 'Bachelor of Industrial Technology',
-                        majors: [
-                            'Architectural Drafting Technology',
-                            'Automotive Technology',
-                            'Computer Technology',
-                            'Culinary Technology',
-                            'Electrical Technology',
-                            'Electronics Technology',
-                            'Mechanical Technology',
-                        ],
-                    },
-                    {
-                        name: 'Bachelor of Science in Industrial Technology',
-                        majors: [
-                            'Architectural Drafting Technology',
-                            'Automotive Technology',
-                            'Computer Technology',
-                            'Culinary Technology',
-                            'Electrical Technology',
-                            'Electronics Technology',
-                            'Mechanical Technology',
-                        ],
-                    },
-                ],
-            },
-            {
-                value: 'COED',
-                name: 'College of Education',
-                programs: [
-                    {
-                        name: 'Bachelor of Technical Vocational Teacher Education',
-                        majors: [
-                            'Electrical Technology',
-                            'Electronics Technology',
-                        ],
-                    },
-                ],
-            },
-        ],
-    },
-];
+import { campusDirectoryArr } from '@/lib/utils';
 
 export default function StepOne({
     data,
@@ -507,6 +142,8 @@ export default function StepOne({
     useEffect(() => {
         fetchLocations();
     }, []);
+
+    console.log(data);
 
     const provinces = Object.values(locations)
         .flatMap((region) =>
@@ -556,6 +193,8 @@ export default function StepOne({
 
         setData('major', null);
         setIsMajorDisabled(true);
+        setData('section', '');
+        setData('year_level', null);
     };
 
     const resetForCollegeChange = () => {
@@ -564,11 +203,17 @@ export default function StepOne({
 
         setData('major', null);
         setIsMajorDisabled(true);
+
+        setData('section', '');
+        setData('year_level', null);
     };
 
     const resetForProgramChange = () => {
         setData('major', null);
         setIsMajorDisabled(false);
+
+        setData('section', '');
+        setData('year_level', null);
     };
 
     const resetForProvinceChange = () => {
@@ -599,6 +244,40 @@ export default function StepOne({
         }
     };
 
+    const handleAOFImage = async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const processedFile = await processAndCompressImage({
+                file,
+                filename: `aof-${data.id_number}.jpg`,
+            });
+
+            setData('affidavit_img', processedFile);
+        } catch (err) {
+            console.error('Image processing failed', err);
+            toast.error('Failed to process image. Please try again.');
+        }
+    };
+
+    const handleReceiptImg = async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const processedFile = await processAndCompressImage({
+                file,
+                filename: `receipt-${data.id_number}.jpg`,
+            });
+
+            setData('receipt_img', processedFile);
+        } catch (err) {
+            console.error('Image processing failed', err);
+            toast.error('Failed to process image. Please try again.');
+        }
+    };
+
     return (
         <>
             <Heading
@@ -606,36 +285,6 @@ export default function StepOne({
                 description="Provide your basic personal details as they will appear on your ID."
             />
             <div className="grid gap-3 md:grid-cols-2">
-                <div className="flex flex-col gap-2">
-                    <Label>
-                        Student ID Type
-                        <AsteriskIcon size={12} color="red" />
-                    </Label>
-                    <Select
-                        value={data.id_type}
-                        onValueChange={(value) => {
-                            if (value === 'replacement') {
-                                onShowReplacementModal();
-                                setData('affidavit_img', null);
-                                setData('receipt_img', null);
-                            }
-                            setData('id_type', value);
-                        }}
-                    >
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Choose an option" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                                <SelectItem value="new">New</SelectItem>
-                                <SelectItem value="replacement">
-                                    Replacement (Misplaced ID)
-                                </SelectItem>
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
-                    <InputError message={errors.id_type} />
-                </div>
                 <div className="flex flex-col gap-2">
                     <Label htmlFor="id_number">
                         Student ID Number
@@ -652,10 +301,45 @@ export default function StepOne({
                                 .trim()
                                 .toUpperCase();
                             setData('id_number', v);
+                            setData('id_type', '');
+                            setData('affidavit_img', null);
+                            setData('receipt_img', null);
                         }}
                         maxLength={25}
                     />
                     <InputError message={errors.id_number} />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                    <Label>
+                        Student ID Type
+                        <AsteriskIcon size={12} color="red" />
+                    </Label>
+                    <Select
+                        value={data.id_type}
+                        onValueChange={(value) => {
+                            setData('id_type', value);
+                            setData('affidavit_img', null);
+                            setData('receipt_img', null);
+                            if (value === 'replacement') {
+                                onShowReplacementModal();
+                            }
+                        }}
+                        disabled={data.id_number === ''}
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Choose an option" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                                <SelectItem value="new">New</SelectItem>
+                                <SelectItem value="replacement">
+                                    Replacement (Misplaced ID)
+                                </SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    <InputError message={errors.id_type} />
                 </div>
             </div>
 
@@ -667,17 +351,24 @@ export default function StepOne({
                             id="affidavit_img"
                             accept=".jpg"
                             hidden
+                            onChange={handleAOFImage}
                         />
                         <Label>
-                            Upload Affidavit of Loss Image
+                            Upload Affidavit of Loss (AOF) Image
                             <AsteriskIcon size={12} color="red" />
                         </Label>
                         {data.affidavit_img ? (
                             <>
                                 <img
-                                    src="/file-placeholder.jpg"
+                                    src={
+                                        data.affidavit_img
+                                            ? URL.createObjectURL(
+                                                  data.affidavit_img,
+                                              )
+                                            : '/file-placeholder.jpg'
+                                    }
                                     loading="lazy"
-                                    className="max-h-96 w-full object-contain"
+                                    className="h-96 w-full object-cover"
                                 />
                             </>
                         ) : (
@@ -704,16 +395,34 @@ export default function StepOne({
                             id="receipt_img"
                             accept=".jpg"
                             hidden
+                            onChange={handleReceiptImg}
                         />
                         <Label>
                             Upload Cashier's Receipt Image
                             <AsteriskIcon size={12} color="red" />
                         </Label>
-                        <div className="flex h-96 items-center justify-center border">
-                            <h1 className="text-xl font-semibold tracking-widest text-gray-400 italic">
-                                Cashier's Receipt Image Preview
-                            </h1>
-                        </div>
+                        {data.receipt_img ? (
+                            <>
+                                <img
+                                    src={
+                                        data.receipt_img
+                                            ? URL.createObjectURL(
+                                                  data.receipt_img,
+                                              )
+                                            : '/file-placeholder.jpg'
+                                    }
+                                    loading="lazy"
+                                    className="h-96 w-full object-cover"
+                                />
+                            </>
+                        ) : (
+                            <div className="flex h-96 items-center justify-center border">
+                                <h1 className="text-xl font-semibold tracking-widest text-gray-400 italic">
+                                    Cashier's Receipt Image Preview
+                                </h1>
+                            </div>
+                        )}
+
                         <Button type="button" className="p-0">
                             <Label
                                 htmlFor="receipt_img"
@@ -877,10 +586,14 @@ export default function StepOne({
                         <AsteriskIcon size={12} color="red" />
                     </Label>
                     <Select
-                        value={JSON.stringify({
-                            value: data.college,
-                            name: data.college_name,
-                        })}
+                        value={
+                            data.college && data.college_name
+                                ? JSON.stringify({
+                                      value: data.college,
+                                      name: data.college_name,
+                                  })
+                                : undefined
+                        }
                         onValueChange={(val) => {
                             const parsed = JSON.parse(val);
 
@@ -1012,7 +725,7 @@ export default function StepOne({
                             <AsteriskIcon size={12} color="red" />
                         </Label>
                         <span className="text-xs text-muted-foreground">
-                            (ex: A, B, C, D)
+                            (ex: A, A1, A2, B, C, D, D1, D2, etc.)
                         </span>
                     </div>
                     <Input
@@ -1028,9 +741,22 @@ export default function StepOne({
 
                             e.target.value = value;
 
-                            if (e.currentTarget.value.length > 1) {
-                                e.currentTarget.value =
-                                    e.currentTarget.value.slice(0, 1);
+                            if (
+                                (data.program &&
+                                    data.program ===
+                                        'Bachelor of Science in Industrial Technology') ||
+                                data.program ===
+                                    'Bachelor of Industrial Technology'
+                            ) {
+                                if (e.currentTarget.value.length > 2) {
+                                    e.currentTarget.value =
+                                        e.currentTarget.value.slice(0, 2);
+                                }
+                            } else {
+                                if (e.currentTarget.value.length > 1) {
+                                    e.currentTarget.value =
+                                        e.currentTarget.value.slice(0, 1);
+                                }
                             }
 
                             setData('section', e.currentTarget.value);
@@ -1240,7 +966,9 @@ export default function StepOne({
                             >
                                 {data.province
                                     ? provinces.find(
-                                          (p) => p.value === data.province,
+                                          (p) =>
+                                              p.value ===
+                                              data.province.toUpperCase(),
                                       )?.label
                                     : 'Choose an option'}
                                 <ChevronsUpDown className="opacity-50" />
@@ -1266,7 +994,9 @@ export default function StepOne({
                                                 onSelect={() => {
                                                     setData(
                                                         'province',
-                                                        province.value,
+                                                        toTitleCase(
+                                                            province.value,
+                                                        ),
                                                     );
                                                     setOpen(false);
 
@@ -1307,11 +1037,11 @@ export default function StepOne({
 
                     <Select
                         disabled={isCityDisabled}
-                        value={data.city}
+                        value={data.city.toUpperCase()}
                         onValueChange={(value) => {
-                            setData('city', value);
+                            setData('city', toTitleCase(value));
                             setIsBarangayDisabled(false);
-                            setSelectedCity(value);
+                            setSelectedCity(value.toUpperCase());
                             resetForCityChange();
                         }}
                     >
@@ -1327,11 +1057,14 @@ export default function StepOne({
                                     </SelectItem>
                                 ))}
 
-                                {data.city && !cities.includes(data.city) && (
-                                    <SelectItem value={data.city}>
-                                        {data.city}
-                                    </SelectItem>
-                                )}
+                                {data.city &&
+                                    !cities.includes(
+                                        data.city.toUpperCase(),
+                                    ) && (
+                                        <SelectItem value={data.city}>
+                                            {data.city}
+                                        </SelectItem>
+                                    )}
                             </SelectGroup>
                         </SelectContent>
                     </Select>
@@ -1347,8 +1080,10 @@ export default function StepOne({
 
                     <Select
                         disabled={isBarangayDisabled}
-                        value={data.barangay}
-                        onValueChange={(value) => setData('barangay', value)}
+                        value={data.barangay.toUpperCase()}
+                        onValueChange={(value) =>
+                            setData('barangay', toTitleCase(value))
+                        }
                     >
                         <SelectTrigger className="w-full">
                             <SelectValue placeholder="Choose an option" />
@@ -1363,7 +1098,9 @@ export default function StepOne({
                                 ))}
 
                                 {data.barangay &&
-                                    !barangays.includes(data.barangay) && (
+                                    !barangays.includes(
+                                        data.barangay.toUpperCase(),
+                                    ) && (
                                         <SelectItem value={data.barangay}>
                                             {data.barangay}
                                         </SelectItem>

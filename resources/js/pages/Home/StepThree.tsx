@@ -1,13 +1,13 @@
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { formatAddress } from '@/lib/utils';
-import { ArrowBigLeft, SendIcon } from 'lucide-react';
+import { AlertCircleIcon, ArrowBigLeft, SendIcon } from 'lucide-react';
 import { useMemo } from 'react';
-
 interface StepTwoProps {
     data: {
         id_type: string;
@@ -70,24 +70,27 @@ export default function StepThree({
                     title="Preview & Confirmation"
                     description="Review all the information you entered and verify that your photo, signature, and personal details are correct before submission."
                 />
-                <div className="rounded-md border border-yellow-400 bg-yellow-50 p-4 text-sm text-yellow-700">
-                    <strong>Important:</strong> This preview is a
-                    system-generated layout and
-                    <span className="font-bold">
-                        {' '}
-                        NOT the official CHMSU ID design.
-                    </span>
-                    Its purpose is solely to help you verify your information
-                    before final submission.
-                </div>
+
+                <Alert variant="destructive">
+                    <AlertCircleIcon />
+                    <AlertTitle>
+                        <strong>Important:</strong> This preview is a
+                        system-generated layout and{' '}
+                        <strong>NOT the official CHMSU ID design.</strong>
+                    </AlertTitle>
+                    <AlertDescription>
+                        Its purpose is solely to help you verify your
+                        information before final submission.
+                    </AlertDescription>
+                </Alert>
 
                 {/* Front */}
-                <div className="overflow-hidden rounded-md border-4 border-[var(--main-color)]">
-                    <div className="mb-3 flex items-center gap-2 border-b p-3">
+                <div className="overflow-hidden rounded-md border-4 border-[var(--main-color)] bg-white">
+                    <div className="mb-3 flex items-center gap-2 border-b border-gray-300 p-3">
                         <div className="h-10 w-12 animate-pulse rounded-full bg-gray-400 md:h-23 md:w-25"></div>
                         <div className="flex w-full flex-col">
                             <div className="mb-2.5 h-2.5 animate-pulse rounded-full bg-gray-400 md:h-5"></div>
-                            <div className="h-1.5 w-10/12 rounded-full border bg-gray-400 md:h-2.5"></div>
+                            <div className="h-1.5 w-10/12 animate-pulse rounded-full bg-gray-400 md:h-2.5"></div>
                         </div>
                     </div>
 
@@ -99,13 +102,13 @@ export default function StepThree({
                                         src={previewSig}
                                         className="lg::w-auto w-20 md:w-40"
                                     />
-                                    <h1 className="text-sm font-extrabold uppercase md:text-xl lg:text-3xl">
-                                        {`${data.first_name}${data.middle_init ? ' ' + data.middle_init + '.' : ''} ${data.last_name} ${data.suffix}`}
+                                    <h1 className="text-sm font-extrabold uppercase md:text-xl lg:text-3xl dark:text-black">
+                                        {`${data.first_name}${data.middle_init ? ' ' + data.middle_init + '.' : ''} ${data.last_name} ${data.suffix ?? ''}`}
                                     </h1>
-                                    <h1 className="capitalized text-[9px] font-medium md:text-base lg:text-lg">
+                                    <h1 className="capitalized text-[9px] font-medium md:text-base lg:text-lg dark:text-black">
                                         {data.program}
                                     </h1>
-                                    <h1 className="capitalized text-[9px] font-medium md:text-sm lg:text-base">
+                                    <h1 className="capitalized text-[9px] font-medium md:text-sm lg:text-base dark:text-black">
                                         {data.college_name}
                                     </h1>
                                 </div>
@@ -117,7 +120,7 @@ export default function StepThree({
                             />
                         </div>
                     </div>
-                    <div className="flex border-t">
+                    <div className="flex border-t border-gray-300">
                         <h1 className="flex w-8/12 items-center justify-center bg-green-600 text-center text-xl font-extrabold text-white md:text-3xl lg:text-5xl">
                             STUDENT
                         </h1>
@@ -127,14 +130,14 @@ export default function StepThree({
                                     ID NUMBER
                                 </h1>
                                 <h1 className="text-[9px] md:text-xs lg:text-sm">
-                                    20210431
+                                    {data.id_number}
                                 </h1>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="overflow-hidden rounded-md border-4 border-[var(--main-color)]">
+                <div className="overflow-hidden rounded-md border-4 border-[var(--main-color)] bg-white">
                     <div className="p-3">
                         <div className="flex w-full gap-3">
                             <div className="flex grow flex-col justify-between gap-2">
@@ -147,8 +150,8 @@ export default function StepThree({
                                 <h1 className="text-xs font-medium text-red-500 md:text-sm lg:text-lg">
                                     In case of emergency, please contact
                                 </h1>
-                                <div className="flex flex-col">
-                                    <p className="text-base font-bold md:text-2xl">{`${data.emergency_first_name} ${data.emergency_middle_init}. ${data.emergency_last_name} ${data.emergency_suffix}`}</p>
+                                <div className="flex flex-col dark:text-black">
+                                    <p className="text-base font-bold md:text-2xl">{`${data.emergency_first_name} ${data.emergency_middle_init ? data.emergency_middle_init + '.' : ''} ${data.emergency_last_name} ${data.emergency_suffix ?? ''}`}</p>
                                     <p className="text-xs capitalize md:text-sm lg:text-lg">
                                         {formatAddress(
                                             data.barangay,
