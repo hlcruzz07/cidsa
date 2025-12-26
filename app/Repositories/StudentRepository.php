@@ -88,16 +88,51 @@ class StudentRepository
 
     public function create(array $data)
     {
-
         $queue = config('queue.default') !== 'sync';
 
+        $paths = [
+            'Talisay' => [
+                'affidavit_img' => 'images/talisay/affidavits',
+                'receipt_img' => 'images/talisay/receipts',
+                'picture' => 'images/talisay/pictures',
+                'e_signature' => 'images/talisay/signatures',
+            ],
+            'Alijis' => [
+                'affidavit_img' => 'images/alijis/affidavits',
+                'receipt_img' => 'images/alijis/receipts',
+                'picture' => 'images/alijis/pictures',
+                'e_signature' => 'images/alijis/signatures',
+            ],
+            'Binalbagan' => [
+                'affidavit_img' => 'images/binalbagan/affidavits',
+                'receipt_img' => 'images/binalbagan/receipts',
+                'picture' => 'images/binalbagan/pictures',
+                'e_signature' => 'images/binalbagan/signatures',
+            ],
+            'Fortune Towne' => [
+                'affidavit_img' => 'images/fortune-towne/affidavits',
+                'receipt_img' => 'images/fortune-towne/receipts',
+                'picture' => 'images/fortune-towne/pictures',
+                'e_signature' => 'images/fortune-towne/signatures',
+            ],
+        ];
 
-        $data['affidavit_img'] = $this->storeFile($data['affidavit_img'] ?? null, 'students/affidavits');
-        $data['receipt_img'] = $this->storeFile($data['receipt_img'] ?? null, 'students/receipts');
-        $data['picture'] = $this->storeFile($data['picture'] ?? null, 'students/pictures');
-        $data['e_signature'] = $this->storeFile($data['e_signature'] ?? null, 'students/signatures');
+        $campus = $data['campus'] ?? null;
 
-        $data = collect($data)->except(['confirm_info', 'data_privacy', 'college_name', 'hasMajor'])->toArray();
+        if (!isset($paths[$campus])) {
+            throw new \InvalidArgumentException('Invalid campus selected.');
+        }
+
+        foreach (['affidavit_img', 'receipt_img', 'picture', 'e_signature'] as $field) {
+            $data[$field] = $this->storeFile(
+                $data[$field] ?? null,
+                $paths[$campus][$field]
+            );
+        }
+
+        $data = collect($data)
+            ->except(['confirm_info', 'data_privacy', 'college_name', 'hasMajor'])
+            ->toArray();
 
         if ($queue) {
             CreateStudentsBatchJob::dispatch([$data]);
@@ -106,6 +141,7 @@ class StudentRepository
 
         return $this->model->create($data);
     }
+
 
     protected function storeFile($file, string $folder): ?string
     {

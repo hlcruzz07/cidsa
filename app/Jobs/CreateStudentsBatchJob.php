@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Student;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -43,7 +44,18 @@ class CreateStudentsBatchJob implements ShouldQueue
         $chunks = array_chunk($this->studentsData, 100);
 
         foreach ($chunks as $index => $chunk) {
-            Student::insertOrIgnore($chunk);
+            $now = Carbon::now();
+
+            // Add timestamps to each row
+            $chunkWithTimestamps = array_map(function ($row) use ($now) {
+                return array_merge($row, [
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }, $chunk);
+
+            // Insert chunk while ignoring duplicates
+            Student::insertOrIgnore($chunkWithTimestamps);
 
             \Log::info('Inserted chunk', [
                 'chunk_index' => $index + 1,
