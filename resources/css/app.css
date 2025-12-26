@@ -72,6 +72,7 @@ input[type='number'] {
 
 :root {
     --main-color: #2ca87f;
+    --main-color-dark: #14532d;
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);

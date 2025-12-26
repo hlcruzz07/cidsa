@@ -16,6 +16,8 @@ Route::post('/register/student', [StudentController::class, 'store'])->name('reg
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('google.callback');
 
+Route::get('/download-excel', [StudentController::class, 'export']);
+
 
 Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(function () {
 

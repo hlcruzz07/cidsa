@@ -136,8 +136,6 @@ export default function CampusLayout({
             });
 
             setStudents(data);
-
-            console.log(order);
         } catch (error) {
             console.error('Error fetching students:', error);
         }
@@ -162,7 +160,7 @@ export default function CampusLayout({
         range: undefined as DateRange | undefined,
         perPage: 10,
         sort: 'id',
-        order: 'asc' as 'asc' | 'desc',
+        order: 'desc' as 'asc' | 'desc',
     };
 
     const hasActiveFilters = useMemo(() => {
@@ -301,7 +299,7 @@ export default function CampusLayout({
                                                             Section
                                                         </SelectItem>
                                                         <SelectItem value="created_at">
-                                                            Created At
+                                                            Date
                                                         </SelectItem>
                                                     </SelectGroup>
                                                 </SelectContent>
@@ -353,7 +351,13 @@ export default function CampusLayout({
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline">
-                                        <IdCardIcon /> Type
+                                        <IdCardIcon />{' '}
+                                        {selectedType
+                                            ? selectedType
+                                                  .charAt(0)
+                                                  .toUpperCase() +
+                                              selectedType.slice(1)
+                                            : 'Type'}{' '}
                                         <ChevronDownIcon />
                                     </Button>
                                 </DropdownMenuTrigger>
@@ -402,6 +406,19 @@ export default function CampusLayout({
                                     <Button variant="outline">
                                         <BookMarkedIcon /> College
                                         <ChevronDownIcon />
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {selectedCollege.length > 0 &&
+                                                selectedCollege.map(
+                                                    (college, idx) => (
+                                                        <Badge
+                                                            key={idx}
+                                                            variant="default"
+                                                        >
+                                                            {college}
+                                                        </Badge>
+                                                    ),
+                                                )}
+                                        </div>
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
@@ -437,6 +454,19 @@ export default function CampusLayout({
                                     <Button variant="outline">
                                         <BookOpenCheckIcon /> Year Level
                                         <ChevronDownIcon />
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {selectedYearLevel.length > 0 &&
+                                                selectedYearLevel.map(
+                                                    (year, idx) => (
+                                                        <Badge
+                                                            key={idx}
+                                                            variant="default"
+                                                        >
+                                                            {year}
+                                                        </Badge>
+                                                    ),
+                                                )}
+                                        </div>
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
@@ -553,7 +583,7 @@ export default function CampusLayout({
                                         Section
                                     </th>
                                     <th scope="col" className="p-3">
-                                        Created At
+                                        Date
                                     </th>
 
                                     <th scope="col" className="p-3">
@@ -618,10 +648,7 @@ export default function CampusLayout({
                                             {row.section}
                                         </td>
 
-                                        <td
-                                            className="p-3"
-                                            data-label="Created At"
-                                        >
+                                        <td className="p-3" data-label="Date">
                                             {dayjs(row.created_at).format(
                                                 'MMM D, YYYY hh:mm:ss A',
                                             )}{' '}
