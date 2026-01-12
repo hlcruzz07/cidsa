@@ -30,6 +30,6 @@ class StudentApiController extends Controller
             'campus',
         ]);
 
-        return $this->studentRepository->filter($filters);
+        return $this->studentRepository->filterPaginate($filters);
     }
 }

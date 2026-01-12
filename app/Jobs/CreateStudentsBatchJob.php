@@ -19,7 +19,7 @@ class CreateStudentsBatchJob implements ShouldQueue
      * Retry config
      */
     public int $tries = 3;
-    public int $timeout = 120;
+    public int $timeout = 300;
     public bool $failOnTimeout = true;
 
     /**

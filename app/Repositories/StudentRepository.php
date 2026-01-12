@@ -25,7 +25,7 @@ class StudentRepository
         return $this->model->findOrFail($id);
     }
 
-    public function filter(array $filters)
+    public function filterPaginate(array $filters)
     {
         $query = $this->model->query()
             ->where('campus', $filters['campus'] ?? 'Talisay');
@@ -131,7 +131,7 @@ class StudentRepository
         }
 
         $data = collect($data)
-            ->except(['confirm_info', 'data_privacy', 'college_name', 'hasMajor'])
+            ->except(['confirm_info', 'data_privacy', 'hasMajor'])
             ->toArray();
 
         if ($queue) {
@@ -140,6 +140,64 @@ class StudentRepository
         }
 
         return $this->model->create($data);
+    }
+
+    public function filter(array $filters)
+    {
+        $query = $this->model->query()
+            ->where('campus', $filters['campus'] ?? 'Talisay');
+
+        // 🔍 Search
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+
+            $query->where(function ($q) use ($search) {
+                $q->where('id_number', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%");
+            });
+        }
+
+        // 🆔 ID Type
+        if (!empty($filters['type'])) {
+            $query->where('id_type', $filters['type']);
+        }
+
+        // 🏫 Colleges
+        if (!empty($filters['college']) && is_array($filters['college'])) {
+            $query->whereIn('college', $filters['college']);
+        }
+
+        // 🎓 Year Levels
+        if (!empty($filters['year_level']) && is_array($filters['year_level'])) {
+            $query->whereIn('year_level', $filters['year_level']);
+        }
+
+        // 📅 Date Range
+        if (!empty($filters['from']) || !empty($filters['to'])) {
+            if (!empty($filters['from'])) {
+                $query->whereDate(
+                    'created_at',
+                    '>=',
+                    Carbon::parse($filters['from'])->startOfDay()
+                );
+            }
+
+            if (!empty($filters['to'])) {
+                $query->whereDate(
+                    'created_at',
+                    '<=',
+                    Carbon::parse($filters['to'])->endOfDay()
+                );
+            }
+        }
+
+        $sort = $filters['sort'] ?? 'id';
+        $order = $filters['order'] ?? 'asc';
+
+        $query->orderBy($sort, $order);
+
+        return $query->get();
     }
 
 

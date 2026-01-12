@@ -1,5 +1,4 @@
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
     Tooltip,
@@ -121,18 +120,6 @@ export default function Index() {
         });
     };
 
-    const downloadExcel = async () => {
-        const response = await fetch('/download-excel');
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'students.xlsx';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-    };
-
     return (
         <>
             <ReplacementModal
@@ -197,9 +184,6 @@ export default function Index() {
                         onSubmit={handleFormSubmit}
                         className="mt-10 space-y-5"
                     >
-                        <Button type="button" onClick={downloadExcel}>
-                            Download
-                        </Button>
                         {step === 1 && (
                             <StepOne
                                 data={data}
