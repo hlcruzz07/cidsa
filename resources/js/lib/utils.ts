@@ -64,6 +64,29 @@ export function formatAddress(barangay: string, city: string, zip: string) {
 export const toTitleCase = (str: string): string =>
     str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 
+/**
+ * Normalize barangay input from variations like "Barangay 5 (POB)", "Brgy. 5",
+ * returning only the remainder (e.g., "5 (POB)"). If the value doesn't contain
+ * a barangay prefix, returns it unchanged (trimmed).
+ */
+export function normalizeBarangay(input: string): string {
+    if (!input || typeof input !== 'string') return input;
+
+    const original = input.trim();
+
+    // Remove trailing dot and normalize whitespace
+    let s = original.replace(/\.$/, '').trim();
+
+    // Remove prefix words like Barangay, Brgy, Brg, Barrio (case-insensitive)
+    // Allow optional dot and optional whitespace after the prefix
+    s = s.replace(/^\s*(?:barangay|brgy|brg|barrio)\.?\s*/i, '').trim();
+
+    // If stripping the prefix left an empty string, return the original value
+    if (s === '') return original;
+
+    return s;
+}
+
 import * as imageConversion from 'image-conversion';
 import { EImageType } from 'image-conversion';
 

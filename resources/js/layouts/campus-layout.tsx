@@ -27,7 +27,7 @@ import AppLayout from '@/layouts/app-layout';
 import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import {
     ArrowUpDownIcon,
@@ -118,14 +118,12 @@ export default function CampusLayout({
         try {
             const { data } = await apiService.get('/api/student/filter', {
                 params: {
-                    search: searchValue || undefined,
-                    type: selectedType || undefined,
-                    college: selectedCollege.length
-                        ? selectedCollege
-                        : undefined,
+                    search: searchValue || null,
+                    type: selectedType || null,
+                    college: selectedCollege.length ? selectedCollege : null,
                     year_level: selectedYearLevel.length
                         ? selectedYearLevel
-                        : undefined,
+                        : null,
                     from: range?.from?.toISOString(),
                     to: range?.to?.toISOString(),
                     perPage: perPage,
@@ -197,6 +195,21 @@ export default function CampusLayout({
         sort,
         order,
     ]);
+    const downloadExcel = async () => {
+        if (!students) return;
+
+        router.post('/preview', {
+            search: searchValue || null,
+            type: selectedType || null,
+            college: selectedCollege.length ? selectedCollege : null,
+            year_level: selectedYearLevel.length ? selectedYearLevel : null,
+            from: range?.from?.toISOString() || null,
+            to: range?.to?.toISOString() || null,
+            sort: sort,
+            order: order,
+            campus: campus,
+        });
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -341,7 +354,7 @@ export default function CampusLayout({
                                     </DropdownMenuGroup>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            <Button>
+                            <Button onClick={downloadExcel}>
                                 <UploadCloudIcon /> Export
                             </Button>
                         </div>
@@ -602,7 +615,9 @@ export default function CampusLayout({
                                         </td>
                                         <td className="p-3" data-label="Type">
                                             {row.id_type === 'new' ? (
-                                                <Badge>New</Badge>
+                                                <Badge variant="default">
+                                                    New
+                                                </Badge>
                                             ) : (
                                                 <Badge variant="destructive">
                                                     Replacement

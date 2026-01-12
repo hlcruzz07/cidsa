@@ -36,28 +36,58 @@
             <tr>
                 <td></td>
                 <td>{{ $student['program'] }}</td>
-                <td>{{ strtoupper($student['first_name']) . ($student['middle_init'] ? ' '.strtoupper($student['middle_init']) : '') . strtoupper($student['last_name']) }} {{ $student['suffix'] ? strtoupper($student['suffix']) : '' }}</td>
-                <td>{{ $student['id_number'] }}</td>
+
+                {{-- Full Name --}}
+               <td style="mso-number-format:'\@';">
+                    {{ strtoupper($student['first_name'] ?? '') }}
+                    {{ $student['middle_init'] ? ' '.strtoupper($student['middle_init']).'.' : '' }}
+                    {{ strtoupper($student['last_name'] ?? '') }}
+                    {{ ($student['suffix'] ?? null) ? ' '.strtoupper($student['suffix']) : '' }}
+                </td>
+
+                {{-- ID Number --}}
+                <td style="mso-number-format:'\@';">{{ $student['id_number'] }}</td>
+
                 <td></td>
-                <td>{{ $student['college'] }}</td>
+                <td>{{ $student['college_name'] }}</td>
                 <td></td>
                 <td></td>
-                 <td>{{ strtoupper($student['emergency_first_name']) . ($student['emergency_middle_init'] ? ' '.strtoupper($student['emergency_middle_init']) : '') . strtoupper($student['emergency_last_name']) }} {{ $student['emergency_suffix'] ? strtoupper($student['emergency_suffix']) : '' }}</td>
-                <td>{{ $student['barangay'] }}, {{ $student['city'] }}, {{ $student['zip_code'] }}</td>
-                <td>0{{ substr($student['contact_number'], 0,3) }}-{{ substr($student['contact_number'], 3) }}</td>
+
+                {{-- Emergency Contact --}}
+                <td style="mso-number-format:'\@';">
+                    {{ strtoupper($student['emergency_first_name']) }}{{ $student['emergency_middle_init'] ? ' '.strtoupper($student['emergency_middle_init']).'.' : '' }} {{ strtoupper($student['emergency_last_name']) }}
+                    {{ ($student['emergency_suffix'] ?? null) ? ' '.strtoupper($student['emergency_suffix']) : '' }}
+                </td>
+
+                {{-- Address --}}
+                <td>Brgy. {{ $student['barangay'] }}, {{ $student['city'] }}, {{ $student['zip_code'] }}</td>
+
+                {{-- Contact Number --}}
+                <td style="mso-number-format:'\@';">
+                    0{{ substr($student['contact_number'], 0,3) }}-{{ substr($student['contact_number'], 3) }}
+                </td>
+
                 <td>{{ $student['province'] }}</td>
                 <td></td>
                 <td></td>
                 <td></td>
                 <td></td>
+
+                {{-- First Name --}}
                 <td>{{ $student['first_name'] }}</td>
+
+                {{-- Last Name --}}
                 <td>{{ $student['last_name'] }}</td>
+
                 <td></td>
                 <td>STUDENT_ID_TALISAY</td>
                 <td></td>
                 <td></td>
                 <td></td>
-                <td>{{ $student['middle_init'] ? strtoupper($student['middle_init']) : '' }}</td>
+
+                {{-- Middle Initial --}}
+                <td style="mso-number-format:'\@';">{{ $student['middle_init'] ? strtoupper($student['middle_init']) : '' }}</td>
+
                 <td></td>
                 <td></td>
                 <td></td>
