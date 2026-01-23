@@ -40,7 +40,7 @@
                 {{-- Full Name --}}
                <td style="mso-number-format:'\@';">
                     {{ strtoupper($student['first_name'] ?? '') }}
-                    {{ $student['middle_init'] ? ' '.strtoupper($student['middle_init']).'.' : '' }}
+                    {{ ($student['middle_init'] ?? null) ? ' '.strtoupper($student['middle_init']) : '' }}
                     {{ strtoupper($student['last_name'] ?? '') }}
                     {{ ($student['suffix'] ?? null) ? ' '.strtoupper($student['suffix']) : '' }}
                 </td>
@@ -55,7 +55,7 @@
 
                 {{-- Emergency Contact --}}
                 <td style="mso-number-format:'\@';">
-                    {{ strtoupper($student['emergency_first_name']) }}{{ $student['emergency_middle_init'] ? ' '.strtoupper($student['emergency_middle_init']).'.' : '' }} {{ strtoupper($student['emergency_last_name']) }}
+                    {{ strtoupper($student['emergency_first_name']) }}{{ ($student['emergency_middle_init'] ?? null) ? ' '.strtoupper($student['emergency_middle_init']) : '' }} {{ strtoupper($student['emergency_last_name']) }}
                     {{ ($student['emergency_suffix'] ?? null) ? ' '.strtoupper($student['emergency_suffix']) : '' }}
                 </td>
 
@@ -86,8 +86,7 @@
                 <td></td>
 
                 {{-- Middle Initial --}}
-                <td style="mso-number-format:'\@';">{{ $student['middle_init'] ? strtoupper($student['middle_init']) : '' }}</td>
-
+                <td style="mso-number-format:'\@';">{{ ($student['middle_init'] ?? null) ? ' '.strtoupper($student['middle_init']) : '' }}</td>
                 <td></td>
                 <td></td>
                 <td></td>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\StudentApiController;
 use App\Http\Controllers\CampusRouteController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\StudentController;
@@ -7,16 +8,22 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 
-Route::get('/', [StudentController::class, 'index'])->name('home');
+Route::get('/', [StudentController::class, 'index'])->name('home')->middleware('student.has.session');
+Route::post('/validate', [StudentController::class, 'validate'])->middleware('validate.student')->name('validate.student');
 
-Route::post('/validate/1', [StudentController::class, 'validateStepOne'])->name('validateStepOne');
-Route::post('/validate/2', [StudentController::class, 'validateStepTwo'])->name('validateStepTwo');
-Route::post('/register/student', [StudentController::class, 'store'])->name('register.student');
+
+Route::middleware('student.validated')->group(function () {
+
+    Route::get('/student', [StudentController::class, 'studentForm'])->name('student.form');
+    Route::post('/student/step/1', [StudentController::class, 'validateStepOne'])->name('validateStepOne');
+    Route::post('/student/step/2', [StudentController::class, 'validateStepTwo'])->name('validateStepTwo');
+    Route::post('/student/update', [StudentController::class, 'updateStudent'])->name('student.update');
+    Route::post('/student/cancel', [StudentController::class, 'cancel'])->name('student.cancel');
+
+});
 
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('google.callback');
-
-
 
 
 Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(function () {
@@ -33,11 +40,15 @@ Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(f
         Route::get('/alijis', [CampusRouteController::class, 'alijis'])->name('alijis');
         Route::get('/binalbagan', [CampusRouteController::class, 'binalbagan'])->name('binalbagan');
         Route::get('/fortune-towne', [CampusRouteController::class, 'fortuneTowne'])->name('fortune-towne');
+
+        //ADD STUDENT ROUTE
+        Route::post('/student/add', [StudentController::class, 'addStudent'])->name('add.student');
     });
 
-    Route::post('/preview', [StudentController::class, 'preview']);
-    Route::post('/export', [StudentController::class, 'export'])->name('export.students');
-    Route::get('/export/students/zip', [StudentController::class, 'exportZip'])->name('export.students.zip');
+    // IMPORT/EXPORT ROUTES
+    Route::post('/import', [StudentController::class, 'importStudents'])->name('import.students');
+    Route::get('/export/students', [StudentController::class, 'exportStudents'])->name('export.students');
+
 });
 
 require __DIR__ . '/settings.php';
