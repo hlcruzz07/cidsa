@@ -15,13 +15,14 @@ class StudentApiController extends Controller
         $this->studentRepository = $studentRepository;
     }
 
-    public function filter(Request $request)
+    public function filterPaginate(Request $request)
     {
+
         $filters = $request->only([
             'search',
-            'type',
             'college',
-            'year_level',
+            'is_exported',
+            'is_completed',
             'from',
             'to',
             'sort',
@@ -30,6 +31,41 @@ class StudentApiController extends Controller
             'campus',
         ]);
 
+
+
         return $this->studentRepository->filterPaginate($filters);
+    }
+
+    public function filter(Request $request)
+    {
+
+        $filters = $request->only([
+            'search',
+            'college',
+            'is_exported',
+            'is_completed',
+            'from',
+            'to',
+            'sort',
+            'order',
+            'campus',
+        ]);
+
+
+
+        return $this->studentRepository->filter($filters);
+    }
+
+    public function studentsChart(Request $request)
+    {
+
+        $filters = $request->only([
+            'campus',
+            'timeRange',
+        ]);
+
+
+
+        return $this->studentRepository->studentsUpdateChart($filters['campus'], $filters['timeRange']);
     }
 }

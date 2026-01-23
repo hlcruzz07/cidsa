@@ -12,7 +12,7 @@ import { Spinner } from '@/components/ui/spinner';
 type ConfirmModalProp = {
     open: boolean;
     onClose: () => void;
-    onConfirm: () => void;
+    onConfirm?: () => void;
     processing?: boolean; // optional
 };
 export function ConfirmModal({
@@ -22,7 +22,7 @@ export function ConfirmModal({
     processing = false,
 }: ConfirmModalProp) {
     return (
-        <AlertDialog open={open} onOpenChange={onClose}>
+        <AlertDialog open={open || processing} onOpenChange={onClose}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
@@ -37,6 +37,7 @@ export function ConfirmModal({
                     </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={onConfirm}
+                        type="submit"
                         disabled={processing}
                     >
                         {processing ? (

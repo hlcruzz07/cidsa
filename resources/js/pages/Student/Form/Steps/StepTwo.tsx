@@ -3,12 +3,12 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
+import { Progress } from '@/components/ui/progress';
 import { removeBackground } from '@imgly/background-removal';
+import { usePage } from '@inertiajs/react';
 import * as faceapi from 'face-api.js';
 import * as imageConversion from 'image-conversion';
 import {
-    ArrowBigLeft,
     ArrowBigRight,
     AsteriskIcon,
     Ban,
@@ -20,34 +20,55 @@ import {
     Smile,
     Square,
 } from 'lucide-react';
-import { ChangeEvent, useMemo, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import SignatureModal from './SignatureModal';
+import SignatureModal from '../Modal/SignatureModal';
 
 interface StepTwoProps {
     data: {
         picture: File | null;
         e_signature: File | null;
-        id_number: string;
     };
     setData: (key: string, value: any) => void;
-    processing: boolean;
     errors: Record<string, string>;
-    onBackStep: () => void;
+    setModalOpen: () => void;
+    onCancel: () => void;
 }
+type PageProps = {
+    student: StudentProps;
+};
+type StudentProps = {
+    id_number: string;
+    first_name: string;
+    middle_init: string | null;
+    last_name: string;
+};
 
 export default function StepTwo({
     data,
     setData,
-    processing,
     errors,
-    onBackStep,
+    setModalOpen,
+    onCancel,
 }: StepTwoProps) {
+    const { student } = usePage<PageProps>().props;
     const previewUrl = useMemo(() => {
         if (!data.picture) return '/placeholder.jpg';
         return URL.createObjectURL(data.picture);
     }, [data.picture]);
+
     const [isBgRemoving, setIsBgRemoving] = useState<boolean>(false);
+    const [progress, setProgress] = useState<number>(0);
+
+    useEffect(() => {
+        if (isBgRemoving) {
+            document.body.classList.add('overflow-hidden');
+        } else {
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        return () => document.body.classList.remove('overflow-hidden');
+    }, [isBgRemoving]);
 
     const applyWhiteBackground = (blob: Blob): Promise<Blob> => {
         return new Promise((resolve, reject) => {
@@ -177,15 +198,19 @@ export default function StepTwo({
         if (!file) return;
 
         setIsBgRemoving(true);
+        setProgress(0);
 
         try {
             // 1. Remove background → transparent PNG
+            setProgress(10);
             const removedBlob: Blob = await removeBackground(file);
 
             // 2. Convert transparent → white background
+            setProgress(30);
             const whiteBgBlob: Blob = await applyWhiteBackground(removedBlob);
 
             // 3. Resize + auto-center on face
+            setProgress(60);
             const centeredBlob: Blob = await resizeWithFaceCentering(
                 whiteBgBlob,
                 320,
@@ -193,6 +218,7 @@ export default function StepTwo({
             );
 
             // 4. Compress final image
+            setProgress(90);
             const finalBlob: Blob = await (imageConversion.compress as any)(
                 centeredBlob,
                 {
@@ -201,7 +227,8 @@ export default function StepTwo({
                 },
             );
 
-            const filename = `${data.id_number}.jpg`;
+            setProgress(100);
+            const filename = `${student.id_number}.jpg`;
 
             setData(
                 'picture',
@@ -212,6 +239,7 @@ export default function StepTwo({
             toast.error('Failed to process image. Please try again.');
         } finally {
             setIsBgRemoving(false);
+            setProgress(0);
         }
     };
 
@@ -224,23 +252,26 @@ export default function StepTwo({
             {isBgRemoving && (
                 <div className="fixed top-0 left-0 z-20 flex h-full w-full items-center justify-center overflow-hidden bg-black/70">
                     <div className="relative flex h-80 w-80 items-center justify-center">
-                        <div className="absolute inset-0 animate-spin rounded-full border border-t-[6px] border-transparent border-t-[var(--main-color)]"></div>
-
                         <div className="z-10 flex flex-col items-center gap-5">
                             <img
                                 src="/logo.webp"
                                 className="h-18 w-18 md:h-20 md:w-20"
                                 alt="CHMSU Logo"
-                                loading="lazy"
+                                loading="eager"
                             />
-                            <h1 className="text-white">
-                                Uploading Picture ...
+                            <h1 className="text-center text-white">
+                                Processing Picture...
                             </h1>
+                            <div className="w-full max-w-xs">
+                                <Progress value={progress} className="w-full" />
+                                <p className="mt-2 text-center text-sm text-white">
+                                    {progress}%
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
-
             <Heading
                 title="Photo & E-Signature Upload"
                 description="Upload your 1×1 ID photo and provide your electronic signature to proceed with your application."
@@ -252,7 +283,7 @@ export default function StepTwo({
                         <InfoIcon />
                     </h1>
 
-                    <div className="mt-3 space-y-4">
+                    <div className="mt-3 space-y-4 text-sm">
                         {/* 1 */}
                         <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
                             <div className="flex gap-3">
@@ -352,14 +383,13 @@ export default function StepTwo({
                     <InputError message={errors.picture} />
                 </div>
             </div>
-
             <div>
                 <div className="flex items-center justify-between">
                     <Label>
                         E - Signature <AsteriskIcon size={12} color="red" />
                     </Label>
                     <SignatureModal
-                        idNumber={data.id_number}
+                        idNumber={student.id_number}
                         onSave={handleSaveSignature}
                     />
                 </div>
@@ -382,38 +412,28 @@ export default function StepTwo({
 
                 <InputError message={errors.e_signature} />
             </div>
-
             <div className="mb-10 flex justify-end">
-                <div className="flex items-center gap-3">
+                <div className="space-x-3">
                     <Button
                         type="button"
-                        disabled={processing}
+                        onClick={onCancel}
                         className="ml-auto text-center"
-                        onClick={onBackStep}
+                        size="lg"
                         variant="outline"
                     >
-                        <ArrowBigLeft />
-                        Back
+                        Cancel
                     </Button>
                     <Button
-                        type="submit"
-                        disabled={processing}
+                        type="button"
+                        onClick={setModalOpen}
                         className="ml-auto text-center"
+                        size="lg"
                     >
-                        {processing ? (
-                            <>
-                                <Spinner />
-                                Loading...
-                            </>
-                        ) : (
-                            <>
-                                Next
-                                <ArrowBigRight />
-                            </>
-                        )}
+                        Next
+                        <ArrowBigRight />
                     </Button>
                 </div>
-            </div>
+            </div>{' '}
         </>
     );
 }

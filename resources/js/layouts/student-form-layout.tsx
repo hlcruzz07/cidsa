@@ -11,7 +11,7 @@ type FlashMessages = {
     warning?: string | null;
 };
 
-export default function RegisterLayout({
+export default function StudentFormLayout({
     children,
 }: {
     children: React.ReactNode;
@@ -72,7 +72,7 @@ export default function RegisterLayout({
                     <AppearanceToggleTab />
                 </div>
 
-                <div className="relative z-10 mx-auto block max-w-6xl rounded-xl bg-white p-5 dark:bg-black dark:text-gray-100">
+                <div className="relative z-10 mx-auto block max-w-5xl rounded-xl bg-white p-5 dark:bg-black dark:text-gray-100">
                     {children}
                 </div>
             </div>

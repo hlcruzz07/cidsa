@@ -1,13 +1,10 @@
 import { Toaster } from '@/components/ui/sonner';
-import AppLayoutTemplate from '@/layouts/app/app-sidebar-layout';
-import { type BreadcrumbItem } from '@/types';
 import { usePage } from '@inertiajs/react';
-import { type ReactNode, useEffect } from 'react';
-import { toast } from 'sonner'; // or react-hot-toast
+import { ReactNode, useEffect } from 'react';
+import { toast } from 'sonner';
 
 interface AppLayoutProps {
     children: ReactNode;
-    breadcrumbs?: BreadcrumbItem[];
 }
 type FlashMessages = {
     success?: string | null;
@@ -15,7 +12,7 @@ type FlashMessages = {
     info?: string | null;
     warning?: string | null;
 };
-export default function AppLayout({ children, breadcrumbs }: AppLayoutProps) {
+export default function UserLayout({ children }: AppLayoutProps) {
     const page = usePage();
     const flash: FlashMessages = page.props.flash || {};
 
@@ -29,10 +26,10 @@ export default function AppLayout({ children, breadcrumbs }: AppLayoutProps) {
 
     return (
         <>
-            <Toaster richColors position="top-right" />
-            <AppLayoutTemplate breadcrumbs={breadcrumbs}>
+            <Toaster richColors position="bottom-right" closeButton />
+            <div className="flex h-screen justify-center bg-[var(--main-color)] text-white lg:items-center dark:bg-green-900 dark:text-gray-100">
                 {children}
-            </AppLayoutTemplate>
+            </div>
         </>
     );
 }

@@ -4,20 +4,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
-import { formatAddress } from '@/lib/utils';
-import { AlertCircleIcon, ArrowBigLeft, SendIcon } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
+import { AlertCircleIcon, SendIcon } from 'lucide-react';
 import { useMemo } from 'react';
 interface StepTwoProps {
     data: {
-        id_type: string;
-        id_number: string;
-        affidavit_img: File | null;
-        receipt_img: File | null;
-        first_name: string;
-        middle_init: string | null;
-        last_name: string;
-        suffix: string | null;
         emergency_first_name: string;
         emergency_middle_init: string | null;
         emergency_last_name: string;
@@ -28,32 +19,40 @@ interface StepTwoProps {
         city: string;
         barangay: string;
         zip_code: string;
-        campus: string;
         college: string;
         college_name: string;
         program: string;
         hasMajor: boolean;
         major: string | null;
-        year_level: number | null;
-        section: string;
         picture: File | null;
         e_signature: File | null;
         data_privacy: boolean;
         confirm_info: boolean;
     };
     setData: (key: string, value: any) => void;
-    processing: boolean;
     errors: Record<string, string>;
-    onBackStep: () => void;
+    setModalOpen: () => void;
+    onCancel: () => void;
 }
+
+type PageProps = {
+    student: StudentProps;
+};
+type StudentProps = {
+    id_number: string;
+    first_name: string;
+    middle_init: string | null;
+    last_name: string;
+};
 
 export default function StepThree({
     data,
     setData,
-    processing,
     errors,
-    onBackStep,
+    setModalOpen,
+    onCancel,
 }: StepTwoProps) {
+    const { student } = usePage<PageProps>().props;
     const previewPicture = useMemo(() => {
         if (!data.picture) return '/placeholder.jpg';
         return URL.createObjectURL(data.picture);
@@ -63,6 +62,7 @@ export default function StepThree({
         if (!data.e_signature) return;
         return URL.createObjectURL(data.e_signature);
     }, [data.e_signature]);
+
     return (
         <>
             <div className="space-y-5">
@@ -103,7 +103,7 @@ export default function StepThree({
                                         className="lg::w-auto w-20 md:w-40"
                                     />
                                     <h1 className="text-sm font-extrabold uppercase md:text-xl lg:text-3xl dark:text-black">
-                                        {`${data.first_name}${data.middle_init ? ' ' + data.middle_init + '.' : ''} ${data.last_name} ${data.suffix ?? ''}`}
+                                        {`${student.first_name}${student.middle_init ? ' ' + student.middle_init : ''} ${student.last_name}`}
                                     </h1>
                                     <h1 className="capitalized text-[9px] font-medium md:text-base lg:text-lg dark:text-black">
                                         {data.program}
@@ -130,7 +130,7 @@ export default function StepThree({
                                     ID NUMBER
                                 </h1>
                                 <h1 className="text-[9px] md:text-xs lg:text-sm">
-                                    {data.id_number}
+                                    {student.id_number}
                                 </h1>
                             </div>
                         </div>
@@ -153,14 +153,11 @@ export default function StepThree({
                                 <div className="flex flex-col dark:text-black">
                                     <p className="text-base font-bold md:text-2xl">{`${data.emergency_first_name} ${data.emergency_middle_init ? data.emergency_middle_init + '.' : ''} ${data.emergency_last_name} ${data.emergency_suffix ?? ''}`}</p>
                                     <p className="text-xs capitalize md:text-sm lg:text-lg">
-                                        {formatAddress(
-                                            data.barangay,
-                                            data.city,
-                                            data.zip_code,
-                                        )}
+                                        Brgy. {data.barangay}, {data.city},{' '}
+                                        {data.zip_code}
                                     </p>
                                     <p className="text-xs capitalize md:text-sm lg:text-lg">
-                                        {data.province.toLowerCase()}
+                                        {data.province}
                                     </p>
                                     <p className="text-xs capitalize md:text-sm lg:text-lg">
                                         {`0${data.contact_number?.toString().slice(0, 3)}-${data.contact_number?.toString().slice(3)}`}
@@ -238,33 +235,23 @@ export default function StepThree({
                 </div>
 
                 <div className="mb-10 flex justify-end">
-                    <div className="flex items-center gap-3">
+                    <div className="space-x-3">
                         <Button
                             type="button"
-                            disabled={processing}
+                            onClick={onCancel}
                             className="ml-auto text-center"
-                            onClick={onBackStep}
+                            size="lg"
                             variant="outline"
                         >
-                            <ArrowBigLeft />
-                            Back
+                            Cancel
                         </Button>
                         <Button
-                            type="submit"
-                            disabled={processing}
+                            type="button"
                             className="ml-auto text-center"
+                            onClick={setModalOpen}
                         >
-                            {processing ? (
-                                <>
-                                    <Spinner />
-                                    Loading...
-                                </>
-                            ) : (
-                                <>
-                                    Submit
-                                    <SendIcon />
-                                </>
-                            )}
+                            Submit
+                            <SendIcon />
                         </Button>
                     </div>
                 </div>
