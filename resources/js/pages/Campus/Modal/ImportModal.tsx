@@ -26,10 +26,11 @@ export function ImportModal({
     campus,
     reload,
 }: ImportModalProps) {
-    const { setData, processing, errors, post, clearErrors, reset } = useForm({
-        students_file: null as File | null,
-        campus: campus || null,
-    });
+    const { data, setData, processing, errors, post, clearErrors, reset } =
+        useForm({
+            students_file: null as File | null,
+            campus: campus || null,
+        });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

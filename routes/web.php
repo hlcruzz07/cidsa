@@ -43,11 +43,24 @@ Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(f
 
         //ADD STUDENT ROUTE
         Route::post('/student/add', [StudentController::class, 'addStudent'])->name('add.student');
+
+        //EDIT STUDENT ROUTE
+        Route::get('/student/edit/{id}', [StudentController::class, 'edit'])->name('edit.student');
+        Route::get('/student/view/{id}', [StudentController::class, 'view'])->name('view.student');
+
     });
+
+    // STUDENT UPDATE ROUTES
+    Route::put('/student/update/{id}', [StudentController::class, 'update'])->name('update.student');
+    Route::put('/student/inc/update/{id}', [StudentController::class, 'updateIncompleteStudent'])->name('update.student.inc');
+    Route::post('/student/picture/update/{id}', [StudentController::class, 'updateStudentPicture'])->name('update.student.picture');
+
 
     // IMPORT/EXPORT ROUTES
     Route::post('/import', [StudentController::class, 'importStudents'])->name('import.students');
+    Route::get('/export/student/{id}', [StudentController::class, 'exportSingleStudent'])->name('export.student');
     Route::get('/export/students', [StudentController::class, 'exportStudents'])->name('export.students');
+
 
 });
 

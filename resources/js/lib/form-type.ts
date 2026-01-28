@@ -1,0 +1,23 @@
+type FormDataProps = {
+    emergency_first_name: string;
+    emergency_middle_init: string | null;
+    emergency_last_name: string;
+    emergency_suffix: string | null;
+    relationship: string;
+    contact_number: number | null;
+    province: string;
+    city: string;
+    barangay: string;
+    zip_code: string;
+    college: string;
+    college_name: string;
+    program: string;
+    hasMajor: boolean;
+    major: string | null;
+    year: string;
+    section: string;
+    picture: File | null;
+    e_signature: File | null;
+    data_privacy: boolean;
+    confirm_info: boolean;
+};

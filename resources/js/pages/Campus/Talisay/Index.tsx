@@ -23,18 +23,18 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
+import { StudentProps } from '@/lib/student-types';
 import { campusDirectoryArr } from '@/lib/utils';
-import { ImportModal } from '@/pages/Campus/Modal/ImportModal';
 import apiService from '@/services/apiService';
 import { type BreadcrumbItem } from '@/types';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import {
     AlertCircleIcon,
     ArrowUpDownIcon,
     BookMarkedIcon,
+    BookOpenCheck,
     CalendarIcon,
     ChartLineIcon,
     CheckIcon,
@@ -42,6 +42,7 @@ import {
     ChevronsLeftRight,
     EllipsisIcon,
     EyeIcon,
+    FilterXIcon,
     ImportIcon,
     PencilIcon,
     Trash2Icon,
@@ -50,37 +51,14 @@ import {
     XIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { route } from 'ziggy-js';
 import { StudentsUpdateChart } from '../Charts/StudentChart';
 import Widget from '../Charts/Widget';
 import { AddStudentModal } from '../Modal/AddStudentModal';
+import ExportModal from '../Modal/ExportModal';
+import { ImportModal } from '../Modal/ImportModal';
 import PreviewModal from '../Modal/PreviewModal';
-import { WarningModal } from '../Modal/WarningModal';
-
-type StudentProps = {
-    id: number;
-    id_number: string;
-    first_name: string;
-    middle_init: string | null;
-    last_name: string;
-    suffix: string | null;
-    program: string;
-    college: string;
-    college_name: string;
-    campus: string;
-    emergency_first_name: string;
-    emergency_middle_init: string | null;
-    emergency_last_name: string;
-    emergency_suffix: string | null;
-    is_exported: boolean;
-    is_completed: boolean;
-    barangay: string;
-    city: string;
-    zip_code: string;
-    contact_number: string;
-    province: string;
-    created_at: string;
-    updated_at: string;
-};
 
 type PaginatePets = {
     data: StudentProps[];
@@ -94,38 +72,6 @@ type DateRange = {
     from: Date;
     to?: Date;
 };
-
-type ExportedStudentsProps = {
-    id: number;
-    id_number: string;
-    first_name: string;
-    middle_init: string | null;
-    last_name: string;
-    suffix: string | null;
-    program: string;
-    college: string;
-    college_name: string;
-    campus: string;
-    emergency_first_name: string;
-    emergency_middle_init: string | null;
-    emergency_last_name: string;
-    emergency_suffix: string | null;
-    is_exported: boolean;
-    is_completed: boolean;
-    barangay: string;
-    city: string;
-    zip_code: string;
-    contact_number: string;
-    province: string;
-    created_at: string;
-    updated_at: string;
-};
-type WarningType =
-    | 'noStudents'
-    | 'hasIncomplete'
-    | 'hasExported'
-    | 'maxExceeded';
-
 type PageProps = {
     counts: {
         totalUpdates: number;
@@ -147,21 +93,18 @@ export default function Index() {
     ];
     const [students, setStudents] = useState<PaginatePets | null>(null);
 
-    const collegeTalArr = campusDirectoryArr.find((collegeItem) =>
-        collegeItem.campus.includes(titlePage),
-    )?.colleges;
-
-    // Filter Data States
     const [searchValue, setSearchValue] = useState<string | null>(null);
-    const [selectedCollege, setSelectedCollege] = useState<string[]>([]);
+    const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
+    const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
+    const [selectedMajor, setSelectedMajor] = useState<string | null>(null);
+    const [selectedSection, setSelectedSection] = useState<string | null>(null);
+    const [selectedYear, setSelectedYear] = useState<string | null>(null);
     const [isExported, setIsExported] = useState<boolean | null>(null);
     const [isCompleted, setIsCompleted] = useState<boolean | null>(null);
     const [range, setRange] = useState<DateRange | undefined>(undefined);
     const [perPage, setPerPage] = useState<number>(10);
     const [sort, setSort] = useState('updated_at');
     const [order, setOrder] = useState<'asc' | 'desc'>('desc');
-    // Modal
-    const [modalState, setModalState] = useState(false);
 
     const startOfDay = (d?: Date) =>
         d ? new Date(d.setHours(0, 0, 0, 0)).toISOString() : null;
@@ -169,11 +112,29 @@ export default function Index() {
     const endOfDay = (d?: Date) =>
         d ? new Date(d.setHours(23, 59, 59, 999)).toISOString() : null;
 
+    const collegeTalArr = campusDirectoryArr.find((collegeItem) =>
+        collegeItem.campus.includes(titlePage),
+    )?.colleges;
+
+    const programsArr =
+        collegeTalArr?.filter((item) => item.value === selectedCollege)[0]
+            ?.programs || null;
+
+    const majorArr =
+        programsArr?.filter((item) => item.name === selectedProgram)[0]
+            ?.majors || null;
+
+    const [sectionsArr, setSectionsArr] = useState([]);
+
     const handleFilter = async () => {
         const params = {
             params: {
                 search: searchValue || null,
-                college: selectedCollege.length ? selectedCollege : null,
+                college: selectedCollege || null,
+                program: selectedProgram || null,
+                major: selectedMajor || null,
+                section: selectedSection || null,
+                year: selectedYear || null,
                 is_exported: isExported,
                 is_completed: isCompleted,
                 from: startOfDay(range?.from),
@@ -192,6 +153,12 @@ export default function Index() {
             );
 
             setStudents(data);
+            const cleanedSections = data.data
+                .map((item: any) => item.section)
+                .filter((section: any): section is string => Boolean(section))
+                .sort((a: any, b: any) => a.localeCompare(b));
+
+            setSectionsArr(cleanedSections);
         } catch (error) {
             console.error('Error fetching students:', error);
         }
@@ -199,7 +166,11 @@ export default function Index() {
 
     const resetFilters = () => {
         setSearchValue(null);
-        setSelectedCollege([]);
+        setSelectedCollege(null);
+        setSelectedProgram(null);
+        setSelectedMajor(null);
+        setSelectedSection(null);
+        setSelectedYear(null);
         setIsExported(null);
         setIsCompleted(null);
         setRange(undefined);
@@ -210,7 +181,11 @@ export default function Index() {
 
     const DEFAULTS = {
         searchValue: null,
-        selectedCollege: [] as string[],
+        selectedCollege: null,
+        selectedProgram: null,
+        selectedMajor: null,
+        selectedSection: null,
+        selectedYear: null,
         isExported: null,
         isCompleted: null,
         range: undefined as DateRange | undefined,
@@ -222,7 +197,11 @@ export default function Index() {
     const hasActiveFilters = useMemo(() => {
         return (
             searchValue !== DEFAULTS.searchValue ||
-            selectedCollege.length > 0 ||
+            selectedCollege !== DEFAULTS.selectedCollege ||
+            selectedProgram !== DEFAULTS.selectedProgram ||
+            selectedMajor !== DEFAULTS.selectedMajor ||
+            selectedSection !== DEFAULTS.selectedSection ||
+            selectedYear !== DEFAULTS.selectedYear ||
             isExported !== DEFAULTS.isExported ||
             isCompleted !== DEFAULTS.isCompleted ||
             range !== DEFAULTS.range ||
@@ -233,6 +212,10 @@ export default function Index() {
     }, [
         searchValue,
         selectedCollege,
+        selectedProgram,
+        selectedMajor,
+        selectedSection,
+        selectedYear,
         isExported,
         isCompleted,
         range,
@@ -246,6 +229,10 @@ export default function Index() {
     }, [
         searchValue,
         selectedCollege,
+        selectedProgram,
+        selectedMajor,
+        selectedSection,
+        selectedYear,
         isExported,
         isCompleted,
         range,
@@ -253,92 +240,35 @@ export default function Index() {
         sort,
         order,
     ]);
-
-    const [exportedStudents, setExportedStudents] = useState<
-        ExportedStudentsProps[] | null
+    const [previewStudents, setPreviewStudents] = useState<
+        StudentProps[] | null
     >(null);
-    const [isFetching, setIsFetching] = useState(false);
     const [openPreviewModal, setOpenPreviewModal] = useState(false);
 
-    const exportStudents = async () => {
-        if (!students) return;
-
-        if (students.data.length === 0) {
-            setWarningModal(true);
-            setWarningType('noStudents');
-            return;
-        }
-
-        const hasIncomplete =
-            students.data.filter((student) => !student.is_completed).length > 0;
-
-        if (hasIncomplete) {
-            setWarningModal(true);
-            setWarningType('hasIncomplete');
-            return;
-        }
-
-        const maxStudentExeeded = students.total > 500;
-
-        if (maxStudentExeeded) {
-            setWarningModal(true);
-            setWarningType('maxExceeded');
-            return;
-        }
-
-        setIsFetching(true);
-
-        const params = {
-            params: {
-                search: searchValue || null,
-                college: selectedCollege.length ? selectedCollege : null,
-                is_exported: isExported,
-                is_completed: isCompleted,
-                from: startOfDay(range?.from),
-                to: endOfDay(range?.to),
-                perPage: perPage,
-                sort: sort,
-                order: order,
-                campus: titlePage,
-            },
-        };
-
-        try {
-            const { data } = await apiService.get(
-                '/api/student/filter',
-                params,
-            );
-
-            setExportedStudents(data);
-            setIsFetching(false);
-            setOpenPreviewModal(true);
-        } catch (error) {
-            console.error('Error fetching students:', error);
-        }
-    };
-
-    const [warningModal, setWarningModal] = useState(false);
-    const [warningType, setWarningType] = useState<WarningType>('noStudents');
-
-    //Add Student
+    // Modal
+    const [openImportModal, setOpenImportModal] = useState(false);
     const [openAddStudentModal, setOpenAddStudentModal] = useState(false);
+    const [openExportModal, setOpenExportModal] = useState(false);
 
+    const handleSingleExport = (student: StudentProps) => {
+        if (!student.is_completed) {
+            toast.error('Error: student is not completed');
+            return;
+        }
+
+        window.location.href = route('export.student', student.id);
+    };
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Campus - ${titlePage}`} />
             <ImportModal
-                isOpen={modalState}
-                setIsOpen={() => setModalState(false)}
+                isOpen={openImportModal}
+                setIsOpen={() => setOpenImportModal(false)}
                 campus={titlePage}
-                reload={handleFilter}
-            />
-            <WarningModal
-                isOpen={warningModal}
-                setIsOpen={() => setWarningModal(false)}
-                warningType={warningType}
+                onLoad={handleFilter}
             />
             <PreviewModal
-                students={exportedStudents}
+                students={previewStudents}
                 isOpen={openPreviewModal}
                 setIsOpen={() => setOpenPreviewModal(false)}
             />
@@ -348,6 +278,18 @@ export default function Index() {
                 setIsOpen={() => setOpenAddStudentModal(false)}
                 campus={titlePage}
             />
+
+            <ExportModal
+                isOpen={openExportModal}
+                onPreview={(students) => {
+                    setOpenPreviewModal(true);
+                    setPreviewStudents(students);
+                }}
+                campus={titlePage}
+                setIsOpen={() => setOpenExportModal(false)}
+                onImport={() => handleFilter()}
+            />
+
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="grid auto-rows-min gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <Widget type="totalUpdates" count={counts.totalUpdates} />
@@ -475,8 +417,8 @@ export default function Index() {
                                             className="mt-3 w-full"
                                             type="button"
                                             onClick={() => {
-                                                setSort('id');
-                                                setOrder('asc');
+                                                setSort('updated_at');
+                                                setOrder('desc');
                                             }}
                                         >
                                             Reset <Trash2Icon />
@@ -484,23 +426,11 @@ export default function Index() {
                                     </DropdownMenuGroup>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            <Button onClick={() => setModalState(true)}>
+                            <Button onClick={() => setOpenImportModal(true)}>
                                 <ImportIcon /> Import
                             </Button>
-                            <Button
-                                type="button"
-                                disabled={isFetching}
-                                onClick={exportStudents}
-                            >
-                                {isFetching ? (
-                                    <>
-                                        <Spinner /> Loading...
-                                    </>
-                                ) : (
-                                    <>
-                                        <UploadCloudIcon /> Export
-                                    </>
-                                )}
+                            <Button onClick={() => setOpenExportModal(true)}>
+                                <UploadCloudIcon /> Export
                             </Button>
                         </div>
                         <Button
@@ -512,26 +442,19 @@ export default function Index() {
                             Add
                         </Button>
                     </div>
-                    <div className="mt-3 flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
-                        <div className="flex w-full grow flex-wrap gap-3 xl:w-auto xl:flex-nowrap">
+                    <div className="mt-3 flex flex-col items-start justify-between gap-5 md:flex-row md:items-start">
+                        <div className="flex w-full grow flex-wrap gap-3 xl:w-auto">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline">
-                                        <BookMarkedIcon /> College
+                                        <BookMarkedIcon />
+                                        College
                                         <ChevronDownIcon />
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            {selectedCollege.length > 0 &&
-                                                selectedCollege.map(
-                                                    (college, idx) => (
-                                                        <Badge
-                                                            key={idx}
-                                                            variant="default"
-                                                        >
-                                                            {college}
-                                                        </Badge>
-                                                    ),
-                                                )}
-                                        </div>
+                                        {selectedCollege && (
+                                            <Badge className="ml-2">
+                                                {selectedCollege}
+                                            </Badge>
+                                        )}
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
@@ -541,27 +464,187 @@ export default function Index() {
                                     {collegeTalArr?.map((item, index) => (
                                         <DropdownMenuCheckboxItem
                                             key={index}
-                                            checked={selectedCollege.includes(
-                                                item.value,
-                                            )}
-                                            onSelect={(event) => {
-                                                event.preventDefault();
+                                            checked={
+                                                selectedCollege === item.value
+                                            }
+                                            onSelect={() => {
+                                                setSelectedProgram(null);
+                                                setSelectedMajor(null);
+
                                                 setSelectedCollege((prev) =>
-                                                    prev.includes(item.value)
-                                                        ? prev.filter(
-                                                              (s) =>
-                                                                  s !==
-                                                                  item.value,
-                                                          )
-                                                        : [...prev, item.value],
+                                                    prev === item.value
+                                                        ? null
+                                                        : item.value,
                                                 );
                                             }}
                                         >
-                                            {item.value} - {item.name}
+                                            {item.name}
                                         </DropdownMenuCheckboxItem>
                                     ))}
                                 </DropdownMenuContent>
                             </DropdownMenu>
+
+                            {programsArr && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline">
+                                            <BookOpenCheck />
+                                            Programs
+                                            <ChevronDownIcon />
+                                            {selectedProgram && (
+                                                <Badge className="ml-2">
+                                                    {selectedProgram}
+                                                </Badge>
+                                            )}
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                        className="w-max"
+                                        align="start"
+                                    >
+                                        {programsArr?.map((item, index) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={index}
+                                                checked={
+                                                    selectedProgram ===
+                                                    item.name
+                                                }
+                                                onSelect={() => {
+                                                    setSelectedMajor(null);
+                                                    setSelectedSection(null);
+                                                    setSelectedProgram(
+                                                        (prev) =>
+                                                            prev === item.name
+                                                                ? null
+                                                                : item.name,
+                                                    );
+                                                }}
+                                            >
+                                                {item.name}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+                            {majorArr && majorArr.length > 0 && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline">
+                                            <BookOpenCheck />
+                                            Majors
+                                            <ChevronDownIcon />
+                                            {selectedMajor && (
+                                                <Badge className="ml-2">
+                                                    {selectedMajor}
+                                                </Badge>
+                                            )}
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                        className="w-max"
+                                        align="start"
+                                    >
+                                        {majorArr?.map((item, index) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={index}
+                                                checked={selectedMajor === item}
+                                                onSelect={() => {
+                                                    setSelectedSection(null);
+                                                    setSelectedMajor((prev) =>
+                                                        prev === item
+                                                            ? null
+                                                            : item,
+                                                    );
+                                                }}
+                                            >
+                                                {item}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+
+                            {sectionsArr &&
+                                sectionsArr.length > 0 &&
+                                selectedProgram && (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline">
+                                                <BookOpenCheck />
+                                                Sections
+                                                <ChevronDownIcon />
+                                                {selectedSection && (
+                                                    <Badge className="ml-2">
+                                                        {selectedSection}
+                                                    </Badge>
+                                                )}
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent
+                                            className="w-max"
+                                            align="start"
+                                        >
+                                            {sectionsArr?.map((item, index) => (
+                                                <DropdownMenuCheckboxItem
+                                                    key={index}
+                                                    checked={
+                                                        selectedSection === item
+                                                    }
+                                                    onSelect={() => {
+                                                        setSelectedSection(
+                                                            (prev) =>
+                                                                prev === item
+                                                                    ? null
+                                                                    : item,
+                                                        );
+                                                    }}
+                                                >
+                                                    {item}
+                                                </DropdownMenuCheckboxItem>
+                                            ))}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
+
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline">
+                                        <BookOpenCheck />
+                                        Year Level
+                                        <ChevronDownIcon />
+                                        {selectedYear && (
+                                            <Badge className="ml-2">
+                                                {selectedYear}
+                                            </Badge>
+                                        )}
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    className="w-max"
+                                    align="start"
+                                >
+                                    {[
+                                        '1st Year',
+                                        '2nd Year',
+                                        '3rd Year',
+                                        '4th Year',
+                                        '5th Year',
+                                    ].map((item, index) => (
+                                        <DropdownMenuCheckboxItem
+                                            key={index}
+                                            checked={selectedYear === item}
+                                            onSelect={() => {
+                                                setSelectedYear((prev) =>
+                                                    prev === item ? null : item,
+                                                );
+                                            }}
+                                        >
+                                            {item}
+                                        </DropdownMenuCheckboxItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline">
@@ -719,11 +802,11 @@ export default function Index() {
                                     onClick={resetFilters}
                                     variant="destructive"
                                 >
-                                    <Trash2Icon /> Reset All
+                                    <FilterXIcon /> Reset Filter
                                 </Button>
                             )}
                         </div>
-                        <p className="text-sm">
+                        <p className="text-sm whitespace-nowrap">
                             Total Entries:{' '}
                             <Badge>
                                 {Number(students?.total || 0).toLocaleString()}
@@ -731,8 +814,8 @@ export default function Index() {
                         </p>
                     </div>
                     <div className="relative mt-3 overflow-x-auto md:shadow-md lg:border">
-                        <table className="table w-full text-left text-sm text-foreground">
-                            <thead className="text lg:border-b">
+                        <table className="table w-full text-left text-xs text-foreground">
+                            <thead className="lg:border-b">
                                 <tr>
                                     {[
                                         '#',
@@ -741,16 +824,19 @@ export default function Index() {
                                         'Campus',
                                         'College',
                                         'Program',
+                                        'Major',
+                                        'Year Level',
+                                        'Section',
                                         'Exported',
                                         'Completed',
                                         'Date Updated',
-                                        'Date Created',
+
                                         'Action',
                                     ].map((header) => (
                                         <th
                                             key={header}
                                             scope="col"
-                                            className="p-3 whitespace-nowrap"
+                                            className="p-2 whitespace-nowrap"
                                         >
                                             {header}
                                         </th>
@@ -764,45 +850,63 @@ export default function Index() {
                                         className="hover:bg-muted/50"
                                     >
                                         <td
-                                            className="p-3 whitespace-nowrap"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="ID"
                                         >
                                             {row.id}
                                         </td>
 
                                         <td
-                                            className="p-3 whitespace-nowrap"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="ID Number"
                                         >
                                             {row.id_number}
                                         </td>
                                         <td
-                                            className="p-3 whitespace-nowrap"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="Name"
                                         >
-                                            {`${row.first_name}${row.middle_init ? ' ' + row.middle_init : ''} ${row.last_name} ${row.suffix ?? ''}`}
+                                            {`${row.first_name} ${row.middle_init ? row.middle_init + '.' : ''} ${row.last_name} ${row.suffix ? row.suffix + '.' : ''}`}
                                         </td>
                                         <td
-                                            className="p-3 whitespace-nowrap"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="Campus"
                                         >
                                             {row.campus}
                                         </td>
                                         <td
-                                            className="p-3 whitespace-nowrap"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="College"
                                         >
                                             {row.college}
                                         </td>
                                         <td
-                                            className="p-3 whitespace-nowrap"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="Program"
                                         >
                                             {row.program}
                                         </td>
+                                        <td
+                                            className="p-2 whitespace-nowrap"
+                                            data-label="Major"
+                                        >
+                                            {row.major}
+                                        </td>
+                                        <td
+                                            className="p-2 whitespace-nowrap"
+                                            data-label="Year Level"
+                                        >
+                                            {row.year}
+                                        </td>
+                                        <td
+                                            className="p-2 whitespace-nowrap"
+                                            data-label="Section"
+                                        >
+                                            {row.section}
+                                        </td>
 
                                         <td
-                                            className="p-3 whitespace-nowrap"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="Exported"
                                         >
                                             {row.is_exported ? (
@@ -818,7 +922,7 @@ export default function Index() {
                                             )}
                                         </td>
                                         <td
-                                            className="p-3 whitespace-nowrap"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="Completed"
                                         >
                                             {row.is_completed ? (
@@ -834,7 +938,7 @@ export default function Index() {
                                             )}
                                         </td>
                                         <td
-                                            className="p-3 whitespace-nowrap"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="Date Updated"
                                         >
                                             {row.updated_at
@@ -843,17 +947,9 @@ export default function Index() {
                                                   )
                                                 : ''}{' '}
                                         </td>
-                                        <td
-                                            className="p-3 whitespace-nowrap"
-                                            data-label="Date Created"
-                                        >
-                                            {dayjs(row.created_at).format(
-                                                'MMM D, YYYY hh:mm:ss A',
-                                            )}{' '}
-                                        </td>
 
                                         <td
-                                            className="p-3 whitespace-nowrap"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="Action"
                                         >
                                             <div className="flex flex-wrap gap-2">
@@ -872,11 +968,39 @@ export default function Index() {
                                                         className="w-max"
                                                         align="end"
                                                     >
-                                                        <DropdownMenuItem>
-                                                            <EyeIcon /> View
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem>
-                                                            <PencilIcon /> Edit
+                                                        <Link
+                                                            href={route(
+                                                                'campus.view.student',
+                                                                row.id,
+                                                            )}
+                                                        >
+                                                            <DropdownMenuItem>
+                                                                <EyeIcon /> View
+                                                            </DropdownMenuItem>
+                                                        </Link>
+                                                        <Link
+                                                            href={route(
+                                                                'campus.edit.student',
+                                                                row.id,
+                                                            )}
+                                                        >
+                                                            <DropdownMenuItem>
+                                                                <PencilIcon />{' '}
+                                                                Edit
+                                                            </DropdownMenuItem>
+                                                        </Link>
+                                                        <DropdownMenuItem
+                                                            disabled={
+                                                                !row.is_completed
+                                                            }
+                                                            onClick={() => {
+                                                                handleSingleExport(
+                                                                    row,
+                                                                );
+                                                            }}
+                                                        >
+                                                            <UploadCloudIcon />
+                                                            Export
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -960,9 +1084,17 @@ export default function Index() {
                                                                                             searchValue ||
                                                                                             null,
                                                                                         college:
-                                                                                            selectedCollege.length
-                                                                                                ? selectedCollege
-                                                                                                : null,
+                                                                                            selectedCollege ||
+                                                                                            null,
+                                                                                        program:
+                                                                                            selectedProgram ||
+                                                                                            null,
+                                                                                        major:
+                                                                                            selectedMajor ||
+                                                                                            null,
+                                                                                        section:
+                                                                                            selectedSection ||
+                                                                                            null,
                                                                                         is_exported:
                                                                                             isExported,
                                                                                         is_completed:

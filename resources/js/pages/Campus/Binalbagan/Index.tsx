@@ -8,10 +8,13 @@ import {
     DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import {
     Select,
     SelectContent,
@@ -21,45 +24,41 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
+import { StudentProps } from '@/lib/student-types';
 import { campusDirectoryArr } from '@/lib/utils';
-import { ImportModal } from '@/pages/Campus/Modal/ImportModal';
 import apiService from '@/services/apiService';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import {
+    AlertCircleIcon,
     ArrowUpDownIcon,
     BookMarkedIcon,
+    BookOpenCheck,
     CalendarIcon,
+    ChartLineIcon,
+    CheckIcon,
     ChevronDownIcon,
     ChevronsLeftRight,
     EllipsisIcon,
     EyeIcon,
+    FilterXIcon,
     ImportIcon,
     PencilIcon,
     Trash2Icon,
     UploadCloudIcon,
+    UserPlus2Icon,
     XIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-
-type StudentProps = {
-    id: number;
-    id_number: string;
-    email: string;
-    first_name: string;
-    middle_init: string | null;
-    last_name: string;
-    campus: string;
-    college_code: string;
-    college_name: string;
-    program: string;
-    major: string;
-    is_exported: boolean;
-    is_completed: boolean;
-    created_at: string;
-    updated_at: string;
-};
+import { toast } from 'sonner';
+import { route } from 'ziggy-js';
+import { StudentsUpdateChart } from '../Charts/StudentChart';
+import Widget from '../Charts/Widget';
+import { AddStudentModal } from '../Modal/AddStudentModal';
+import ExportModal from '../Modal/ExportModal';
+import { ImportModal } from '../Modal/ImportModal';
+import PreviewModal from '../Modal/PreviewModal';
 
 type PaginatePets = {
     data: StudentProps[];
@@ -73,55 +72,93 @@ type DateRange = {
     from: Date;
     to?: Date;
 };
-
+type PageProps = {
+    counts: {
+        totalUpdates: number;
+        readyStudents: number;
+        incompleteStudents: number;
+        exportedStudents: number;
+    };
+};
 export default function Index() {
+    const { counts } = usePage<PageProps>().props;
+
+    const titlePage = 'Binalbagan';
+    const hrefPage = '/campus/binalbagan';
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: `Campus - Binalbagan`,
-            href: `/campus/binalbagan`,
+            title: `Campus - ${titlePage}`,
+            href: hrefPage,
         },
     ];
     const [students, setStudents] = useState<PaginatePets | null>(null);
 
-    const collegeTalArr = campusDirectoryArr.find((collegeItem) =>
-        collegeItem.campus.includes('Binalbagan'),
-    )?.colleges;
-
-    // Filter Data States
     const [searchValue, setSearchValue] = useState<string | null>(null);
-    const [selectedCollege, setSelectedCollege] = useState<string[]>([]);
+    const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
+    const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
+    const [selectedMajor, setSelectedMajor] = useState<string | null>(null);
+    const [selectedSection, setSelectedSection] = useState<string | null>(null);
+    const [selectedYear, setSelectedYear] = useState<string | null>(null);
+    const [isExported, setIsExported] = useState<boolean | null>(null);
+    const [isCompleted, setIsCompleted] = useState<boolean | null>(null);
     const [range, setRange] = useState<DateRange | undefined>(undefined);
     const [perPage, setPerPage] = useState<number>(10);
-    const [sort, setSort] = useState('id');
+    const [sort, setSort] = useState('updated_at');
     const [order, setOrder] = useState<'asc' | 'desc'>('desc');
 
-    // Modal
-    const [modalState, setModalState] = useState(false);
+    const startOfDay = (d?: Date) =>
+        d ? new Date(d.setHours(0, 0, 0, 0)).toISOString() : null;
 
-    const formatDate = (d?: Date) => {
-        if (!d) return null;
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
+    const endOfDay = (d?: Date) =>
+        d ? new Date(d.setHours(23, 59, 59, 999)).toISOString() : null;
+
+    const collegeTalArr = campusDirectoryArr.find((collegeItem) =>
+        collegeItem.campus.includes(titlePage),
+    )?.colleges;
+
+    const programsArr =
+        collegeTalArr?.filter((item) => item.value === selectedCollege)[0]
+            ?.programs || null;
+
+    const majorArr =
+        programsArr?.filter((item) => item.name === selectedProgram)[0]
+            ?.majors || null;
+
+    const [sectionsArr, setSectionsArr] = useState([]);
 
     const handleFilter = async () => {
+        const params = {
+            params: {
+                search: searchValue || null,
+                college: selectedCollege || null,
+                program: selectedProgram || null,
+                major: selectedMajor || null,
+                section: selectedSection || null,
+                year: selectedYear || null,
+                is_exported: isExported,
+                is_completed: isCompleted,
+                from: startOfDay(range?.from),
+                to: endOfDay(range?.to),
+                perPage: perPage,
+                sort: sort,
+                order: order,
+                campus: titlePage,
+            },
+        };
+
         try {
-            const { data } = await apiService.get('/api/student/filter', {
-                params: {
-                    search: searchValue || null,
-                    college: selectedCollege.length ? selectedCollege : null,
-                    from: formatDate(range?.from),
-                    to: formatDate(range?.to),
-                    perPage: perPage,
-                    sort: sort,
-                    order: order,
-                    campus: 'Binalbagan',
-                },
-            });
+            const { data } = await apiService.get(
+                '/api/student/filterPaginate',
+                params,
+            );
 
             setStudents(data);
+            const cleanedSections = data.data
+                .map((item: any) => item.section)
+                .filter((section: any): section is string => Boolean(section))
+                .sort((a: any, b: any) => a.localeCompare(b));
+
+            setSectionsArr(cleanedSections);
         } catch (error) {
             console.error('Error fetching students:', error);
         }
@@ -129,76 +166,148 @@ export default function Index() {
 
     const resetFilters = () => {
         setSearchValue(null);
-        setSelectedCollege([]);
+        setSelectedCollege(null);
+        setSelectedProgram(null);
+        setSelectedMajor(null);
+        setSelectedSection(null);
+        setSelectedYear(null);
+        setIsExported(null);
+        setIsCompleted(null);
         setRange(undefined);
-        setSort('id');
+        setSort('updated_at');
         setOrder('desc');
         setPerPage(10);
     };
 
     const DEFAULTS = {
         searchValue: null,
-        selectedCollege: [] as string[],
+        selectedCollege: null,
+        selectedProgram: null,
+        selectedMajor: null,
+        selectedSection: null,
+        selectedYear: null,
+        isExported: null,
+        isCompleted: null,
         range: undefined as DateRange | undefined,
         perPage: 10,
-        sort: 'id',
+        sort: 'updated_at',
         order: 'desc' as 'asc' | 'desc',
     };
 
     const hasActiveFilters = useMemo(() => {
         return (
             searchValue !== DEFAULTS.searchValue ||
-            selectedCollege.length > 0 ||
+            selectedCollege !== DEFAULTS.selectedCollege ||
+            selectedProgram !== DEFAULTS.selectedProgram ||
+            selectedMajor !== DEFAULTS.selectedMajor ||
+            selectedSection !== DEFAULTS.selectedSection ||
+            selectedYear !== DEFAULTS.selectedYear ||
+            isExported !== DEFAULTS.isExported ||
+            isCompleted !== DEFAULTS.isCompleted ||
             range !== DEFAULTS.range ||
             perPage !== DEFAULTS.perPage ||
             sort !== DEFAULTS.sort ||
             order !== DEFAULTS.order
         );
-    }, [searchValue, selectedCollege, range, perPage, sort, order]);
+    }, [
+        searchValue,
+        selectedCollege,
+        selectedProgram,
+        selectedMajor,
+        selectedSection,
+        selectedYear,
+        isExported,
+        isCompleted,
+        range,
+        perPage,
+        sort,
+        order,
+    ]);
 
     useEffect(() => {
         handleFilter();
-    }, [searchValue, selectedCollege, range, perPage, sort, order]);
+    }, [
+        searchValue,
+        selectedCollege,
+        selectedProgram,
+        selectedMajor,
+        selectedSection,
+        selectedYear,
+        isExported,
+        isCompleted,
+        range,
+        perPage,
+        sort,
+        order,
+    ]);
+    const [previewStudents, setPreviewStudents] = useState<
+        StudentProps[] | null
+    >(null);
+    const [openPreviewModal, setOpenPreviewModal] = useState(false);
 
-    const downloadExcel = async () => {
-        if (!students) return;
+    // Modal
+    const [openImportModal, setOpenImportModal] = useState(false);
+    const [openAddStudentModal, setOpenAddStudentModal] = useState(false);
+    const [openExportModal, setOpenExportModal] = useState(false);
 
-        router.post('/preview', {
-            search: searchValue || null,
-            college: selectedCollege.length ? selectedCollege : null,
-            from: range?.from?.toISOString() || null,
-            to: range?.to?.toISOString() || null,
-            sort: sort,
-            order: order,
-            campus: 'Binalbagan',
-        });
+    const handleSingleExport = (student: StudentProps) => {
+        if (!student.is_completed) {
+            toast.error('Error: student is not completed');
+            return;
+        }
+
+        window.location.href = route('export.student', student.id);
     };
-
-    console.log(hasActiveFilters);
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`Campus - Binalbagan`} />
+            <Head title={`Campus - ${titlePage}`} />
             <ImportModal
-                isOpen={modalState}
-                setIsOpen={() => setModalState(false)}
-                campus="Binalbagan"
-                reload={handleFilter}
+                isOpen={openImportModal}
+                setIsOpen={() => setOpenImportModal(false)}
+                campus={titlePage}
+                onLoad={handleFilter}
             />
+            <PreviewModal
+                students={previewStudents}
+                isOpen={openPreviewModal}
+                setIsOpen={() => setOpenPreviewModal(false)}
+            />
+
+            <AddStudentModal
+                isOpen={openAddStudentModal}
+                setIsOpen={() => setOpenAddStudentModal(false)}
+                campus={titlePage}
+            />
+
+            <ExportModal
+                isOpen={openExportModal}
+                onPreview={(students) => {
+                    setOpenPreviewModal(true);
+                    setPreviewStudents(students);
+                }}
+                campus={titlePage}
+                setIsOpen={() => setOpenExportModal(false)}
+                onImport={() => handleFilter()}
+            />
+
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    </div>
+                <div className="grid auto-rows-min gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <Widget type="totalUpdates" count={counts.totalUpdates} />
+                    <Widget type="readyStudents" count={counts.readyStudents} />
+                    <Widget
+                        type="incompleteStudents"
+                        count={counts.incompleteStudents}
+                    />
+                    <Widget
+                        type="exportedStudents"
+                        count={counts.exportedStudents}
+                    />
                 </div>
+
+                <StudentsUpdateChart campus={titlePage} />
+
                 <div className="relative min-h-[100vh] flex-1 rounded-xl border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                    <div className="flex flex-col items-center justify-between gap-3 xl:flex-row">
+                    <div className="flex flex-col items-start justify-between gap-3 xl:flex-row">
                         <Input
                             type="search"
                             placeholder="Search ID Number, Name..."
@@ -213,7 +322,7 @@ export default function Index() {
                             }}
                         />
 
-                        <div className="flex w-full items-center gap-3 xl:w-auto">
+                        <div className="flex w-full flex-wrap items-center justify-between gap-3 md:w-auto md:grow md:flex-nowrap">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline">
@@ -274,8 +383,8 @@ export default function Index() {
                                                             College
                                                         </SelectItem>
 
-                                                        <SelectItem value="created_at">
-                                                            Date
+                                                        <SelectItem value="updated_at">
+                                                            Date Updated
                                                         </SelectItem>
                                                     </SelectGroup>
                                                 </SelectContent>
@@ -308,8 +417,8 @@ export default function Index() {
                                             className="mt-3 w-full"
                                             type="button"
                                             onClick={() => {
-                                                setSort('id');
-                                                setOrder('asc');
+                                                setSort('updated_at');
+                                                setOrder('desc');
                                             }}
                                         >
                                             Reset <Trash2Icon />
@@ -317,34 +426,35 @@ export default function Index() {
                                     </DropdownMenuGroup>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            <Button onClick={() => setModalState(true)}>
+                            <Button onClick={() => setOpenImportModal(true)}>
                                 <ImportIcon /> Import
                             </Button>
-                            <Button onClick={downloadExcel}>
+                            <Button onClick={() => setOpenExportModal(true)}>
                                 <UploadCloudIcon /> Export
                             </Button>
                         </div>
+                        <Button
+                            type="button"
+                            onClick={() => setOpenAddStudentModal(true)}
+                            className="w-full lg:w-auto"
+                        >
+                            <UserPlus2Icon />
+                            Add
+                        </Button>
                     </div>
-                    <div className="mt-3 flex items-center justify-between">
-                        <div className="flex w-full grow flex-wrap gap-3 xl:w-auto xl:flex-nowrap">
+                    <div className="mt-3 flex flex-col items-start justify-between gap-5 md:flex-row md:items-start">
+                        <div className="flex w-full grow flex-wrap gap-3 xl:w-auto">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline">
-                                        <BookMarkedIcon /> College
+                                        <BookMarkedIcon />
+                                        College
                                         <ChevronDownIcon />
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            {selectedCollege.length > 0 &&
-                                                selectedCollege.map(
-                                                    (college, idx) => (
-                                                        <Badge
-                                                            key={idx}
-                                                            variant="default"
-                                                        >
-                                                            {college}
-                                                        </Badge>
-                                                    ),
-                                                )}
-                                        </div>
+                                        {selectedCollege && (
+                                            <Badge className="ml-2">
+                                                {selectedCollege}
+                                            </Badge>
+                                        )}
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
@@ -354,25 +464,293 @@ export default function Index() {
                                     {collegeTalArr?.map((item, index) => (
                                         <DropdownMenuCheckboxItem
                                             key={index}
-                                            checked={selectedCollege.includes(
-                                                item.value,
-                                            )}
-                                            onSelect={(event) => {
-                                                event.preventDefault();
+                                            checked={
+                                                selectedCollege === item.value
+                                            }
+                                            onSelect={() => {
+                                                setSelectedProgram(null);
+                                                setSelectedMajor(null);
+
                                                 setSelectedCollege((prev) =>
-                                                    prev.includes(item.value)
-                                                        ? prev.filter(
-                                                              (s) =>
-                                                                  s !==
-                                                                  item.value,
-                                                          )
-                                                        : [...prev, item.value],
+                                                    prev === item.value
+                                                        ? null
+                                                        : item.value,
                                                 );
                                             }}
                                         >
-                                            {item.value} - {item.name}
+                                            {item.name}
                                         </DropdownMenuCheckboxItem>
                                     ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            {programsArr && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline">
+                                            <BookOpenCheck />
+                                            Programs
+                                            <ChevronDownIcon />
+                                            {selectedProgram && (
+                                                <Badge className="ml-2">
+                                                    {selectedProgram}
+                                                </Badge>
+                                            )}
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                        className="w-max"
+                                        align="start"
+                                    >
+                                        {programsArr?.map((item, index) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={index}
+                                                checked={
+                                                    selectedProgram ===
+                                                    item.name
+                                                }
+                                                onSelect={() => {
+                                                    setSelectedMajor(null);
+                                                    setSelectedSection(null);
+                                                    setSelectedProgram(
+                                                        (prev) =>
+                                                            prev === item.name
+                                                                ? null
+                                                                : item.name,
+                                                    );
+                                                }}
+                                            >
+                                                {item.name}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+                            {majorArr && majorArr.length > 0 && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline">
+                                            <BookOpenCheck />
+                                            Majors
+                                            <ChevronDownIcon />
+                                            {selectedMajor && (
+                                                <Badge className="ml-2">
+                                                    {selectedMajor}
+                                                </Badge>
+                                            )}
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                        className="w-max"
+                                        align="start"
+                                    >
+                                        {majorArr?.map((item, index) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={index}
+                                                checked={selectedMajor === item}
+                                                onSelect={() => {
+                                                    setSelectedSection(null);
+                                                    setSelectedMajor((prev) =>
+                                                        prev === item
+                                                            ? null
+                                                            : item,
+                                                    );
+                                                }}
+                                            >
+                                                {item}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+
+                            {sectionsArr &&
+                                sectionsArr.length > 0 &&
+                                selectedProgram && (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline">
+                                                <BookOpenCheck />
+                                                Sections
+                                                <ChevronDownIcon />
+                                                {selectedSection && (
+                                                    <Badge className="ml-2">
+                                                        {selectedSection}
+                                                    </Badge>
+                                                )}
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent
+                                            className="w-max"
+                                            align="start"
+                                        >
+                                            {sectionsArr?.map((item, index) => (
+                                                <DropdownMenuCheckboxItem
+                                                    key={index}
+                                                    checked={
+                                                        selectedSection === item
+                                                    }
+                                                    onSelect={() => {
+                                                        setSelectedSection(
+                                                            (prev) =>
+                                                                prev === item
+                                                                    ? null
+                                                                    : item,
+                                                        );
+                                                    }}
+                                                >
+                                                    {item}
+                                                </DropdownMenuCheckboxItem>
+                                            ))}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
+
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline">
+                                        <BookOpenCheck />
+                                        Year Level
+                                        <ChevronDownIcon />
+                                        {selectedYear && (
+                                            <Badge className="ml-2">
+                                                {selectedYear}
+                                            </Badge>
+                                        )}
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    className="w-max"
+                                    align="start"
+                                >
+                                    {[
+                                        '1st Year',
+                                        '2nd Year',
+                                        '3rd Year',
+                                        '4th Year',
+                                        '5th Year',
+                                    ].map((item, index) => (
+                                        <DropdownMenuCheckboxItem
+                                            key={index}
+                                            checked={selectedYear === item}
+                                            onSelect={() => {
+                                                setSelectedYear((prev) =>
+                                                    prev === item ? null : item,
+                                                );
+                                            }}
+                                        >
+                                            {item}
+                                        </DropdownMenuCheckboxItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline">
+                                        <ChartLineIcon />
+                                        Status
+                                        <div className="space-x-1">
+                                            {isExported ? (
+                                                <Badge variant="default">
+                                                    <CheckIcon />
+                                                    Exported
+                                                </Badge>
+                                            ) : isExported !== null ? (
+                                                <Badge variant="destructive">
+                                                    <AlertCircleIcon />
+                                                    Exported
+                                                </Badge>
+                                            ) : (
+                                                ''
+                                            )}
+                                            {isCompleted ? (
+                                                <Badge variant="default">
+                                                    <CheckIcon />
+                                                    Completed
+                                                </Badge>
+                                            ) : isCompleted !== null ? (
+                                                <Badge variant="destructive">
+                                                    <AlertCircleIcon />
+                                                    Completed
+                                                </Badge>
+                                            ) : (
+                                                ''
+                                            )}
+                                        </div>
+                                        <ChevronDownIcon />
+                                    </Button>
+                                </DropdownMenuTrigger>
+
+                                <DropdownMenuContent
+                                    className="w-max"
+                                    align="start"
+                                >
+                                    <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger>
+                                            Exported
+                                        </DropdownMenuSubTrigger>
+                                        <DropdownMenuSubContent>
+                                            {[
+                                                { label: 'Yes', value: true },
+                                                { label: 'No', value: false },
+                                            ].map((item) => (
+                                                <DropdownMenuCheckboxItem
+                                                    key={item.label}
+                                                    checked={
+                                                        isExported ===
+                                                        item.value
+                                                    }
+                                                    onSelect={(event) => {
+                                                        event.preventDefault();
+
+                                                        setIsExported(
+                                                            isExported ===
+                                                                item.value
+                                                                ? null
+                                                                : item.value,
+                                                        );
+                                                    }}
+                                                >
+                                                    {item.label}
+                                                </DropdownMenuCheckboxItem>
+                                            ))}
+                                        </DropdownMenuSubContent>
+                                    </DropdownMenuSub>
+                                    <DropdownMenuSeparator />
+
+                                    <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger>
+                                            Completed
+                                        </DropdownMenuSubTrigger>
+                                        <DropdownMenuSubContent>
+                                            {[
+                                                { label: 'Yes', value: true },
+                                                { label: 'No', value: false },
+                                            ].map((item) => (
+                                                <DropdownMenuCheckboxItem
+                                                    key={item.label}
+                                                    checked={
+                                                        isCompleted ===
+                                                        item.value
+                                                    }
+                                                    onSelect={(event) => {
+                                                        event.preventDefault();
+
+                                                        // toggle behavior (click again to clear)
+                                                        setIsCompleted(
+                                                            isCompleted ===
+                                                                item.value
+                                                                ? null
+                                                                : item.value,
+                                                        );
+                                                    }}
+                                                >
+                                                    {item.label}
+                                                </DropdownMenuCheckboxItem>
+                                            ))}
+                                        </DropdownMenuSubContent>
+                                    </DropdownMenuSub>
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
@@ -386,7 +764,7 @@ export default function Index() {
                                             <CalendarIcon />
                                             {range?.from && range?.to
                                                 ? `${range.from.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} – ${range.to.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
-                                                : 'Date'}
+                                                : 'Date Updated'}
 
                                             <ChevronDownIcon />
                                         </Button>
@@ -417,56 +795,52 @@ export default function Index() {
                                     </Button>
                                 )}
                             </div>
+
                             {hasActiveFilters && (
                                 <Button
                                     type="button"
                                     onClick={resetFilters}
                                     variant="destructive"
                                 >
-                                    <Trash2Icon /> Reset All
+                                    <FilterXIcon /> Reset Filter
                                 </Button>
                             )}
                         </div>
+                        <p className="text-sm whitespace-nowrap">
+                            Total Entries:{' '}
+                            <Badge>
+                                {Number(students?.total || 0).toLocaleString()}
+                            </Badge>
+                        </p>
                     </div>
                     <div className="relative mt-3 overflow-x-auto md:shadow-md lg:border">
-                        <table className="table w-full text-left text-sm text-foreground">
-                            <thead className="text lg:border-b">
+                        <table className="table w-full text-left text-xs text-foreground">
+                            <thead className="lg:border-b">
                                 <tr>
-                                    <th scope="col" className="p-3">
-                                        #
-                                    </th>
-                                    <th scope="col" className="p-3">
-                                        ID Number
-                                    </th>
-                                    <th scope="col" className="p-3">
-                                        Name
-                                    </th>
-                                    <th scope="col" className="p-3">
-                                        College
-                                    </th>
+                                    {[
+                                        '#',
+                                        'ID Number',
+                                        'Name',
+                                        'Campus',
+                                        'College',
+                                        'Program',
+                                        'Major',
+                                        'Year Level',
+                                        'Section',
+                                        'Exported',
+                                        'Completed',
+                                        'Date Updated',
 
-                                    <th scope="col" className="p-3">
-                                        Program
-                                    </th>
-                                    <th scope="col" className="p-3">
-                                        Major
-                                    </th>
-
-                                    <th scope="col" className="p-3">
-                                        Exported
-                                    </th>
-
-                                    <th scope="col" className="p-3">
-                                        Completed
-                                    </th>
-
-                                    <th scope="col" className="p-3">
-                                        Date
-                                    </th>
-
-                                    <th scope="col" className="p-3">
-                                        Action
-                                    </th>
+                                        'Action',
+                                    ].map((header) => (
+                                        <th
+                                            key={header}
+                                            scope="col"
+                                            className="p-2 whitespace-nowrap"
+                                        >
+                                            {header}
+                                        </th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody className="lg:border-b">
@@ -475,39 +849,64 @@ export default function Index() {
                                         key={index}
                                         className="hover:bg-muted/50"
                                     >
-                                        <td className="p-3" data-label="ID">
+                                        <td
+                                            className="p-2 whitespace-nowrap"
+                                            data-label="ID"
+                                        >
                                             {row.id}
                                         </td>
 
                                         <td
-                                            className="p-3"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="ID Number"
                                         >
                                             {row.id_number}
                                         </td>
-                                        <td className="p-3" data-label="Name">
-                                            {`${row.first_name}${row.middle_init ? ' ' + row.middle_init : ''} ${row.last_name}`}
+                                        <td
+                                            className="p-2 whitespace-nowrap"
+                                            data-label="Name"
+                                        >
+                                            {`${row.first_name} ${row.middle_init ? row.middle_init + '.' : ''} ${row.last_name} ${row.suffix ? row.suffix + '.' : ''}`}
                                         </td>
                                         <td
-                                            className="p-3"
+                                            className="p-2 whitespace-nowrap"
+                                            data-label="Campus"
+                                        >
+                                            {row.campus}
+                                        </td>
+                                        <td
+                                            className="p-2 whitespace-nowrap"
                                             data-label="College"
                                         >
-                                            {row.college_name}
+                                            {row.college}
                                         </td>
                                         <td
-                                            className="p-3"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="Program"
                                         >
                                             {row.program}
                                         </td>
                                         <td
-                                            className="p-3"
-                                            data-label="Program"
+                                            className="p-2 whitespace-nowrap"
+                                            data-label="Major"
                                         >
                                             {row.major}
                                         </td>
                                         <td
-                                            className="p-3"
+                                            className="p-2 whitespace-nowrap"
+                                            data-label="Year Level"
+                                        >
+                                            {row.year}
+                                        </td>
+                                        <td
+                                            className="p-2 whitespace-nowrap"
+                                            data-label="Section"
+                                        >
+                                            {row.section}
+                                        </td>
+
+                                        <td
+                                            className="p-2 whitespace-nowrap"
                                             data-label="Exported"
                                         >
                                             {row.is_exported ? (
@@ -523,7 +922,7 @@ export default function Index() {
                                             )}
                                         </td>
                                         <td
-                                            className="p-3"
+                                            className="p-2 whitespace-nowrap"
                                             data-label="Completed"
                                         >
                                             {row.is_completed ? (
@@ -538,14 +937,21 @@ export default function Index() {
                                                 </>
                                             )}
                                         </td>
-
-                                        <td className="p-3" data-label="Date">
-                                            {dayjs(row.created_at).format(
-                                                'MMM D, YYYY hh:mm:ss A',
-                                            )}{' '}
+                                        <td
+                                            className="p-2 whitespace-nowrap"
+                                            data-label="Date Updated"
+                                        >
+                                            {row.updated_at
+                                                ? dayjs(row.updated_at).format(
+                                                      'MMM D, YYYY hh:mm:ss A',
+                                                  )
+                                                : ''}{' '}
                                         </td>
 
-                                        <td className="p-3" data-label="Action">
+                                        <td
+                                            className="p-2 whitespace-nowrap"
+                                            data-label="Action"
+                                        >
                                             <div className="flex flex-wrap gap-2">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger
@@ -562,11 +968,39 @@ export default function Index() {
                                                         className="w-max"
                                                         align="end"
                                                     >
-                                                        <DropdownMenuItem>
-                                                            <EyeIcon /> View
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem>
-                                                            <PencilIcon /> Edit
+                                                        <Link
+                                                            href={route(
+                                                                'campus.view.student',
+                                                                row.id,
+                                                            )}
+                                                        >
+                                                            <DropdownMenuItem>
+                                                                <EyeIcon /> View
+                                                            </DropdownMenuItem>
+                                                        </Link>
+                                                        <Link
+                                                            href={route(
+                                                                'campus.edit.student',
+                                                                row.id,
+                                                            )}
+                                                        >
+                                                            <DropdownMenuItem>
+                                                                <PencilIcon />{' '}
+                                                                Edit
+                                                            </DropdownMenuItem>
+                                                        </Link>
+                                                        <DropdownMenuItem
+                                                            disabled={
+                                                                !row.is_completed
+                                                            }
+                                                            onClick={() => {
+                                                                handleSingleExport(
+                                                                    row,
+                                                                );
+                                                            }}
+                                                        >
+                                                            <UploadCloudIcon />
+                                                            Export
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -643,22 +1077,40 @@ export default function Index() {
                                                                             data,
                                                                         } =
                                                                             await apiService.get(
-                                                                                '/api/student/filter',
+                                                                                '/api/student/filterPaginate',
                                                                                 {
                                                                                     params: {
                                                                                         search:
                                                                                             searchValue ||
-                                                                                            undefined,
+                                                                                            null,
                                                                                         college:
-                                                                                            selectedCollege.length
-                                                                                                ? selectedCollege
-                                                                                                : undefined,
-                                                                                        from: range?.from?.toISOString(),
-                                                                                        to: range?.to?.toISOString(),
-                                                                                        perPage,
-                                                                                        sort,
-                                                                                        order,
-                                                                                        page, // ✅ include the page number
+                                                                                            selectedCollege ||
+                                                                                            null,
+                                                                                        program:
+                                                                                            selectedProgram ||
+                                                                                            null,
+                                                                                        major:
+                                                                                            selectedMajor ||
+                                                                                            null,
+                                                                                        section:
+                                                                                            selectedSection ||
+                                                                                            null,
+                                                                                        is_exported:
+                                                                                            isExported,
+                                                                                        is_completed:
+                                                                                            isCompleted,
+                                                                                        from: startOfDay(
+                                                                                            range?.from,
+                                                                                        ),
+                                                                                        to: endOfDay(
+                                                                                            range?.to,
+                                                                                        ),
+                                                                                        perPage:
+                                                                                            perPage,
+                                                                                        sort: sort,
+                                                                                        order: order,
+                                                                                        page,
+                                                                                        campus: titlePage,
                                                                                     },
                                                                                 },
                                                                             );

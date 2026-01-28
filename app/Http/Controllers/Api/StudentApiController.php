@@ -21,6 +21,10 @@ class StudentApiController extends Controller
         $filters = $request->only([
             'search',
             'college',
+            'program',
+            'major',
+            'section',
+            'year',
             'is_exported',
             'is_completed',
             'from',
@@ -36,24 +40,28 @@ class StudentApiController extends Controller
         return $this->studentRepository->filterPaginate($filters);
     }
 
-    public function filter(Request $request)
+    public function filterExport(Request $request)
     {
 
         $filters = $request->only([
             'search',
             'college',
-            'is_exported',
-            'is_completed',
+            'program',
+            'major',
+            'section',
+            'year',
+            'limit',
             'from',
             'to',
             'sort',
             'order',
+            'perPage',
             'campus',
         ]);
 
 
 
-        return $this->studentRepository->filter($filters);
+        return $this->studentRepository->filterExport($filters);
     }
 
     public function studentsChart(Request $request)
@@ -68,4 +76,5 @@ class StudentApiController extends Controller
 
         return $this->studentRepository->studentsUpdateChart($filters['campus'], $filters['timeRange']);
     }
+
 }

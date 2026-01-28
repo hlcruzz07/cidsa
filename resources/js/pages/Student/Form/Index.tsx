@@ -38,6 +38,8 @@ export default function Index() {
             program: '',
             hasMajor: false,
             major: null as string | null,
+            year: '',
+            section: '',
             picture: null as File | null,
             e_signature: null as File | null,
             confirm_info: false,
