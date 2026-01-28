@@ -265,7 +265,7 @@ export default function Index() {
                 isOpen={openImportModal}
                 setIsOpen={() => setOpenImportModal(false)}
                 campus={titlePage}
-                onLoad={handleFilter}
+                reload={handleFilter}
             />
             <PreviewModal
                 students={previewStudents}
