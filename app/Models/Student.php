@@ -38,6 +38,8 @@ class Student extends Model
         'college_name',
         'program',
         'major',
+        'year',
+        'section',
 
         'is_exported',
         'is_completed',

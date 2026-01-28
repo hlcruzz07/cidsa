@@ -17,58 +17,71 @@ type WidgetProps = {
         | 'exportedStudents';
 };
 
+const widgetConfig = {
+    totalUpdates: {
+        title: 'Total Student Updates',
+        description: 'Number of student records updated',
+        color: {
+            text: 'text-emerald-500',
+            bg: 'bg-emerald-500',
+        },
+    },
+    readyStudents: {
+        title: 'Ready For Export',
+        description: 'Number of students ready for export',
+        color: {
+            text: 'text-purple-500',
+            bg: 'bg-purple-500',
+        },
+    },
+    incompleteStudents: {
+        title: 'Incomplete Students',
+        description: 'Number of students with incomplete records',
+        color: {
+            text: 'text-red-500',
+            bg: 'bg-red-500',
+        },
+    },
+    exportedStudents: {
+        title: 'Exported Students',
+        description: 'Number of students exported from the system',
+        color: {
+            text: 'text-blue-500',
+            bg: 'bg-blue-500',
+        },
+    },
+} as const;
+
 export default function Widget({ count, type }: WidgetProps) {
-    const widgetType = {
-        totalUpdates: {
-            title: 'Total Student Updates',
-            description: 'Number of student records updated',
-            count: count,
-            color: 'emerald',
-        },
-        readyStudents: {
-            title: 'Ready For Export',
-            description: 'Number of students ready for export',
-            count: count,
-            color: 'purple',
-        },
-        incompleteStudents: {
-            title: 'Incomplete Students',
-            description: 'Number of students with incomplete records',
-            count: count,
-            color: 'red',
-        },
-        exportedStudents: {
-            title: 'Exported Students',
-            description: 'Number of students exported from the system',
-            count: count,
-            color: 'blue',
-        },
-    };
+    const config = widgetConfig[type];
+
     return (
         <Card className="relative w-full overflow-hidden rounded-xl bg-background">
+            {/* Top accent bar */}
             <div
-                className={`absolute inset-x-0 top-0 h-1 bg-${widgetType[type].color}-500`}
+                className={`absolute inset-x-0 top-0 h-1 ${config.color.bg}`}
             />
+
             <CardHeader className="space-y-1 pb-2">
                 <div className="flex items-center gap-2">
-                    <CheckCircle2
-                        className={`h-5 w-5 text-${widgetType[type].color}-500`}
-                    />
+                    <CheckCircle2 className={`h-5 w-5 ${config.color.text}`} />
                     <CardTitle className="text-lg font-semibold tracking-wide text-muted-foreground">
-                        {widgetType[type].title}
+                        {config.title}
                     </CardTitle>
                 </div>
                 <CardDescription className="text-sm">
-                    {widgetType[type].description}
+                    {config.description}
                 </CardDescription>
             </CardHeader>
+
             <CardContent className="space-y-2">
                 <div
-                    className={`tabular-lining-nums text-${widgetType[type].color}-500 flex items-center gap-5 text-4xl font-extrabold`}
+                    className={`tabular-lining-nums flex items-center gap-5 text-4xl font-extrabold ${config.color.text}`}
                 >
                     {count.toLocaleString()}
                     <TrendingUp size={55} />
                 </div>
+
                 <p className="text-xs text-muted-foreground">
                     As of {dayjs().format('MMM D, YYYY')}
                 </p>

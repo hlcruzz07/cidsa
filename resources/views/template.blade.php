@@ -40,9 +40,9 @@
                 {{-- Full Name --}}
                <td style="mso-number-format:'\@';">
                     {{ strtoupper($student['first_name'] ?? '') }}
-                    {{ ($student['middle_init'] ?? null) ? ' '.strtoupper($student['middle_init']) : '' }}
+                    {{ ($student['middle_init'] ?? null) ? ' '.strtoupper($student['middle_init']).'.' : '' }}
                     {{ strtoupper($student['last_name'] ?? '') }}
-                    {{ ($student['suffix'] ?? null) ? ' '.strtoupper($student['suffix']) : '' }}
+                    {{ ($student['suffix'] ?? null) ? ' '.strtoupper($student['suffix']).'.' : '' }}
                 </td>
 
                 {{-- ID Number --}}
@@ -55,8 +55,8 @@
 
                 {{-- Emergency Contact --}}
                 <td style="mso-number-format:'\@';">
-                    {{ strtoupper($student['emergency_first_name']) }}{{ ($student['emergency_middle_init'] ?? null) ? ' '.strtoupper($student['emergency_middle_init']) : '' }} {{ strtoupper($student['emergency_last_name']) }}
-                    {{ ($student['emergency_suffix'] ?? null) ? ' '.strtoupper($student['emergency_suffix']) : '' }}
+                    {{ strtoupper($student['emergency_first_name']) }}{{ ($student['emergency_middle_init'] ?? null) ? ' '.strtoupper($student['emergency_middle_init']).'.' : '' }} {{ strtoupper($student['emergency_last_name']) }}
+                    {{ ($student['emergency_suffix'] ?? null) ? ' '.strtoupper($student['emergency_suffix']).'.' : '' }}
                 </td>
 
                 {{-- Address --}}
@@ -86,7 +86,7 @@
                 <td></td>
 
                 {{-- Middle Initial --}}
-                <td style="mso-number-format:'\@';">{{ ($student['middle_init'] ?? null) ? ' '.strtoupper($student['middle_init']) : '' }}</td>
+                <td style="mso-number-format:'\@';">{{ ($student['middle_init'] ?? null) ? ' '.strtoupper($student['middle_init']).'.' : '' }}</td>
                 <td></td>
                 <td></td>
                 <td></td>

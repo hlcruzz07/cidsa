@@ -4,6 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { StudentProps } from '@/lib/student-types';
 import { usePage } from '@inertiajs/react';
 import { AlertCircleIcon, SendIcon } from 'lucide-react';
 import { useMemo } from 'react';
@@ -37,12 +38,6 @@ interface StepTwoProps {
 
 type PageProps = {
     student: StudentProps;
-};
-type StudentProps = {
-    id_number: string;
-    first_name: string;
-    middle_init: string | null;
-    last_name: string;
 };
 
 export default function StepThree({
@@ -103,7 +98,7 @@ export default function StepThree({
                                         className="lg::w-auto w-20 md:w-40"
                                     />
                                     <h1 className="text-sm font-extrabold uppercase md:text-xl lg:text-3xl dark:text-black">
-                                        {`${student.first_name}${student.middle_init ? ' ' + student.middle_init : ''} ${student.last_name}`}
+                                        {`${student.first_name} ${student.middle_init ? student.middle_init + '.' : ''} ${student.last_name} ${student.suffix ? student.suffix + '.' : ''}`}
                                     </h1>
                                     <h1 className="capitalized text-[9px] font-medium md:text-base lg:text-lg dark:text-black">
                                         {data.program}
@@ -124,7 +119,7 @@ export default function StepThree({
                         <h1 className="flex w-8/12 items-center justify-center bg-green-600 text-center text-xl font-extrabold text-white md:text-3xl lg:text-5xl">
                             STUDENT
                         </h1>
-                        <div className="flex grow items-center justify-center py-2 font-bold">
+                        <div className="flex grow items-center justify-center py-2 font-bold text-black">
                             <div className="flex flex-col items-center">
                                 <h1 className="text-xs md:text-sm lg:text-base">
                                     ID NUMBER
@@ -151,7 +146,7 @@ export default function StepThree({
                                     In case of emergency, please contact
                                 </h1>
                                 <div className="flex flex-col dark:text-black">
-                                    <p className="text-base font-bold md:text-2xl">{`${data.emergency_first_name} ${data.emergency_middle_init ? data.emergency_middle_init + '.' : ''} ${data.emergency_last_name} ${data.emergency_suffix ?? ''}`}</p>
+                                    <p className="text-base font-bold md:text-2xl">{`${data.emergency_first_name} ${data.emergency_middle_init ? data.emergency_middle_init + '.' : ''} ${data.emergency_last_name} ${data.emergency_suffix ? data.emergency_suffix + '.' : ''}`}</p>
                                     <p className="text-xs capitalize md:text-sm lg:text-lg">
                                         Brgy. {data.barangay}, {data.city},{' '}
                                         {data.zip_code}

@@ -132,7 +132,7 @@ export function StudentsUpdateChart({ campus }: { campus: string }) {
                     <Skeleton className="h-96 w-full" />
                 ) : chartData.length === 0 ? (
                     <p className="flex h-96 items-center justify-center rounded-md border border-dashed text-lg font-medium text-muted-foreground italic">
-                        No data available for the selected range.
+                        No data available.
                     </p>
                 ) : (
                     <ResponsiveContainer width="100%" height={350}>

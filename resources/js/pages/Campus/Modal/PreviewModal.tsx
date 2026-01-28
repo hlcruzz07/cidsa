@@ -8,39 +8,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { DownloadIcon } from 'lucide-react';
-import { route } from 'ziggy-js';
+import { StudentProps } from '@/lib/student-types';
 
 type PreviewModalProps = {
-    students: ExportedStudent[] | null;
+    students: StudentProps[] | null;
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
-};
-
-type ExportedStudent = {
-    id: number;
-    id_number: string;
-    first_name: string;
-    middle_init: string | null;
-    last_name: string;
-    suffix: string | null;
-    program: string;
-    college: string;
-    college_name: string;
-    campus: string;
-    emergency_first_name: string;
-    emergency_middle_init: string | null;
-    emergency_last_name: string;
-    emergency_suffix: string | null;
-    is_exported: boolean;
-    is_completed: boolean;
-    barangay: string;
-    city: string;
-    zip_code: string;
-    contact_number: string;
-    province: string;
-    created_at: string;
-    updated_at: string;
 };
 
 export default function PreviewModal({
@@ -48,26 +21,16 @@ export default function PreviewModal({
     isOpen,
     setIsOpen,
 }: PreviewModalProps) {
-    const formatFullName = (s: ExportedStudent) =>
+    const formatFullName = (s: StudentProps) =>
         `${(s.first_name || '').toUpperCase()}${s.middle_init ? ' ' + s.middle_init.toUpperCase() : ''} ${(s.last_name || '').toUpperCase()}${s.suffix ? ' ' + s.suffix.toUpperCase() : ''}`.trim();
 
-    const formatEmergencyName = (s: ExportedStudent) =>
+    const formatEmergencyName = (s: StudentProps) =>
         `${(s.emergency_first_name || '').toUpperCase()}${s.emergency_middle_init ? ' ' + s.emergency_middle_init.toUpperCase() : ''} ${(s.emergency_last_name || '').toUpperCase()}${s.emergency_suffix ? ' ' + s.emergency_suffix.toUpperCase() : ''}`.trim();
 
-    const formatContact = (s: ExportedStudent) => {
-        const n = s.contact_number || '';
+    const formatContact = (s: StudentProps) => {
+        const n = String(s.contact_number) || '';
         if (n.length <= 3) return n;
         return `0${n.slice(0, 3)}-${n.slice(3)}`;
-    };
-
-    const exportStudents = () => {
-        if (!students || students.length === 0) return;
-
-        window.location.href = route('export.students', {
-            students,
-        });
-
-        setIsOpen(false);
     };
 
     return (
@@ -191,9 +154,6 @@ export default function PreviewModal({
                     <DialogClose asChild>
                         <Button variant="outline">Close</Button>
                     </DialogClose>
-                    <Button onClick={exportStudents}>
-                        Download <DownloadIcon />
-                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

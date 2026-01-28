@@ -29,7 +29,7 @@ export default function AppLayout({ children, breadcrumbs }: AppLayoutProps) {
 
     return (
         <>
-            <Toaster richColors position="top-right" />
+            <Toaster richColors position="bottom-left" />
             <AppLayoutTemplate breadcrumbs={breadcrumbs}>
                 {children}
             </AppLayoutTemplate>

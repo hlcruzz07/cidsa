@@ -11,6 +11,24 @@ use Exception;
 class StudentRepository
 {
     protected $model;
+    public $paths = [
+        'Talisay' => [
+            'picture' => 'images/talisay/pictures',
+            'e_signature' => 'images/talisay/signatures',
+        ],
+        'Alijis' => [
+            'picture' => 'images/alijis/pictures',
+            'e_signature' => 'images/alijis/signatures',
+        ],
+        'Binalbagan' => [
+            'picture' => 'images/binalbagan/pictures',
+            'e_signature' => 'images/binalbagan/signatures',
+        ],
+        'Fortune Towne' => [
+            'picture' => 'images/fortune-towne/pictures',
+            'e_signature' => 'images/fortune-towne/signatures',
+        ],
+    ];
 
     public function __construct(Student $student)
     {
@@ -79,10 +97,27 @@ class StudentRepository
                     ->orWhere('suffix', 'like', "%{$search}%");
             });
         }
-        // 🏫 Colleges
-        if (!empty($filters['college']) && is_array($filters['college'])) {
-            $query->whereIn('college', $filters['college']);
+
+        if (!empty($filters['college'])) {
+            $query->where('college', $filters['college']);
         }
+
+        if (!empty($filters['program'])) {
+            $query->where('program', $filters['program']);
+        }
+
+        if (!empty($filters['major'])) {
+            $query->where('major', $filters['major']);
+        }
+
+        if (!empty($filters['section'])) {
+            $query->where('section', $filters['section']);
+        }
+
+        if (!empty($filters['year'])) {
+            $query->where('year', $filters['year']);
+        }
+
 
         if (!empty($filters['is_exported'])) {
             $query->where(
@@ -147,51 +182,24 @@ class StudentRepository
         ];
     }
 
-    public function update(array $data)
+    public function update(array $data, string $student_id)
     {
-        $student = $this->findStudentByIdNumber(session("validated_student"));
+        $student = $this->findStudentByIdNumber($student_id);
 
-        $campus = $data['campus'] ?? $student['campus'] ?? null;
+        $campus = $student->campus;
 
         if (!$campus) {
             throw new Exception('Campus not specified.');
         }
 
-        $paths = [
-            'Talisay' => [
-                'picture' => 'images/talisay/pictures',
-                'e_signature' => 'images/talisay/signatures',
-            ],
-            'Alijis' => [
-                'picture' => 'images/alijis/pictures',
-                'e_signature' => 'images/alijis/signatures',
-            ],
-            'Binalbagan' => [
-                'picture' => 'images/binalbagan/pictures',
-                'e_signature' => 'images/binalbagan/signatures',
-            ],
-            'Fortune Towne' => [
-                'picture' => 'images/fortune-towne/pictures',
-                'e_signature' => 'images/fortune-towne/signatures',
-            ],
-        ];
-
-        if (!isset($paths[$campus])) {
+        if (!isset($this->paths[$campus])) {
             throw new Exception("Invalid campus: $campus");
         }
-
-        $picturePath = $this->storeFile($data['picture'] ?? null, $paths[$campus]['picture']);
-        $signaturePath = $this->storeFile($data['e_signature'] ?? null, $paths[$campus]['e_signature']);
-
-        $studentData = array_merge($data, [
-            'picture' => $picturePath,
-            'e_signature' => $signaturePath,
-        ]);
 
         $id = $student['id'];
         $result = $this->model->findOrFail($id);
 
-        $result->update($studentData);
+        $result->update($data);
         $result->save();
 
         $this->setCompleted($id);
@@ -199,7 +207,7 @@ class StudentRepository
         return $result;
     }
 
-    public function filter(array $filters)
+    public function filterExport(array $filters)
     {
         $query = $this->model->query()
             ->where('campus', $filters['campus']);
@@ -215,25 +223,37 @@ class StudentRepository
                     ->orWhere('suffix', 'like', "%{$search}%");
             });
         }
-        // 🏫 Colleges
-        if (!empty($filters['college']) && is_array($filters['college'])) {
-            $query->whereIn('college', $filters['college']);
+
+        if (!empty($filters['college'])) {
+            $query->where('college', $filters['college']);
         }
 
-        if (!empty($filters['is_exported'])) {
-            $query->where(
-                'is_exported',
-                filter_var($filters['is_exported'], FILTER_VALIDATE_BOOLEAN)
-            );
+        if (!empty($filters['program'])) {
+            $query->where('program', $filters['program']);
         }
 
-        if (!empty($filters['is_completed'])) {
-            $query->where(
+        if (!empty($filters['major'])) {
+            $query->where('major', $filters['major']);
+        }
+
+        if (!empty($filters['section'])) {
+            $query->where('section', $filters['section']);
+        }
+
+        if (!empty($filters['year'])) {
+            $query->where('year', $filters['year']);
+        }
+
+
+        $query
+            // ->whereIn(
+            //     'is_exported',
+            //     [filter_var(false, FILTER_VALIDATE_BOOLEAN), filter_var(true, FILTER_VALIDATE_BOOLEAN)]
+            // )
+            ->where(
                 'is_completed',
-                filter_var($filters['is_completed'], FILTER_VALIDATE_BOOLEAN)
+                filter_var(true, FILTER_VALIDATE_BOOLEAN)
             );
-        }
-
 
 
         if (!empty($filters['from']) && !empty($filters['to'])) {
@@ -249,15 +269,16 @@ class StudentRepository
 
         $sort = $filters['sort'] ?? 'id';
         $order = $filters['order'] ?? 'asc';
+        $limit = (int) $filters['limit'] ?? 10;
 
         $query->orderBy($sort, $order);
 
 
-        return $query->get();
+        return $query->limit($limit)->get();
     }
 
 
-    protected function storeFile($file, string $folder): ?string
+    public function storeFile($file, string $folder): ?string
     {
         if (!$file) {
             return null;
@@ -365,6 +386,78 @@ class StudentRepository
             ->orderBy('date')
             ->orderBy('college')
             ->get();
+    }
+
+    public function getStudentSectionsByFilter(array $filters)
+    {
+        $query = $this->model->query()
+            ->where('campus', $filters['campus']);
+
+        if (filled($filters['college'] ?? null)) {
+            $query->where('college', trim($filters['college']));
+        }
+
+        $query->where('program', trim($filters['program']));
+
+        $sections = $query
+            ->select('section')
+            ->distinct()
+            ->orderBy('section', 'asc')
+            ->pluck('section')
+            ->filter()
+            ->values()
+            ->all();
+
+        return $sections;
+    }
+
+    public function updateSingleStudent(array $data, int $id)
+    {
+        $student = $this->model->findOrFail($id);
+
+        $student->update($data);
+
+        $student->save();
+
+        return $student;
+    }
+
+    public function updateIncompleteStudent(array $data, int $id)
+    {
+        $student = $this->model->findOrFail($id);
+
+        // Disable automatic timestamps for this operation
+        $student->timestamps = false;
+
+        $student->update([
+            'first_name' => $data['first_name'],
+            'middle_init' => $data['middle_init'],
+            'last_name' => $data['last_name'],
+            'suffix' => $data['suffix'],
+            'updated_at' => null, // now this will be stored as null
+        ]);
+
+        // No need to call save() again
+        return $student;
+    }
+
+
+    public function updateStudentPicture(array $data, int $id)
+    {
+        $student = $this->model->findOrFail($id);
+
+        $student->timestamps = false;
+
+        $campus = $student->campus;
+
+        $picturePath = $this->storeFile($data['picture'] ?? null, $this->paths[$campus]['picture']);
+
+        $student->update([
+            'picture' => $picturePath,
+            'updated_at' => null,
+        ]);
+
+        return $student;
     }
 
 

@@ -24,6 +24,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { StudentProps } from '@/lib/student-types';
 import { campusDirectoryArr, cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import {
@@ -33,51 +34,9 @@ import {
     ChevronsUpDown,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-// Types
-type Municipality = {
-    barangay_list: string[];
-};
-
-type Province = {
-    municipality_list: {
-        [municipalityName: string]: Municipality;
-    };
-};
-
-type Region = {
-    province_list: {
-        [provinceName: string]: Province;
-    };
-};
-
-type Locations = {
-    [regionName: string]: Region;
-};
-
-type FormData = {
-    emergency_first_name: string;
-    emergency_middle_init: string | null;
-    emergency_last_name: string;
-    emergency_suffix: string | null;
-    relationship: string;
-    contact_number: number | null;
-    province: string;
-    city: string;
-    barangay: string;
-    zip_code: string;
-    college: string;
-    college_name: string;
-    program: string;
-    hasMajor: boolean;
-    major: string | null;
-    picture: File | null;
-    e_signature: File | null;
-    data_privacy: boolean;
-    confirm_info: boolean;
-};
 
 interface StepOneProps {
-    data: FormData;
+    data: FormDataProps;
     setData: (key: string, value: any) => void;
     errors: Record<string, string>;
     setModalOpen: () => void;
@@ -85,43 +44,6 @@ interface StepOneProps {
 }
 type PageProps = {
     student: StudentProps;
-};
-type StudentProps = {
-    id_number: string;
-    first_name: string;
-    middle_init: string | null;
-    last_name: string;
-    suffix: string;
-    campus: string;
-};
-
-type ProvinceProp = {
-    province_id: number;
-    province_name: string;
-}[];
-
-type CitiesProp = {
-    province_id: number;
-    municipality_id: number;
-    municipality_name: string;
-}[];
-
-type BrgysProp = {
-    barangay_id: number;
-    barangay_name: string;
-    municipality_id: number;
-}[];
-
-type CitiesApiProp = {
-    province_id: number;
-    municipality_id: number;
-    municipality_name: string;
-};
-
-type BrgyApiProp = {
-    barangay_id: number;
-    barangay_name: string;
-    municipality_id: number;
 };
 
 export default function StepOne({
@@ -207,11 +129,15 @@ export default function StepOne({
 
         setData('major', null);
         setIsMajorDisabled(true);
+
+        setData('section', '');
     };
 
     const resetForProgramChange = () => {
         setData('major', null);
         setIsMajorDisabled(false);
+
+        setData('section', '');
     };
 
     const resetForProvinceChange = () => {
@@ -414,6 +340,62 @@ export default function StepOne({
                         </SelectContent>
                     </Select>
                     <InputError message={errors.major} />
+                </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="zip_code">
+                            Section
+                            <AsteriskIcon size={12} color="red" />
+                        </Label>
+                        <span className="text-xs text-muted-foreground">
+                            (ex: A, B, C, D, A1, A2, etc.)
+                        </span>
+                    </div>
+                    <Input
+                        type="text"
+                        maxLength={data.college === 'CIT' ? 2 : 1}
+                        disabled={data.college === ''}
+                        placeholder="Enter Section"
+                        value={data.section}
+                        onChange={(e) => {
+                            setData('section', e.target.value.toUpperCase());
+                        }}
+                    />
+                    <InputError message={errors.section} />
+                </div>
+                <div className="flex flex-col gap-2">
+                    <Label>
+                        Year Level
+                        <AsteriskIcon size={12} color="red" />
+                    </Label>
+                    <Select
+                        value={data.year}
+                        onValueChange={(value) => {
+                            setData('year', value);
+                        }}
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Choose an option" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                                {[
+                                    '1st Year',
+                                    '2nd Year',
+                                    '3rd Year',
+                                    '4th Year',
+                                    '5th Year',
+                                ].map((item, key) => (
+                                    <SelectItem key={key} value={item}>
+                                        {item}
+                                    </SelectItem>
+                                ))}
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    <InputError message={errors.year} />
                 </div>
             </div>
 
