@@ -540,5 +540,53 @@ class StudentRepository
         return $student;
     }
 
+    public function countStudentUpdatesPerCampus($timeRange)
+    {
+        $now = Carbon::now();
+
+        $startDate = match ($timeRange) {
+            '7d' => $now->copy()->subDays(7),
+            '30d' => $now->copy()->subDays(30),
+            '90d' => $now->copy()->subDays(90),
+            default => $now->copy()->subDays(90),
+        };
+
+        $students = \DB::table('students')
+            ->select(
+                \DB::raw('DATE(updated_at) as date'),
+                'campus',
+                \DB::raw('COUNT(*) as total')
+            )
+            ->where('updated_at', '>=', $startDate)
+            ->groupBy('date', 'campus')
+            ->orderBy('date')
+            ->get();
+
+        // Pivot data by date
+        $result = [];
+        foreach ($students as $row) {
+            $date = $row->date;
+            if (!isset($result[$date])) {
+                $result[$date] = ['date' => $date];
+            }
+            // Map campus to key
+            $campusKey = match ($row->campus) {
+                'Talisay' => 'tal',
+                'Alijis' => 'ali',
+                'Binalbagan' => 'bin',
+                'Fortune Town' => 'ft',
+                default => strtolower($row->campus),
+            };
+            $result[$date][$campusKey] = $row->total;
+        }
+
+        return array_values($result);
+    }
+
+
+    public function countStudentsByCampus(string $campus): int
+    {
+        return $this->model->where('campus', $campus)->count() ?? 0;
+    }
 
 }

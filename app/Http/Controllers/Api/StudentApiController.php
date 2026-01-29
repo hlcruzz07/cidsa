@@ -98,4 +98,16 @@ class StudentApiController extends Controller
         return $this->studentRepository->studentsUpdateChart($filters['campus'], $filters['timeRange']);
     }
 
+    public function dashboardChart(Request $request)
+    {
+
+        $filters = $request->only([
+            'timeRange',
+        ]);
+
+
+
+        return $this->studentRepository->countStudentUpdatesPerCampus($filters['timeRange']);
+    }
+
 }
