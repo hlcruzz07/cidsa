@@ -245,16 +245,19 @@ class StudentRepository
         }
 
 
-        $query
-            // ->whereIn(
-            //     'is_exported',
-            //     [filter_var(false, FILTER_VALIDATE_BOOLEAN), filter_var(true, FILTER_VALIDATE_BOOLEAN)]
-            // )
-            ->where(
-                'is_completed',
-                filter_var(true, FILTER_VALIDATE_BOOLEAN)
+        if (!empty($filters['is_exported'])) {
+            $query->where(
+                'is_exported',
+                filter_var($filters['is_exported'], FILTER_VALIDATE_BOOLEAN)
             );
+        }
 
+        if (!empty($filters['is_completed'])) {
+            $query->where(
+                'is_completed',
+                filter_var($filters['is_completed'], FILTER_VALIDATE_BOOLEAN)
+            );
+        }
 
         if (!empty($filters['from']) && !empty($filters['to'])) {
             if ($filters['from'] === $filters['to']) {
@@ -269,13 +272,89 @@ class StudentRepository
 
         $sort = $filters['sort'] ?? 'id';
         $order = $filters['order'] ?? 'asc';
-        $limit = (int) $filters['limit'] ?? 10;
 
         $query->orderBy($sort, $order);
 
-
-        return $query->limit($limit)->get();
+        return $query->get();
     }
+
+    public function isStudentsCanExport(array $filters)
+    {
+        $query = $this->model->query()
+            ->where('campus', $filters['campus']);
+
+        // 🔍 Search
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+
+            $query->where(function ($q) use ($search) {
+                $q->where('id_number', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('suffix', 'like', "%{$search}%");
+            });
+        }
+
+        if (!empty($filters['college'])) {
+            $query->where('college', $filters['college']);
+        }
+
+        if (!empty($filters['program'])) {
+            $query->where('program', $filters['program']);
+        }
+
+        if (!empty($filters['major'])) {
+            $query->where('major', $filters['major']);
+        }
+
+        if (!empty($filters['section'])) {
+            $query->where('section', $filters['section']);
+        }
+
+        if (!empty($filters['year'])) {
+            $query->where('year', $filters['year']);
+        }
+
+
+        if (!empty($filters['is_exported'])) {
+            $query->where(
+                'is_exported',
+                filter_var($filters['is_exported'], FILTER_VALIDATE_BOOLEAN)
+            );
+        }
+
+        if (!empty($filters['is_completed'])) {
+            $query->where(
+                'is_completed',
+                filter_var($filters['is_completed'], FILTER_VALIDATE_BOOLEAN)
+            );
+        }
+
+        if (!empty($filters['from']) && !empty($filters['to'])) {
+            if ($filters['from'] === $filters['to']) {
+                $query->whereDate('updated_at', '=', $filters['from']);
+            } else {
+                $query->whereBetween('updated_at', [
+                    $filters['from'],
+                    $filters['to'],
+                ]);
+            }
+        }
+
+        $students = $query->get();
+
+        if ($students->isEmpty()) {
+            return false;
+        }
+
+        if ($students->contains(fn($s) => !$s->is_completed)) {
+            return false;
+        }
+
+        // ✅ At least one completed & not exported student
+        return $students->contains(fn($s) => $s->is_completed && !$s->is_exported);
+    }
+
 
 
     public function storeFile($file, string $folder): ?string
@@ -415,9 +494,10 @@ class StudentRepository
     {
         $student = $this->model->findOrFail($id);
 
-        $student->update($data);
+        // Disable timestamps so updated_at won't be modified
+        $student->timestamps = false;
 
-        $student->save();
+        $student->update($data);
 
         return $student;
     }

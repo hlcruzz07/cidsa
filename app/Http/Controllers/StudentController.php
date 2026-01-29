@@ -192,8 +192,9 @@ class StudentController extends Controller
     public function exportStudents(Request $request)
     {
         $students = $request->input('students', []);
+        $fileName = $request->input('file_name', 'students');
 
-        $zipName = 'students_export.zip';
+        $zipName = $fileName . '.zip';
         $zipPath = storage_path('app/' . $zipName);
 
         $zip = new ZipArchive;

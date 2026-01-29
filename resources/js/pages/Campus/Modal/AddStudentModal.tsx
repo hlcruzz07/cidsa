@@ -49,6 +49,7 @@ export function AddStudentModal({
         if (processing) return;
 
         post(route('campus.add.student'), {
+            preserveScroll: true,
             onSuccess: () => {
                 setIsOpen(false);
                 clearErrors();

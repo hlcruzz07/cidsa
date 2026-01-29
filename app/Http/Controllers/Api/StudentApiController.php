@@ -44,24 +44,45 @@ class StudentApiController extends Controller
     {
 
         $filters = $request->only([
+
+            'campus',
             'search',
             'college',
             'program',
             'major',
             'section',
             'year',
-            'limit',
+            'is_exported',
+            'is_completed',
             'from',
             'to',
             'sort',
             'order',
-            'perPage',
-            'campus',
+            'limit'
         ]);
 
-
-
         return $this->studentRepository->filterExport($filters);
+    }
+
+    public function isStudentsExport(Request $request)
+    {
+        $filters = $request->only([
+            'campus',
+            'search',
+            'college',
+            'program',
+            'major',
+            'section',
+            'year',
+            'is_exported',
+            'is_completed',
+            'from',
+            'to',
+        ]);
+
+        $result = $this->studentRepository->isStudentsCanExport($filters);
+
+        return response()->json($result);
     }
 
     public function studentsChart(Request $request)
