@@ -33,7 +33,7 @@ class UpdateStudentRequest extends FormRequest
             'emergency_first_name' => [
                 'required',
                 function ($attribute, $value, $fail) {
-                    $studentId = $this->route('id'); // from /student/update/{id}
+                    $studentId = $this->route('id');
                     $student = Student::findOrFail($studentId);
 
                     $studentFirst = strtoupper(trim($student->first_name));

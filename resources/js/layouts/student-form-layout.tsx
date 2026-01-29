@@ -29,7 +29,7 @@ export default function StudentFormLayout({
 
     return (
         <>
-            <Toaster richColors position="bottom-left" closeButton />
+            <Toaster richColors position="top-right" closeButton />
             <div className="overflow-hidden bg-cover bg-fixed bg-center bg-no-repeat dark:bg-black">
                 <div className="flex min-h-96 flex-col items-center justify-center gap-5 bg-[var(--main-color)] py-20 text-white dark:bg-green-900 dark:text-gray-100">
                     <div className="flex flex-col items-center gap-5 md:flex-row">

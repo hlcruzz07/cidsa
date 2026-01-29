@@ -126,34 +126,43 @@ export default function Index() {
 
     const [sectionsArr, setSectionsArr] = useState([]);
 
-    const handleFilter = async () => {
-        const params = {
-            params: {
-                search: searchValue || null,
-                college: selectedCollege || null,
-                program: selectedProgram || null,
-                major: selectedMajor || null,
-                section: selectedSection || null,
-                year: selectedYear || null,
-                is_exported: isExported,
-                is_completed: isCompleted,
-                from: startOfDay(range?.from),
-                to: endOfDay(range?.to),
-                perPage: perPage,
-                sort: sort,
-                order: order,
-                campus: titlePage,
-            },
-        };
+    const [canExport, setCanExport] = useState(false);
 
+    const handleFilter = async () => {
         try {
-            const { data } = await apiService.get(
-                '/api/student/filterPaginate',
+            const params = {
+                params: {
+                    search: searchValue || null,
+                    college: selectedCollege || null,
+                    program: selectedProgram || null,
+                    major: selectedMajor || null,
+                    section: selectedSection || null,
+                    year: selectedYear || null,
+                    is_exported: isExported,
+                    is_completed: isCompleted,
+                    from: startOfDay(range?.from),
+                    to: endOfDay(range?.to),
+                    perPage: perPage,
+                    sort: sort,
+                    order: order,
+                    campus: titlePage,
+                },
+            };
+            const { data: paginateData } = await apiService.get(
+                route('filter.paginate'),
                 params,
             );
 
-            setStudents(data);
-            const cleanedSections = data.data
+            const { data: checkData } = await apiService.get(
+                route('filter.check'),
+                params,
+            );
+
+            setCanExport(checkData);
+
+            setStudents(paginateData);
+
+            const cleanedSections = paginateData.data
                 .map((item: any) => item.section)
                 .filter((section: any): section is string => Boolean(section))
                 .sort((a: any, b: any) => a.localeCompare(b));
@@ -240,6 +249,49 @@ export default function Index() {
         sort,
         order,
     ]);
+
+    const [isFetchingExport, setIsFetchingExport] = useState(false);
+
+    const fetchExportableStudents = async () => {
+        if (isFetchingExport) return;
+        const paramsExport = {
+            params: {
+                search: searchValue || null,
+                college: selectedCollege || null,
+                program: selectedProgram || null,
+                major: selectedMajor || null,
+                section: selectedSection || null,
+                year: selectedYear || null,
+                is_exported: isExported,
+                is_completed: isCompleted,
+                from: startOfDay(range?.from),
+                to: endOfDay(range?.to),
+                perPage: perPage,
+                sort: sort,
+                order: order,
+                campus: titlePage,
+            },
+        };
+        try {
+            setIsFetchingExport(true);
+            setOpenExportModal(true);
+
+            const { data } = await apiService.get(
+                route('filter.export'),
+                paramsExport,
+            );
+
+            setExportedStudents(data);
+            setIsFetchingExport(false);
+        } catch (error) {
+            console.log('Eror Fetching exportable students', error);
+        }
+    };
+
+    const [exportedStudents, setExportedStudents] = useState<
+        StudentProps[] | null
+    >(null);
+
     const [previewStudents, setPreviewStudents] = useState<
         StudentProps[] | null
     >(null);
@@ -258,6 +310,7 @@ export default function Index() {
 
         window.location.href = route('export.student', student.id);
     };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Campus - ${titlePage}`} />
@@ -285,9 +338,9 @@ export default function Index() {
                     setOpenPreviewModal(true);
                     setPreviewStudents(students);
                 }}
-                campus={titlePage}
+                students={exportedStudents}
                 setIsOpen={() => setOpenExportModal(false)}
-                onImport={() => handleFilter()}
+                onLoad={handleFilter}
             />
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
@@ -429,7 +482,10 @@ export default function Index() {
                             <Button onClick={() => setOpenImportModal(true)}>
                                 <ImportIcon /> Import
                             </Button>
-                            <Button onClick={() => setOpenExportModal(true)}>
+                            <Button
+                                disabled={!canExport || isFetchingExport}
+                                onClick={fetchExportableStudents}
+                            >
                                 <UploadCloudIcon /> Export
                             </Button>
                         </div>

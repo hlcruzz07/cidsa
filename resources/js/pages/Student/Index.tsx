@@ -9,7 +9,6 @@ import { Spinner } from '@/components/ui/spinner';
 import UserLayout from '@/layouts/user-layout';
 import { useForm, usePage } from '@inertiajs/react';
 import { AsteriskIcon, LogInIcon } from 'lucide-react';
-import { useState } from 'react';
 import { route } from 'ziggy-js';
 import SuccessModal from './Form/Modal/SucessModal';
 type SuccessProp = {
@@ -17,7 +16,6 @@ type SuccessProp = {
 };
 export default function Index() {
     const { success } = usePage<SuccessProp>().props;
-    const [isSuccess, setIsSuccess] = useState(false);
     const { data, setData, processing, errors, post } = useForm({
         id_number: '',
         first_name: '',
