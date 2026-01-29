@@ -53,8 +53,8 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
-import { StudentsUpdateChart } from '../Charts/StudentChart';
-import Widget from '../Charts/Widget';
+import { StudentsUpdateChart } from '../../../components/Campus/StudentChart';
+import Widget from '../../../components/Campus/Widget';
 import { AddStudentModal } from '../Modal/AddStudentModal';
 import ExportModal from '../Modal/ExportModal';
 import { ImportModal } from '../Modal/ImportModal';

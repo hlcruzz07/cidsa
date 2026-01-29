@@ -19,6 +19,20 @@ class CampusRouteController extends Controller
         return redirect()->route('campus.talisay');
     }
 
+    public function dashboard()
+    {
+        $counts = [
+            'talCounts' => $this->students->countStudentsByCampus('Talisay'),
+            'aliCounts' => $this->students->countStudentsByCampus('Alijis'),
+            'ftCounts' => $this->students->countStudentsByCampus('Fortune Towne'),
+            'binCounts' => $this->students->countStudentsByCampus('Binalbagan'),
+        ];
+
+        return Inertia::render('dashboard', [
+            'campusCounts' => $counts
+        ]);
+    }
+
     public function talisay()
     {
         $counts = [

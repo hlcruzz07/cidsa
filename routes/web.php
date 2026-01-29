@@ -28,9 +28,7 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->
 
 Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(function () {
 
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('dashboard', [CampusRouteController::class, 'dashboard'])->name('dashboard');
 
     Route::prefix('campus')->name('campus.')->group(function () {
         // Redirect /campus to /campus/talisay
