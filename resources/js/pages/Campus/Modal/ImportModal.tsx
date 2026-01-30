@@ -17,19 +17,12 @@ import { route } from 'ziggy-js';
 type ImportModalProps = {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
-    campus: string;
     reload: () => void;
 };
-export function ImportModal({
-    isOpen,
-    setIsOpen,
-    campus,
-    reload,
-}: ImportModalProps) {
+export function ImportModal({ isOpen, setIsOpen, reload }: ImportModalProps) {
     const { data, setData, processing, errors, post, clearErrors, reset } =
         useForm({
             students_file: null as File | null,
-            campus: campus || null,
         });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -38,11 +31,12 @@ export function ImportModal({
         if (processing) return;
 
         post(route('import.students'), {
-            onSuccess: () => {
+            onSuccess: (succ) => {
                 setIsOpen(false);
                 clearErrors();
                 reset();
                 reload();
+                console.log(succ);
             },
             onError: (error) => {
                 console.log('Error importing students', error);
@@ -55,9 +49,7 @@ export function ImportModal({
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                        <DialogTitle>
-                            Import {campus} Students Data{' '}
-                        </DialogTitle>
+                        <DialogTitle>Import Students Data</DialogTitle>
                         <DialogDescription>
                             Upload a CSV file containing student records.
                         </DialogDescription>

@@ -100,88 +100,76 @@ class StudentController extends Controller
     public function importStudents(Request $request)
     {
         $request->validate([
-            'students_file' => 'required|file|mimes:csv',
-            'campus' => 'required'
+            'students_file' => 'required|file|mimes:csv,txt',
         ]);
 
         $file = $request->file('students_file');
-        $campus = $request->input('campus');
         $now = Carbon::now();
 
         $handle = fopen($file->getRealPath(), 'r');
+
+        // Read header safely
         $header = fgetcsv($handle);
 
         $students = [];
+        $rowNumber = 1;
 
         $suffixes = ['JR', 'SR', 'II', 'III', 'IV', 'V'];
 
         while (($row = fgetcsv($handle)) !== false) {
+            $rowNumber++;
 
-            if (count($row) < 3) {
-                continue;
-            }
+            // Normalize row
+            $row = array_map(fn($v) => is_string($v) ? trim($v) : $v, $row);
 
-            $studentId = trim($row[0] ?? '');
-            $firstName = rtrim(trim($row[1] ?? ''), ",.");
-            $middleName = rtrim(trim($row[2] ?? ''), ",.");
-
-            // 🔧 IMPORTANT: join remaining columns with SPACE (not comma)
-            $lastNameRaw = trim(implode(' ', array_slice($row, 3)));
+            // Required fields only (DO NOT rely on column count)
+            $studentId = $row[0] ?? '';
+            $firstName = $row[1] ?? '';
+            $middleName = $row[2] ?? '';
 
             if ($studentId === '' || $firstName === '') {
                 continue;
             }
 
-            // Uppercase safely
+            // Join remaining columns as LAST NAME
+            $lastNameRaw = trim(implode(' ', array_slice($row, 3)));
+
+            // Uppercase
             $firstName = mb_strtoupper($firstName, 'UTF-8');
             $middleName = mb_strtoupper($middleName, 'UTF-8');
             $lastNameRaw = mb_strtoupper($lastNameRaw, 'UTF-8');
 
-            // 🔥 Normalize punctuation & spaces (removes commas & dots)
+            // Remove punctuation
             $firstName = preg_replace('/[,.]+/', ' ', $firstName);
             $middleName = preg_replace('/[,.]+/', ' ', $middleName);
             $lastNameRaw = preg_replace('/[,.]+/', ' ', $lastNameRaw);
 
+            // Normalize spaces
             $firstName = preg_replace('/\s+/', ' ', trim($firstName));
             $middleName = preg_replace('/\s+/', ' ', trim($middleName));
             $lastNameRaw = preg_replace('/\s+/', ' ', trim($lastNameRaw));
 
             $suffix = null;
 
-            /*
-            |--------------------------------------------------------------------------
-            | Detect suffix in FIRST NAME
-            |--------------------------------------------------------------------------
-            */
-            $firstParts = preg_split('/\s+/', $firstName);
-            $firstLastWord = end($firstParts);
-
-            if (in_array($firstLastWord, $suffixes, true)) {
-                $suffix = $firstLastWord;
-                array_pop($firstParts);
-                $firstName = trim(implode(' ', $firstParts));
+            /**
+             * Detect suffix in FIRST NAME
+             */
+            $firstParts = explode(' ', $firstName);
+            if (count($firstParts) > 1 && in_array(end($firstParts), $suffixes, true)) {
+                $suffix = array_pop($firstParts);
+                $firstName = implode(' ', $firstParts);
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Detect suffix in LAST NAME
-            |--------------------------------------------------------------------------
-            */
-            $lastParts = preg_split('/\s+/', $lastNameRaw);
-            $lastWord = end($lastParts);
-
-            if (in_array($lastWord, $suffixes, true)) {
-                $suffix = $lastWord;
+            /**
+             * Detect suffix in LAST NAME
+             */
+            $lastParts = explode(' ', $lastNameRaw);
+            if (count($lastParts) > 1 && in_array(end($lastParts), $suffixes, true)) {
+                $suffix = end($lastParts);
                 array_pop($lastParts);
             }
 
             $lastName = trim(implode(' ', $lastParts));
-
-            // Middle initial
-            $middleInitial = null;
-            if ($middleName !== '') {
-                $middleInitial = mb_substr($middleName, 0, 1);
-            }
 
             // Final validation
             if ($firstName === '' || $lastName === '') {
@@ -191,20 +179,19 @@ class StudentController extends Controller
             $students[] = [
                 'id_number' => $studentId,
                 'first_name' => $firstName,
-                'middle_init' => $middleInitial,
+                'middle_init' => $middleName !== '' ? mb_substr($middleName, 0, 1) : null,
                 'last_name' => $lastName,
                 'suffix' => $suffix,
-                'campus' => $campus,
                 'created_at' => $now,
-                'updated_at' => null,
+                'updated_at' => null, // explicitly ignored
             ];
         }
 
         fclose($handle);
 
-        $result = $this->students->create($students);
-
-        return back()->with('success', 'Students inserted: ' . $result['inserted']);
+        return response()->json(
+            $this->students->create($students)
+        );
     }
 
 

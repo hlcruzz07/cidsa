@@ -229,14 +229,35 @@ export default function StepOne({
             />
             <div className="grid gap-3 md:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                    <Label>Campus</Label>
-                    <Input type="text" readOnly value={student.campus} />
-                </div>
-                <div className="flex flex-col gap-2">
                     <Label>
-                        College
-                        <AsteriskIcon size={12} color="red" />
+                        Campus <AsteriskIcon size={12} color="red" />
                     </Label>
+                    <Select
+                        value={data.campus}
+                        onValueChange={(value) => {
+                            setData('campus', value);
+                        }}
+                    >
+                        <SelectTrigger className="">
+                            <SelectValue placeholder="Choose an option">
+                                {data.campus || 'Choose an option'}
+                            </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="w-full">
+                            <SelectGroup>
+                                {[
+                                    'Talsay',
+                                    'Alijis',
+                                    'Fortune Towne',
+                                    'Binalbagan',
+                                ].map((item, key) => (
+                                    <SelectItem key={key} value={item}>
+                                        {item}
+                                    </SelectItem>
+                                ))}
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
                     <Select
                         value={
                             data.college && data.college_name
