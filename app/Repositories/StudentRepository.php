@@ -198,7 +198,6 @@ class StudentRepository
 
         $id = $student['id'];
         $result = $this->model->findOrFail($id);
-
         $result->update($data);
         $result->save();
 
@@ -351,6 +350,11 @@ class StudentRepository
             return false;
         }
 
+
+        if ($students->contains(fn($s) => $s->is_completed && $s->is_exported)) {
+            return false;
+        }
+
         // ✅ At least one completed & not exported student
         return $students->contains(fn($s) => $s->is_completed && !$s->is_exported);
     }
@@ -379,6 +383,7 @@ class StudentRepository
     public function setExported(int $id)
     {
         $student = $this->model->findOrFail($id);
+        $student->timestamps = false;
         $student->is_exported = true;
         $student->save();
 
@@ -388,6 +393,7 @@ class StudentRepository
     public function setCompleted(int $id)
     {
         $student = $this->model->findOrFail($id);
+        $student->timestamps = false;
         $student->is_completed = true;
         $student->save();
 
