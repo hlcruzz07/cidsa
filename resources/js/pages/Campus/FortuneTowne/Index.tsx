@@ -83,7 +83,7 @@ type PageProps = {
 export default function Index() {
     const { counts } = usePage<PageProps>().props;
 
-    const titlePage = 'FortuneTowne';
+    const titlePage = 'Fortune Towne';
     const hrefPage = '/campus/fortune-towne';
     const breadcrumbs: BreadcrumbItem[] = [
         {

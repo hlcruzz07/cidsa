@@ -420,6 +420,7 @@ export default function Index() {
             {
                 onSuccess: () => {
                     setUpdatingPicture(false);
+                    setNewImage(null);
                 },
                 onError: (err) => {
                     console.log('Error updating picture', err);

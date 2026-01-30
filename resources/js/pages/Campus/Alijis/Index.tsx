@@ -160,6 +160,8 @@ export default function Index() {
 
             setCanExport(checkData);
 
+            console.log(checkData);
+
             setStudents(paginateData);
 
             const cleanedSections = paginateData.data
