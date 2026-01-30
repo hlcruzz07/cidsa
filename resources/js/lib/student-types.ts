@@ -33,3 +33,15 @@ export type StudentProps = {
     created_at: string;
     updated_at: string;
 };
+
+export type PaginateStudents = {
+    data: StudentProps[];
+    links: { url: string | null; label: string; active: boolean }[];
+    from: number;
+    to: number;
+    total: number;
+};
+export type DateRange = {
+    from: Date;
+    to?: Date;
+};

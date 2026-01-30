@@ -9,6 +9,7 @@ type FormDataProps = {
     city: string;
     barangay: string;
     zip_code: string;
+    campus: string;
     college: string;
     college_name: string;
     program: string;

@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\StudentApiController;
 
 
 Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(function () {
+    Route::get('/api/student/filterPaginateAll', [StudentApiController::class, 'filterPaginateAll'])->name('filter.paginate.all');
+
     Route::get('/api/student/filterPaginate', [StudentApiController::class, 'filterPaginate'])->name('filter.paginate');
     Route::get('/api/student/filterCheck', [StudentApiController::class, 'isStudentsExport'])->name('filter.check');
 

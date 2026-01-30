@@ -155,30 +155,118 @@ class StudentRepository
         return $query->paginate($perPage);
     }
 
+    public function filterPaginateAll(array $filters)
+    {
+        $query = $this->model->query();
+
+        // 🔍 Search
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+
+            $query->where(function ($q) use ($search) {
+                $q->where('id_number', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('suffix', 'like', "%{$search}%");
+            });
+        }
+
+
+        if (!empty($filters['year'])) {
+            $query->where('year', $filters['year']);
+        }
+
+
+        if (!empty($filters['is_exported'])) {
+            $query->where(
+                'is_exported',
+                filter_var($filters['is_exported'], FILTER_VALIDATE_BOOLEAN)
+            );
+        }
+
+        if (!empty($filters['is_completed'])) {
+            $query->where(
+                'is_completed',
+                filter_var($filters['is_completed'], FILTER_VALIDATE_BOOLEAN)
+            );
+        }
+
+        if (!empty($filters['from']) && !empty($filters['to'])) {
+            if ($filters['from'] === $filters['to']) {
+                $query->whereDate('updated_at', '=', $filters['from']);
+            } else {
+                $query->whereBetween('updated_at', [
+                    $filters['from'],
+                    $filters['to'],
+                ]);
+            }
+        }
+
+        $sort = $filters['sort'] ?? 'id';
+        $order = $filters['order'] ?? 'asc';
+
+        $query->orderBy($sort, $order);
+
+        /* 📄 Pagination */
+        $perPage = $filters['perPage'] ?? 10;
+
+        return $query->paginate($perPage);
+    }
+
     public function create(array $data)
     {
-        $data = collect($data)->values();
+        $collection = collect($data)->values();
 
+        if ($collection->isEmpty()) {
+            return [
+                'total_csv_rows' => 0,
+                'existing_in_db' => 0,
+                'existing_students' => [], // detailed info
+                'to_insert' => 0,
+                'ignored' => 0,
+                'ignored_students' => [], // detailed info
+            ];
+        }
 
-        $idNumbers = $data->pluck('id_number')->all();
+        // Unique ID numbers from CSV
+        $idNumbers = $collection->pluck('id_number')->unique()->values();
 
-        $existing = Student::whereIn('id_number', $idNumbers)
+        // Existing students in DB
+        $existingIds = $this->model
+            ->whereIn('id_number', $idNumbers)
             ->pluck('id_number')
             ->toArray();
 
-        $toInsert = $data->whereNotIn('id_number', $existing)->values();
-        $ignored = $data->whereIn('id_number', $existing)->values();
+        // Students to insert vs ignored
+        $toInsert = $collection->whereNotIn('id_number', $existingIds)->values();
+        $ignored = $collection->whereIn('id_number', $existingIds)->values();
 
-
-        $chunkSize = 500;
-
-        $toInsert->chunk($chunkSize)->each(function ($chunk) {
-            Student::insert($chunk->toArray());
+        // Chunk insert (safe for large CSVs)
+        $toInsert->chunk(500)->each(function ($chunk) {
+            $this->model->insert($chunk->toArray());
         });
 
+        // Prepare detailed info arrays
+        $existingStudents = $collection
+            ->whereIn('id_number', $existingIds)
+            ->map(fn($student) => [
+                'id_number' => $student['id_number'],
+                'full_name' => trim($student['first_name'] . ' ' . ($student['middle_init'] ?? '') . ' ' . $student['last_name'] . ' ' . ($student['suffix'] ?? ''))
+            ])
+            ->values();
+
+        $ignoredStudents = $ignored->map(fn($student) => [
+            'id_number' => $student['id_number'],
+            'full_name' => trim($student['first_name'] . ' ' . ($student['middle_init'] ?? '') . ' ' . $student['last_name'] . ' ' . ($student['suffix'] ?? ''))
+        ])->values();
 
         return [
-            'inserted' => count($toInsert) > 0 ? count($toInsert) : 0,
+            'total_csv_rows' => $collection->count(),
+            'existing_in_db' => count($existingIds),
+            'existing_students' => $existingStudents,
+            'to_insert' => $toInsert->count(),
+            'ignored' => $ignored->count(),
+            'ignored_students' => $ignoredStudents,
         ];
     }
 

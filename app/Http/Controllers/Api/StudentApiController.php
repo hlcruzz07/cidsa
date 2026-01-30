@@ -40,6 +40,27 @@ class StudentApiController extends Controller
         return $this->studentRepository->filterPaginate($filters);
     }
 
+    public function filterPaginateAll(Request $request)
+    {
+
+        $filters = $request->only([
+            'search',
+            'year',
+            'is_exported',
+            'is_completed',
+            'from',
+            'to',
+            'sort',
+            'order',
+            'perPage',
+        ]);
+
+
+
+        return $this->studentRepository->filterPaginateAll($filters);
+    }
+
+
     public function filterExport(Request $request)
     {
 

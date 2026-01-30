@@ -33,6 +33,7 @@ export default function Index() {
             city: '',
             barangay: '',
             zip_code: '',
+            campus: '',
             college: '',
             college_name: '',
             program: '',

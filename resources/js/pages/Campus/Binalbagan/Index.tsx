@@ -60,7 +60,7 @@ import ExportModal from '../Modal/ExportModal';
 import { ImportModal } from '../Modal/ImportModal';
 import PreviewModal from '../Modal/PreviewModal';
 
-type PaginatePets = {
+type PaginateStudents = {
     data: StudentProps[];
     links: { url: string | null; label: string; active: boolean }[];
     from: number;
@@ -91,7 +91,7 @@ export default function Index() {
             href: hrefPage,
         },
     ];
-    const [students, setStudents] = useState<PaginatePets | null>(null);
+    const [students, setStudents] = useState<PaginateStudents | null>(null);
 
     const [searchValue, setSearchValue] = useState<string | null>(null);
     const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
