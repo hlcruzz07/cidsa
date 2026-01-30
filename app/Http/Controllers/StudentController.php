@@ -121,60 +121,79 @@ class StudentController extends Controller
                 continue;
             }
 
+            $studentId = trim($row[0] ?? '');
+            $firstName = rtrim(trim($row[1] ?? ''), ",.");
+            $middleName = rtrim(trim($row[2] ?? ''), ",.");
 
-            $studentId = trim($row[0]);
-            $firstName = trim($row[1] ?? '');
-            $middleName = trim($row[2] ?? '');
-            $lastNameRaw = trim(implode(',', array_slice($row, 3)));
+            // 🔧 IMPORTANT: join remaining columns with SPACE (not comma)
+            $lastNameRaw = trim(implode(' ', array_slice($row, 3)));
 
             if ($studentId === '' || $firstName === '') {
                 continue;
             }
 
+            // Uppercase safely
             $firstName = mb_strtoupper($firstName, 'UTF-8');
             $middleName = mb_strtoupper($middleName, 'UTF-8');
             $lastNameRaw = mb_strtoupper($lastNameRaw, 'UTF-8');
 
+            // 🔥 Normalize punctuation & spaces (removes commas & dots)
+            $firstName = preg_replace('/[,.]+/', ' ', $firstName);
+            $middleName = preg_replace('/[,.]+/', ' ', $middleName);
+            $lastNameRaw = preg_replace('/[,.]+/', ' ', $lastNameRaw);
+
+            $firstName = preg_replace('/\s+/', ' ', trim($firstName));
+            $middleName = preg_replace('/\s+/', ' ', trim($middleName));
+            $lastNameRaw = preg_replace('/\s+/', ' ', trim($lastNameRaw));
+
             $suffix = null;
 
+            /*
+            |--------------------------------------------------------------------------
+            | Detect suffix in FIRST NAME
+            |--------------------------------------------------------------------------
+            */
             $firstParts = preg_split('/\s+/', $firstName);
-            $firstLastWord = rtrim(end($firstParts), '.');
+            $firstLastWord = end($firstParts);
 
             if (in_array($firstLastWord, $suffixes, true)) {
-                $suffix = $firstLastWord . '.';
+                $suffix = $firstLastWord;
                 array_pop($firstParts);
                 $firstName = trim(implode(' ', $firstParts));
             }
 
-            $normalizedLast = preg_replace('/,\s*/', ' ', $lastNameRaw);
-
-            $lastParts = preg_split('/\s+/', $normalizedLast);
-            $lastWord = rtrim(end($lastParts), '.');
+            /*
+            |--------------------------------------------------------------------------
+            | Detect suffix in LAST NAME
+            |--------------------------------------------------------------------------
+            */
+            $lastParts = preg_split('/\s+/', $lastNameRaw);
+            $lastWord = end($lastParts);
 
             if (in_array($lastWord, $suffixes, true)) {
-                $suffix = $lastWord . '.';
+                $suffix = $lastWord;
                 array_pop($lastParts);
             }
 
             $lastName = trim(implode(' ', $lastParts));
 
+            // Middle initial
             $middleInitial = null;
             if ($middleName !== '') {
-                $middleInitial = mb_substr($middleName, 0, 1) . '.';
+                $middleInitial = mb_substr($middleName, 0, 1);
             }
 
-
+            // Final validation
             if ($firstName === '' || $lastName === '') {
                 continue;
             }
-
 
             $students[] = [
                 'id_number' => $studentId,
                 'first_name' => $firstName,
                 'middle_init' => $middleInitial,
                 'last_name' => $lastName,
-                'suffix' => $suffix ?? null,
+                'suffix' => $suffix,
                 'campus' => $campus,
                 'created_at' => $now,
                 'updated_at' => null,

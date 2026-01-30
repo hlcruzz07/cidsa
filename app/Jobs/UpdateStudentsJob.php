@@ -42,7 +42,7 @@ class UpdateStudentsJob implements ShouldQueue
     public function handle(StudentRepository $studentRepository): void
     {
         \Log::info('Starting student update job', [
-            'student_id' => $this->studentIdNumber,
+            'primary_id' => $this->studentIdNumber,
         ]);
 
         try {
@@ -53,7 +53,7 @@ class UpdateStudentsJob implements ShouldQueue
             );
 
             \Log::info('Student update job completed', [
-                'student_id' => $result->id,
+                'primary_id' => $result->id,
                 'id_number' => $this->studentIdNumber,
             ]);
 

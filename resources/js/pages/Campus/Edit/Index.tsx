@@ -96,7 +96,7 @@ export default function Index() {
             first_name: '',
             middle_init: null as string | null,
             last_name: '',
-            suffix: null as string | null,
+            suffix: student.suffix as string | null,
             emergency_first_name: '',
             emergency_middle_init: null as string | null,
             emergency_last_name: '',
@@ -128,7 +128,6 @@ export default function Index() {
     const [selectedProvinceId, setSelectedProvinceId] = useState<number | null>(
         null,
     );
-
     const [cities, setCities] = useState<CitiesProp>([]);
     const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
 
@@ -223,7 +222,6 @@ export default function Index() {
             year: student.year ?? '',
             section: student.section ?? '',
         });
-
         // Enable program dropdown if college is set
         if (student.college) {
             setIsProgramDisabled(false);
@@ -428,33 +426,46 @@ export default function Index() {
             },
         );
     };
+    useEffect(() => {
+        console.log('Student suffix:', student?.suffix);
+        console.log('Form suffix data:', data.suffix);
+        console.log('Options array:', [
+            'JR',
+            'SR',
+            'II',
+            'III',
+            'IV',
+            'V',
+            'None',
+        ]);
+    }, [student, data.suffix]);
 
     //SIGNATURE UPLOADING
     const [newSignature, setNewSignature] = useState<File | null>(null);
     const [updatingSignature, setUpdatingSignature] = useState(false);
 
-    const handleSaveSignature = (file: File) => {
-        setNewSignature(file);
-    };
+    // const handleSaveSignature = (file: File) => {
+    //     setNewSignature(file);
+    // };
 
-    const handleSignatureUpdate = () => {
-        if (updatingSignature) return;
+    // const handleSignatureUpdate = () => {
+    //     if (updatingSignature) return;
 
-        router.post(
-            route('update.student.picture', student.id),
-            {
-                picture: newImage,
-            },
-            {
-                onSuccess: () => {
-                    setUpdatingPicture(false);
-                },
-                onError: (err) => {
-                    console.log('Error updating picture', err);
-                },
-            },
-        );
-    };
+    //     router.post(
+    //         route('update.student.picture', student.id),
+    //         {
+    //             picture: newImage,
+    //         },
+    //         {
+    //             onSuccess: () => {
+    //                 setUpdatingPicture(false);
+    //             },
+    //             onError: (err) => {
+    //                 console.log('Error updating picture', err);
+    //             },
+    //         },
+    //     );
+    // };
 
     // Show loading while initializing
     if (isInitializing && student?.province) {
