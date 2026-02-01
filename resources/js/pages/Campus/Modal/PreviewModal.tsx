@@ -8,7 +8,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { StudentProps } from '@/lib/student-types';
+import { StudentProps } from '@/lib/custom-types';
 
 type PreviewModalProps = {
     students: StudentProps[] | null;

@@ -34,6 +34,31 @@ export type StudentProps = {
     updated_at: string;
 };
 
+export type UserProps = {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    campus: string;
+};
+
+export type ExportedStudent = {
+    id: number;
+    export_id: number;
+    student_id: number;
+    created_at: string;
+    student: StudentProps;
+};
+
+export type ExportHistory = {
+    id: number;
+    user_id: number;
+    file_name: string;
+    user: UserProps;
+    exported_students: ExportedStudent[];
+    created_at: string;
+};
+
 export type PaginateStudents = {
     data: StudentProps[];
     links: { url: string | null; label: string; active: boolean }[];
@@ -41,6 +66,15 @@ export type PaginateStudents = {
     to: number;
     total: number;
 };
+
+export type PaginateExportHistory = {
+    data: ExportHistory[];
+    links: { url: string | null; label: string; active: boolean }[];
+    from: number;
+    to: number;
+    total: number;
+};
+
 export type DateRange = {
     from: Date;
     to?: Date;

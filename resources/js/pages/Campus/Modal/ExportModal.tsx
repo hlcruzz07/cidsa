@@ -14,7 +14,7 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { StudentProps } from '@/lib/student-types';
+import { StudentProps } from '@/lib/custom-types';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 
@@ -81,7 +81,9 @@ export default function ExportModal({
             file_name: fileName,
         });
 
-        resetAll();
+        setTimeout(() => {
+            resetAll();
+        }, 3000);
     };
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -148,37 +150,37 @@ export default function ExportModal({
                         onClick={() => {
                             if (!students || students.length === 0) return;
                             if (!exportLimit) return;
-                             if (!students || students.length === 0) {
-                                 toast.error('Students not found');
-                                 return;
-                             }
+                            if (!students || students.length === 0) {
+                                toast.error('Students not found');
+                                return;
+                            }
 
-                             if (students.length <= 1) {
-                                 toast.error(
-                                     'Students required for export is up to 2-100',
-                                 );
-                                 return;
-                             }
+                            if (students.length <= 1) {
+                                toast.error(
+                                    'Students required for export is up to 2-100',
+                                );
+                                return;
+                            }
 
-                             if (!fileName) {
-                                 toast.error('Please Enter File Name');
-                                 return;
-                             }
+                            if (!fileName) {
+                                toast.error('Please Enter File Name');
+                                return;
+                            }
 
-                             if (!exportLimit) {
-                                 toast.error('Please set limit first');
-                                 return;
-                             }
+                            if (!exportLimit) {
+                                toast.error('Please set limit first');
+                                return;
+                            }
 
-                             if (exportLimit <= 1) {
-                                 toast.error('Limit should be more than 1');
-                                 return;
-                             }
+                            if (exportLimit <= 1) {
+                                toast.error('Limit should be more than 1');
+                                return;
+                            }
 
-                             if (exportLimit > 100) {
-                                 toast.error('Limit should be more than 1');
-                                 return;
-                             }
+                            if (exportLimit > 100) {
+                                toast.error('Limit should be more than 1');
+                                return;
+                            }
                             setIsPreviewing(true);
                             setTimeout(() => {
                                 onPreview(students.slice(0, exportLimit));

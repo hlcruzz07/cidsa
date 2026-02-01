@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\StudentApiController;
 use App\Http\Controllers\CampusRouteController;
+use App\Http\Controllers\ExportHistoryController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\StudentController;
 use Illuminate\Support\Facades\Route;
@@ -19,7 +20,6 @@ Route::middleware('student.validated')->group(function () {
     Route::post('/student/step/2', [StudentController::class, 'validateStepTwo'])->name('validateStepTwo');
     Route::post('/student/update', [StudentController::class, 'updateStudent'])->name('student.update');
     Route::post('/student/cancel', [StudentController::class, 'cancel'])->name('student.cancel');
-
 });
 
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
@@ -45,7 +45,6 @@ Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(f
         //EDIT STUDENT ROUTE
         Route::get('/student/edit/{id}', [StudentController::class, 'edit'])->name('edit.student');
         Route::get('/student/view/{id}', [StudentController::class, 'view'])->name('view.student');
-
     });
 
     // STUDENT UPDATE ROUTES
@@ -59,7 +58,10 @@ Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(f
     Route::get('/export/student/{id}', [StudentController::class, 'exportSingleStudent'])->name('export.student');
     Route::get('/export/students', [StudentController::class, 'exportStudents'])->name('export.students');
 
-
+    // Export History
+    Route::get('/export-history', [ExportHistoryController::class, 'index'])->name('export.history');
+    Route::get('/export-history/{id}/view', [ExportHistoryController::class, 'view'])->name('view.export.history');
+    Route::get('/export-history/download/', [ExportHistoryController::class, 'exportStudents'])->name('download.export.history');
 });
 
 require __DIR__ . '/settings.php';

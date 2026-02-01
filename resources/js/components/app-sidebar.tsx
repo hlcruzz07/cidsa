@@ -9,22 +9,22 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { ImportModal } from '@/pages/Campus/Modal/ImportModal';
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import {
-    BarChart2,
     Building2,
-    FolderArchiveIcon,
+    CloudDownloadIcon,
+    FolderUpIcon,
     Landmark,
     LayoutGrid,
-    LockIcon,
-    LogsIcon,
     School,
     Trees,
-    Users,
 } from 'lucide-react';
+import { useState } from 'react';
 import AppLogo from './app-logo';
+import { Button } from './ui/button';
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
@@ -57,56 +57,72 @@ const campusesNavItems: NavItem[] = [
 
 const manageNavItems: NavItem[] = [
     {
-        title: 'Academic Directory',
-        href: dashboard(),
-        icon: FolderArchiveIcon,
+        title: 'Export History',
+        href: '/export-history',
+        icon: FolderUpIcon,
     },
-    {
-        title: 'Reports',
-        href: dashboard(),
-        icon: BarChart2,
-    },
-    {
-        title: 'Activity Logs',
-        href: dashboard(),
-        icon: LogsIcon,
-    },
-    {
-        title: 'Users',
-        href: dashboard(),
-        icon: Users,
-    },
-    {
-        title: 'Roles & Permission',
-        href: dashboard(),
-        icon: LockIcon,
-    },
+    // {
+    //     title: 'Reports',
+    //     href: dashboard(),
+    //     icon: BarChart2,
+    // },
+    // {
+    //     title: 'Activity Logs',
+    //     href: dashboard(),
+    //     icon: LogsIcon,
+    // },
+    // {
+    //     title: 'Users',
+    //     href: dashboard(),
+    //     icon: Users,
+    // },
+    // {
+    //     title: 'Roles & Permission',
+    //     href: dashboard(),
+    //     icon: LockIcon,
+    // },
 ];
 
 export function AppSidebar() {
+    // Modal
+    const [openImportModal, setOpenImportModal] = useState(false);
+
     return (
-        <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
-                                <AppLogo />
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-            </SidebarHeader>
+        <>
+            <ImportModal
+                isOpen={openImportModal}
+                setIsOpen={() => setOpenImportModal(false)}
+            />
 
-            <SidebarContent>
-                <NavMain title="Main" items={mainNavItems} />
-                <NavMain title="Campus" items={campusesNavItems} />
-                {/* <NavMain title="Management" items={manageNavItems} /> */}
-            </SidebarContent>
+            <Sidebar collapsible="icon" variant="inset">
+                <SidebarHeader>
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton size="lg" asChild>
+                                <Link href={dashboard()} prefetch>
+                                    <AppLogo />
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                </SidebarHeader>
 
-            <SidebarFooter>
-                <NavUser />
-            </SidebarFooter>
-        </Sidebar>
+                <SidebarContent>
+                    <NavMain title="Main" items={mainNavItems} />
+                    <NavMain title="Campus" items={campusesNavItems} />
+                    <NavMain title="Management" items={manageNavItems} />
+                </SidebarContent>
+
+                <SidebarFooter>
+                    <Button
+                        type="button"
+                        onClick={() => setOpenImportModal(true)}
+                    >
+                        <CloudDownloadIcon /> Import Students
+                    </Button>
+                    <NavUser />
+                </SidebarFooter>
+            </Sidebar>
+        </>
     );
 }

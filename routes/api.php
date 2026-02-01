@@ -1,7 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\ExportHistoryApiController;
 use App\Http\Controllers\Api\StudentApiController;
-
+use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(function () {
     Route::get('/api/student/filterPaginateAll', [StudentApiController::class, 'filterPaginateAll'])->name('filter.paginate.all');
@@ -14,4 +15,5 @@ Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(f
     Route::get('/api/student-chart', [StudentApiController::class, 'studentsChart']);
     Route::get('/api/dashboard-chart', [StudentApiController::class, 'dashboardChart']);
 
+    Route::get('/api/export-history', [ExportHistoryApiController::class, 'exportHistoryPaginate'])->name('filter.export.history');
 });

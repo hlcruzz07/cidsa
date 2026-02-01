@@ -12,7 +12,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
-import { StudentProps } from '@/lib/student-types';
+import { StudentProps } from '@/lib/custom-types';
 import { BreadcrumbItem } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import * as imageConversion from 'image-conversion';

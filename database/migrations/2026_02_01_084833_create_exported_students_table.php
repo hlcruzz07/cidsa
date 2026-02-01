@@ -11,9 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('students_tals', function (Blueprint $table) {
+        Schema::create('exported_students', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('export_id');
+            $table->unsignedBigInteger('student_id');
             $table->timestamps();
+
+            $table->foreign('student_id')->references('id')->on('students');
+            $table->foreign('export_id')->references('id')->on('export_histories');
         });
     }
 
@@ -22,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('students_tals');
+        Schema::dropIfExists('exported_students');
     }
 };

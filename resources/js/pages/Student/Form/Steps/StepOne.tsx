@@ -24,7 +24,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { StudentProps } from '@/lib/student-types';
+import { StudentProps } from '@/lib/custom-types';
 import { campusDirectoryArr, cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import {
@@ -64,7 +64,7 @@ export default function StepOne({
     const [isMajorDisabled, setIsMajorDisabled] = useState(true);
 
     const collegeArrFiltered = campusDirectoryArr.find((collegeItem) =>
-        collegeItem.campus.includes(student.campus),
+        collegeItem.campus.includes(data.campus),
     )?.colleges;
 
     const programArrFiltered = collegeArrFiltered?.find(
@@ -122,6 +122,21 @@ export default function StepOne({
     useEffect(() => {
         fetchProvinces();
     }, []);
+
+    console.log(typeof data.college);
+
+    const resetForCampusChange = () => {
+        setData('college', '');
+        setData('college_name', '');
+
+        setData('program', '');
+        setIsProgramDisabled(true);
+
+        setData('major', null);
+        setIsMajorDisabled(true);
+
+        setData('section', '');
+    };
 
     const resetForCollegeChange = () => {
         setData('program', '');
@@ -236,6 +251,7 @@ export default function StepOne({
                         value={data.campus}
                         onValueChange={(value) => {
                             setData('campus', value);
+                            resetForCampusChange();
                         }}
                     >
                         <SelectTrigger className="">
@@ -246,7 +262,7 @@ export default function StepOne({
                         <SelectContent className="w-full">
                             <SelectGroup>
                                 {[
-                                    'Talsay',
+                                    'Talisay',
                                     'Alijis',
                                     'Fortune Towne',
                                     'Binalbagan',
@@ -258,9 +274,16 @@ export default function StepOne({
                             </SelectGroup>
                         </SelectContent>
                     </Select>
+                    <InputError message={errors.campus} />
+                </div>
+                <div className="flex flex-col gap-2">
+                    <Label>
+                        College <AsteriskIcon size={12} color="red" />
+                    </Label>
                     <Select
+                        disabled={data.campus === ''}
                         value={
-                            data.college && data.college_name
+                            data.campus && data.college && data.college_name
                                 ? JSON.stringify({
                                       value: data.college,
                                       name: data.college_name,

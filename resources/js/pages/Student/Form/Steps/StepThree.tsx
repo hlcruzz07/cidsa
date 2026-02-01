@@ -4,7 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { StudentProps } from '@/lib/student-types';
+import { StudentProps } from '@/lib/custom-types';
 import { usePage } from '@inertiajs/react';
 import { AlertCircleIcon, SendIcon } from 'lucide-react';
 import { useMemo } from 'react';

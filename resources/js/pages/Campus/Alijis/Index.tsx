@@ -24,7 +24,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
-import { StudentProps } from '@/lib/student-types';
+import { PaginateStudents, StudentProps } from '@/lib/custom-types';
 import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
 import { type BreadcrumbItem } from '@/types';
@@ -43,7 +43,6 @@ import {
     EllipsisIcon,
     EyeIcon,
     FilterXIcon,
-    ImportIcon,
     PencilIcon,
     Trash2Icon,
     UploadCloudIcon,
@@ -57,16 +56,7 @@ import { StudentsUpdateChart } from '../../../components/Campus/StudentChart';
 import Widget from '../../../components/Campus/Widget';
 import { AddStudentModal } from '../Modal/AddStudentModal';
 import ExportModal from '../Modal/ExportModal';
-import { ImportModal } from '../Modal/ImportModal';
 import PreviewModal from '../Modal/PreviewModal';
-
-type PaginatePets = {
-    data: StudentProps[];
-    links: { url: string | null; label: string; active: boolean }[];
-    from: number;
-    to: number;
-    total: number;
-};
 
 type DateRange = {
     from: Date;
@@ -91,7 +81,7 @@ export default function Index() {
             href: hrefPage,
         },
     ];
-    const [students, setStudents] = useState<PaginatePets | null>(null);
+    const [students, setStudents] = useState<PaginateStudents | null>(null);
 
     const [searchValue, setSearchValue] = useState<string | null>(null);
     const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
@@ -159,8 +149,6 @@ export default function Index() {
             );
 
             setCanExport(checkData);
-
-            console.log(checkData);
 
             setStudents(paginateData);
 
@@ -299,8 +287,6 @@ export default function Index() {
     >(null);
     const [openPreviewModal, setOpenPreviewModal] = useState(false);
 
-    // Modal
-    const [openImportModal, setOpenImportModal] = useState(false);
     const [openAddStudentModal, setOpenAddStudentModal] = useState(false);
     const [openExportModal, setOpenExportModal] = useState(false);
 
@@ -316,12 +302,6 @@ export default function Index() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Campus - ${titlePage}`} />
-            <ImportModal
-                isOpen={openImportModal}
-                setIsOpen={() => setOpenImportModal(false)}
-                campus={titlePage}
-                reload={handleFilter}
-            />
             <PreviewModal
                 students={previewStudents}
                 isOpen={openPreviewModal}
@@ -346,13 +326,8 @@ export default function Index() {
             />
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="grid auto-rows-min gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="grid auto-rows-min gap-4 sm:grid-cols-2 lg:grid-cols-2">
                     <Widget type="totalUpdates" count={counts.totalUpdates} />
-                    <Widget type="readyStudents" count={counts.readyStudents} />
-                    <Widget
-                        type="incompleteStudents"
-                        count={counts.incompleteStudents}
-                    />
                     <Widget
                         type="exportedStudents"
                         count={counts.exportedStudents}
@@ -481,9 +456,7 @@ export default function Index() {
                                     </DropdownMenuGroup>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                            <Button onClick={() => setOpenImportModal(true)}>
-                                <ImportIcon /> Import
-                            </Button>
+
                             <Button
                                 disabled={!canExport || isFetchingExport}
                                 onClick={fetchExportableStudents}
@@ -1070,7 +1043,7 @@ export default function Index() {
                                     <>
                                         <tr>
                                             <td
-                                                colSpan={12}
+                                                colSpan={13}
                                                 className="force-center border p-3 text-center"
                                             >
                                                 No records found.

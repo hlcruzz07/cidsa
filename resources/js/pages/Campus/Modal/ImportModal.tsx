@@ -17,7 +17,7 @@ import { route } from 'ziggy-js';
 type ImportModalProps = {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
-    reload: () => void;
+    reload?: () => void;
 };
 export function ImportModal({ isOpen, setIsOpen, reload }: ImportModalProps) {
     const { data, setData, processing, errors, post, clearErrors, reset } =
@@ -31,12 +31,13 @@ export function ImportModal({ isOpen, setIsOpen, reload }: ImportModalProps) {
         if (processing) return;
 
         post(route('import.students'), {
-            onSuccess: (succ) => {
+            onSuccess: () => {
                 setIsOpen(false);
                 clearErrors();
                 reset();
-                reload();
-                console.log(succ);
+                if (reload) {
+                    reload();
+                }
             },
             onError: (error) => {
                 console.log('Error importing students', error);

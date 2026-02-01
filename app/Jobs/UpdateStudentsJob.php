@@ -56,7 +56,6 @@ class UpdateStudentsJob implements ShouldQueue
                 'primary_id' => $result->id,
                 'id_number' => $this->studentIdNumber,
             ]);
-
         } catch (\Throwable $e) {
             \Log::error('Failed to update student in job', [
                 'student_id_number' => $this->studentIdNumber,

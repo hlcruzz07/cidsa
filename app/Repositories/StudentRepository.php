@@ -6,7 +6,7 @@ use App\Models\Student;
 use App\Jobs\CreateStudentsBatchJob;
 use Carbon\Carbon;
 use Exception;
-
+use Illuminate\Support\Facades\DB;
 
 class StudentRepository
 {
@@ -44,6 +44,13 @@ class StudentRepository
     {
         return $this->model->findOrFail($id);
     }
+
+    public function getStudetsByIds(array $ids)
+    {
+        return $this->model->whereIn('id', $ids)->get();
+    }
+
+
     public function findByStudentId(string $id_number)
     {
         return $this->model->findOrFail(['id_number' => $id_number]);
@@ -158,7 +165,6 @@ class StudentRepository
     public function filterPaginateAll(array $filters)
     {
         $query = $this->model->query();
-
         // 🔍 Search
         if (!empty($filters['search'])) {
             $search = $filters['search'];
@@ -171,31 +177,15 @@ class StudentRepository
             });
         }
 
-
-        if (!empty($filters['year'])) {
-            $query->where('year', $filters['year']);
-        }
-
-
-        if (!empty($filters['is_exported'])) {
-            $query->where(
-                'is_exported',
-                filter_var($filters['is_exported'], FILTER_VALIDATE_BOOLEAN)
-            );
-        }
-
-        if (!empty($filters['is_completed'])) {
-            $query->where(
-                'is_completed',
-                filter_var($filters['is_completed'], FILTER_VALIDATE_BOOLEAN)
-            );
-        }
-
+        $query->where(
+            'is_completed',
+            filter_var(false, FILTER_VALIDATE_BOOLEAN)
+        );
         if (!empty($filters['from']) && !empty($filters['to'])) {
             if ($filters['from'] === $filters['to']) {
-                $query->whereDate('updated_at', '=', $filters['from']);
+                $query->whereDate('created_at', '=', $filters['from']);
             } else {
-                $query->whereBetween('updated_at', [
+                $query->whereBetween('created_at', [
                     $filters['from'],
                     $filters['to'],
                 ]);
@@ -273,17 +263,6 @@ class StudentRepository
     public function update(array $data, string $student_id)
     {
         $student = $this->findStudentByIdNumber($student_id);
-
-        $campus = $student->campus;
-
-        if (!$campus) {
-            throw new Exception('Campus not specified.');
-        }
-
-        if (!isset($this->paths[$campus])) {
-            throw new Exception("Invalid campus: $campus");
-        }
-
         $id = $student['id'];
         $result = $this->model->findOrFail($id);
         $result->update($data);
@@ -645,11 +624,11 @@ class StudentRepository
             default => $now->copy()->subDays(90),
         };
 
-        $students = \DB::table('students')
+        $students = DB::table('students')
             ->select(
-                \DB::raw('DATE(updated_at) as date'),
+                DB::raw('DATE(updated_at) as date'),
                 'campus',
-                \DB::raw('COUNT(*) as total')
+                DB::raw('COUNT(*) as total')
             )
             ->where('updated_at', '>=', $startDate)
             ->groupBy('date', 'campus')
@@ -682,5 +661,4 @@ class StudentRepository
     {
         return $this->model->where('campus', $campus)->count() ?? 0;
     }
-
 }

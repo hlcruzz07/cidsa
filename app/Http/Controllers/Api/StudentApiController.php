@@ -45,14 +45,12 @@ class StudentApiController extends Controller
 
         $filters = $request->only([
             'search',
-            'year',
-            'is_exported',
-            'is_completed',
             'from',
             'to',
             'sort',
             'order',
             'perPage',
+
         ]);
 
 
@@ -130,5 +128,4 @@ class StudentApiController extends Controller
 
         return $this->studentRepository->countStudentUpdatesPerCampus($filters['timeRange']);
     }
-
 }

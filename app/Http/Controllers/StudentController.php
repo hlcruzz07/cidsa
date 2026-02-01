@@ -11,9 +11,9 @@ use App\Http\Requests\UpdateStudentRequest;
 use App\Http\Requests\ValidateStudentRequest;
 use App\Jobs\ImportStudentsJob;
 use App\Jobs\UpdateStudentsJob;
+use App\Repositories\ExportRepository;
 use App\Repositories\StudentRepository;
 use Carbon\Carbon;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -24,10 +24,12 @@ class StudentController extends Controller
 {
 
     protected $students;
+    protected $export;
 
-    public function __construct(StudentRepository $studentRepository)
+    public function __construct(StudentRepository $studentRepository, ExportRepository $exportRepository)
     {
         $this->students = $studentRepository;
+        $this->export = $exportRepository;
     }
     public function index()
     {
@@ -61,14 +63,13 @@ class StudentController extends Controller
 
         $studentIdNumber = session('validated_student');
         $student = $this->students->findStudentByIdNumber($studentIdNumber);
-        $campus = $student->campus;
 
         $data['picture'] = $request->hasFile('picture')
-            ? $this->students->storeFile($request->file('picture'), $this->students->paths[$campus]['picture'])
+            ? $this->students->storeFile($request->file('picture'), $this->students->paths[$data['campus']]['picture'])
             : null;
 
         $data['e_signature'] = $request->hasFile('e_signature')
-            ? $this->students->storeFile($request->file('e_signature'), $this->students->paths[$campus]['e_signature'])
+            ? $this->students->storeFile($request->file('e_signature'), $this->students->paths[$data['campus']]['e_signature'])
             : null;
 
         UpdateStudentsJob::dispatch($data, $student->id_number);
@@ -215,6 +216,10 @@ class StudentController extends Controller
 
             $zip->addFile(Storage::path($excelTempPath), $excelName);
 
+            $user_id = $request->user()->id;
+
+            $export_id = $this->export->addExportHistory($user_id, $fileName);
+
             // 2️⃣ Loop through students
             foreach ($students as $student) {
 
@@ -253,7 +258,10 @@ class StudentController extends Controller
                 //         'receipts/' . basename($student['receipt_img'])
                 //     );
                 // }
+
                 $this->students->setExported($student['id']);
+
+                $this->export->addExportedStudent($export_id, $student['id']);
             }
 
 
@@ -403,5 +411,4 @@ class StudentController extends Controller
         // Download ZIP
         return response()->download($zipPath)->deleteFileAfterSend(true);
     }
-
 }
