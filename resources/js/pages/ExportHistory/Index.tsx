@@ -306,6 +306,7 @@ export default function Index() {
                                             'Role',
                                             'Campus',
                                             'File Name',
+                                            'Type',
                                             'Date Exported',
                                             'Action',
                                         ].map((header) => (
@@ -381,6 +382,32 @@ export default function Index() {
                                                 data-label="File Name"
                                             >
                                                 {row.file_name}.zip
+                                            </td>
+
+                                            <td
+                                                className="p-2 whitespace-nowrap"
+                                                data-label="Type"
+                                            >
+                                                {row.exported_students.length >
+                                                1 ? (
+                                                    <>
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="bg-blue-500 text-white"
+                                                        >
+                                                            Multiple
+                                                        </Badge>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="bg-yellow-500 text-white"
+                                                        >
+                                                            Single
+                                                        </Badge>
+                                                    </>
+                                                )}
                                             </td>
 
                                             <td

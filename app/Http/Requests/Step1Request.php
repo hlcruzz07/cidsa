@@ -58,6 +58,7 @@ class Step1Request extends FormRequest
             'city' => 'required',
             'barangay' => 'required',
             'zip_code' => 'required|digits:4',
+            'campus' => 'required',
             'college' => 'required',
             'program' => 'required',
             'major' => 'required_if:hasMajor,true|nullable',
@@ -85,7 +86,7 @@ class Step1Request extends FormRequest
             'barangay.required' => 'Barangay is required.',
             'zip_code.required' => 'ZIP code is required.',
             'zip_code.digits' => 'ZIP code must be exactly 4 digits.',
-
+            'campus.required' => 'Please select your campus.',
             'college.required' => 'Please select your college.',
             'program.required' => 'Program field is required.',
             'major.required_if' => 'You must select a major because the chosen program has available majors.',

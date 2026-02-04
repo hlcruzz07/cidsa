@@ -22,23 +22,18 @@ class Step2Request extends FormRequest
     public function rules(): array
     {
         return [
-            'picture' => 'required|mimes:jpg|max:2048',
-            'e_signature' => 'required|mimes:jpg|max:1024'
-
+            'picture' => 'required|max:2048',
+            'e_signature' => 'required|max:1024',
         ];
     }
 
-    public function messages()
+    public function messages(): array
     {
         return [
             'picture.required' => 'Please upload your picture.',
-            'picture.mimes' => 'The picture must be in JPG format only.',
-            'picture.image' => 'The uploaded file must be a valid image.',
             'picture.max' => 'The picture must not be larger than 2MB.',
 
             'e_signature.required' => 'Please provide your e-signature.',
-            'e_signature.mimes' => 'The e-signature must be in BMP format.',
-            'e_signature.image' => 'The e-signature must be a valid image.',
             'e_signature.max' => 'The e-signature file must not exceed 1MB.',
         ];
     }

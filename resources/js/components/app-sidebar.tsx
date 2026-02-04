@@ -44,14 +44,14 @@ const campusesNavItems: NavItem[] = [
         icon: Building2,
     },
     {
-        title: 'Binalbagan',
-        href: '/campus/binalbagan',
-        icon: Trees,
-    },
-    {
         title: 'Fortune Towne',
         href: '/campus/fortune-towne',
         icon: Landmark,
+    },
+    {
+        title: 'Binalbagan',
+        href: '/campus/binalbagan',
+        icon: Trees,
     },
 ];
 

@@ -1,4 +1,5 @@
 <?php
+use App\Http\Middleware\CheckIsExported;
 use App\Http\Middleware\CheckStudentComplete;
 use App\Http\Middleware\CheckStudentExportable;
 use App\Http\Middleware\CheckStudentHasSession;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'validate.student' => ValidateStudent::class,
             'student.validated' => CheckValidatedStudent::class,
             'student.has.session' => CheckStudentHasSession::class,
+            'check.is.exported' => CheckIsExported::class,
         ]);
         $middleware->web(append: [
             HandleAppearance::class,

@@ -190,9 +190,9 @@ class StudentController extends Controller
 
         fclose($handle);
 
-        return response()->json(
-            $this->students->create($students)
-        );
+        $result = $this->students->create($students);
+
+        return redirect()->back()->with('success', "Students imported: " . $result['to_insert']);
     }
 
 
@@ -351,6 +351,10 @@ class StudentController extends Controller
 
         $zip = new ZipArchive;
 
+        $user_id = auth()->user()->id;
+
+        $export_id = $this->export->addExportHistory($user_id, $student->id_number);
+
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
 
             // 1️⃣ Generate Excel file temporarily
@@ -398,6 +402,10 @@ class StudentController extends Controller
             //     );
             // }
             $this->students->setExported($student->id);
+
+
+
+            $this->export->addExportedStudent($export_id, $student->id);
 
 
             $zip->close();

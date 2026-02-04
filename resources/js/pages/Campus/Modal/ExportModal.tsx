@@ -81,9 +81,8 @@ export default function ExportModal({
             file_name: fileName,
         });
 
-        setTimeout(() => {
-            resetAll();
-        }, 3000);
+        onLoad();
+        resetAll();
     };
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>

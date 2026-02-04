@@ -322,7 +322,7 @@ export default function Index() {
                 }}
                 students={exportedStudents}
                 setIsOpen={() => setOpenExportModal(false)}
-                onLoad={handleFilter}
+                onLoad={() => handleFilter()}
             />
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">

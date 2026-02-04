@@ -55,9 +55,8 @@ Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(f
 
     // IMPORT/EXPORT ROUTES
     Route::post('/import', [StudentController::class, 'importStudents'])->name('import.students');
-    Route::get('/export/student/{id}', [StudentController::class, 'exportSingleStudent'])->name('export.student');
+    Route::get('/export/student/{id}', [StudentController::class, 'exportSingleStudent'])->middleware('check.is.exported')->name('export.student');
     Route::get('/export/students', [StudentController::class, 'exportStudents'])->name('export.students');
-
     // Export History
     Route::get('/export-history', [ExportHistoryController::class, 'index'])->name('export.history');
     Route::get('/export-history/{id}/view', [ExportHistoryController::class, 'view'])->name('view.export.history');

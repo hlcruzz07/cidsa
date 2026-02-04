@@ -115,8 +115,6 @@ export default function Index() {
 
     const [openCancelModal, setOpenCancelModal] = useState(false);
 
-    console.log(data);
-
     return (
         <>
             <StudentFormLayout>

@@ -227,9 +227,8 @@ export default function StepTwo({
                             <div className="flex gap-3">
                                 <ImageIcon className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
                                 <p className="m-0 p-0 dark:text-gray-100">
-                                    File Requirements: The image must be in
-                                    JPEG/JPG format and cropped to a 1×1 photo
-                                    dimension.
+                                    File Requirements: The image must be cropped
+                                    to a 1×1 photo dimension.
                                 </p>
                             </div>
                         </div>
@@ -246,7 +245,7 @@ export default function StepTwo({
                         type="file"
                         name="picture"
                         id="picture"
-                        accept=".jpg"
+                        accept=".jpg, .jpeg, .png"
                         onChange={handleFileChange}
                         className="hidden"
                     />

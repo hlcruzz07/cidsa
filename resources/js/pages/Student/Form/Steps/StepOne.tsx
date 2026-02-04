@@ -123,8 +123,6 @@ export default function StepOne({
         fetchProvinces();
     }, []);
 
-    console.log(typeof data.college);
-
     const resetForCampusChange = () => {
         setData('college', '');
         setData('college_name', '');

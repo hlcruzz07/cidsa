@@ -73,6 +73,14 @@ class StudentRepository
             ->exists();
     }
 
+    public function isStudentExported(int $id): bool
+    {
+        return $this->model
+            ->where('id', $id)
+            ->where('is_exported', true)
+            ->exists();
+    }
+
     public function isStudentCompletedById(int $id): bool
     {
         return $this->model
