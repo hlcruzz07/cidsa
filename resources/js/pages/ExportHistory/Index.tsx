@@ -90,8 +90,6 @@ export default function Index() {
             );
 
             setExportedData(paginateData);
-
-            console.log(paginateData);
         } catch (error) {
             console.error('Error fetching exportedData:', error);
         }

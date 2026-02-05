@@ -26,13 +26,8 @@ import { route } from 'ziggy-js';
 type ImportModalProps = {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
-    campus: string;
 };
-export function AddStudentModal({
-    isOpen,
-    setIsOpen,
-    campus,
-}: ImportModalProps) {
+export function AddStudentModal({ isOpen, setIsOpen }: ImportModalProps) {
     const { data, setData, processing, errors, post, clearErrors, reset } =
         useForm({
             id_number: '',
@@ -40,7 +35,6 @@ export function AddStudentModal({
             middle_init: null as string | null,
             last_name: '',
             suffix: null as string | null,
-            campus: campus as string | null,
         });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -66,7 +60,7 @@ export function AddStudentModal({
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                        <DialogTitle>Add {campus} Student</DialogTitle>
+                        <DialogTitle>Add Student</DialogTitle>
                         <DialogDescription>
                             Fill out the form below to add a new student.
                         </DialogDescription>

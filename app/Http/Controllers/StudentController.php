@@ -351,9 +351,9 @@ class StudentController extends Controller
 
         $zip = new ZipArchive;
 
-        $user_id = auth()->user()->id;
+        // $user_id = auth()->user()->id;
 
-        $export_id = $this->export->addExportHistory($user_id, $student->id_number);
+        // $export_id = $this->export->addExportHistory($user_id, $student->id_number);
 
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
 
@@ -405,7 +405,7 @@ class StudentController extends Controller
 
 
 
-            $this->export->addExportedStudent($export_id, $student->id);
+            // $this->export->addExportedStudent($export_id, $student->id);
 
 
             $zip->close();

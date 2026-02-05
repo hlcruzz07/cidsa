@@ -27,7 +27,6 @@ class AddStudentRequest extends FormRequest
             'middle_init' => 'nullable|max:1',
             'last_name' => 'required|max:25',
             'suffix' => 'nullable|max:5',
-            'campus' => 'required|in:Talisay,Alijis,Binalbagan,Fortune Towne',
         ];
     }
 }

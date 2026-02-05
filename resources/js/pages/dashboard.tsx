@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
+import { AddStudentModal } from './Campus/Modal/AddStudentModal';
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Dashboard',
@@ -101,9 +102,15 @@ export default function Dashboard() {
         handleFilter();
     }, [searchValue, range, perPage, sort, order]);
 
+    const [openAddModal, setOpenAddModal] = useState(false);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
+            <AddStudentModal
+                isOpen={openAddModal}
+                setIsOpen={() => setOpenAddModal(false)}
+            />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="grid auto-rows-min gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <DashboardWidget
@@ -131,14 +138,24 @@ export default function Dashboard() {
                                         title="Incomplete Students"
                                         description="Students who have not yet completed their required ID information."
                                     />
-                                    <p className="text-sm whitespace-nowrap">
-                                        Total Entries:{' '}
-                                        <Badge>
-                                            {Number(
-                                                students?.total || 0,
-                                            ).toLocaleString()}
-                                        </Badge>
-                                    </p>
+                                    <div className="flex items-center gap-3">
+                                        <p className="text-sm whitespace-nowrap">
+                                            Total Entries:{' '}
+                                            <Badge>
+                                                {Number(
+                                                    students?.total || 0,
+                                                ).toLocaleString()}
+                                            </Badge>
+                                        </p>
+                                        <Button
+                                            type="button"
+                                            onClick={() =>
+                                                setOpenAddModal(true)
+                                            }
+                                        >
+                                            Add Student
+                                        </Button>
+                                    </div>
                                 </div>
                             </CardHeader>
                             <CardContent>

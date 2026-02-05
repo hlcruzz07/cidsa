@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useForm } from '@inertiajs/react';
+import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 type ImportModalProps = {
     isOpen: boolean;
@@ -30,19 +31,26 @@ export function ImportModal({ isOpen, setIsOpen, reload }: ImportModalProps) {
 
         if (processing) return;
 
-        post(route('import.students'), {
-            onSuccess: () => {
-                setIsOpen(false);
-                clearErrors();
-                reset();
-                if (reload) {
-                    reload();
-                }
-            },
-            onError: (error) => {
-                console.log('Error importing students', error);
-            },
-        });
+        try {
+            post(route('import.students'), {
+                onSuccess: () => {
+                    setIsOpen(false);
+                    clearErrors();
+                    reset();
+                    if (reload) reload();
+                },
+                onError: (errors) => {
+                    console.log('Error importing students:', errors);
+                    toast.error(
+                        'Failed to import students. Please check your file and try again.',
+                    );
+                },
+                preserveScroll: true, // optional: keep scroll position
+            });
+        } catch (err: any) {
+            console.error('Unexpected error:', err);
+            toast.error('An unexpected error occurred. Please try again.');
+        }
     };
 
     return (

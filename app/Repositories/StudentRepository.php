@@ -477,13 +477,13 @@ class StudentRepository
 
     public function addStudent(array $data)
     {
+
         return $this->model->insert([
             'id_number' => $data['id_number'],
             'first_name' => $data['first_name'],
             'middle_init' => $data['middle_init'],
             'last_name' => $data['last_name'],
             'suffix' => $data['suffix'],
-            'campus' => $data['campus'],
             'created_at' => Carbon::now(),
             'updated_at' => null,
         ]);

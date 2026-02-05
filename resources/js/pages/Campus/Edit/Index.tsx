@@ -135,7 +135,7 @@ export default function Index() {
     const [isInitializing, setIsInitializing] = useState(true);
 
     const collegeArrFiltered = campusDirectoryArr.find((collegeItem) =>
-        collegeItem.campus.includes(student?.campus!),
+        collegeItem.campus.includes(data.campus || student?.campus!),
     )?.colleges;
 
     const programArrFiltered = collegeArrFiltered?.find(
@@ -267,6 +267,19 @@ export default function Index() {
         if (!student?.barangay || brgys.length === 0) return;
         // Barangay is already set in form data, just ensure the list is loaded
     }, [brgys, student]);
+
+    const resetForCampusChange = () => {
+        setData('college', '');
+        setData('college_name', '');
+
+        setData('program', '');
+        setIsProgramDisabled(true);
+
+        setData('major', null);
+        setIsMajorDisabled(true);
+
+        setData('section', '');
+    };
 
     const resetForCollegeChange = () => {
         setData('program', '');
@@ -426,46 +439,6 @@ export default function Index() {
             },
         );
     };
-    useEffect(() => {
-        console.log('Student suffix:', student?.suffix);
-        console.log('Form suffix data:', data.suffix);
-        console.log('Options array:', [
-            'JR',
-            'SR',
-            'II',
-            'III',
-            'IV',
-            'V',
-            'None',
-        ]);
-    }, [student, data.suffix]);
-
-    //SIGNATURE UPLOADING
-    const [newSignature, setNewSignature] = useState<File | null>(null);
-    const [updatingSignature, setUpdatingSignature] = useState(false);
-
-    // const handleSaveSignature = (file: File) => {
-    //     setNewSignature(file);
-    // };
-
-    // const handleSignatureUpdate = () => {
-    //     if (updatingSignature) return;
-
-    //     router.post(
-    //         route('update.student.picture', student.id),
-    //         {
-    //             picture: newImage,
-    //         },
-    //         {
-    //             onSuccess: () => {
-    //                 setUpdatingPicture(false);
-    //             },
-    //             onError: (err) => {
-    //                 console.log('Error updating picture', err);
-    //             },
-    //         },
-    //     );
-    // };
 
     // Show loading while initializing
     if (isInitializing && student?.province) {
@@ -576,20 +549,6 @@ export default function Index() {
                                         onChange={handleFileChange}
                                     />
                                 </div>
-
-                                {newSignature ? (
-                                    <img
-                                        src={URL.createObjectURL(newSignature)}
-                                        alt="Student Picture"
-                                        className="h-auto w-full rounded-md"
-                                    />
-                                ) : (
-                                    <img
-                                        src={`/storage/${student.e_signature}`}
-                                        alt="Student Signature"
-                                        className="h-auto w-full rounded-md shadow-lg"
-                                    />
-                                )}
                             </>
                         )}
                     </div>
@@ -734,6 +693,7 @@ export default function Index() {
                                             value={data.campus}
                                             onValueChange={(value) => {
                                                 setData('campus', value);
+                                                resetForCampusChange();
                                             }}
                                         >
                                             <SelectTrigger className="">
@@ -745,7 +705,7 @@ export default function Index() {
                                             <SelectContent className="w-full">
                                                 <SelectGroup>
                                                     {[
-                                                        'Talsay',
+                                                        'Talisay',
                                                         'Alijis',
                                                         'Fortune Towne',
                                                         'Binalbagan',
@@ -780,16 +740,26 @@ export default function Index() {
                                                     : undefined
                                             }
                                             onValueChange={(val) => {
-                                                const parsed = JSON.parse(val);
-                                                setData(
-                                                    'college',
-                                                    parsed.value,
-                                                );
-                                                setData(
-                                                    'college_name',
-                                                    parsed.name,
-                                                );
-                                                resetForCollegeChange();
+                                                if (!val) return; // <-- guard against empty value
+                                                try {
+                                                    const parsed =
+                                                        JSON.parse(val);
+                                                    setData(
+                                                        'college',
+                                                        parsed.value,
+                                                    );
+                                                    setData(
+                                                        'college_name',
+                                                        parsed.name,
+                                                    );
+                                                    resetForCollegeChange();
+                                                } catch (err) {
+                                                    console.error(
+                                                        'Failed to parse college value:',
+                                                        val,
+                                                        err,
+                                                    );
+                                                }
                                             }}
                                         >
                                             <SelectTrigger className="w-full">
