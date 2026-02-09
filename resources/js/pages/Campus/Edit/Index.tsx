@@ -14,7 +14,7 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { StudentProps } from '@/lib/custom-types';
 import { BreadcrumbItem } from '@/types';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import * as imageConversion from 'image-conversion';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 
@@ -39,13 +39,7 @@ import {
 } from '@/lib/image-remover';
 import { campusDirectoryArr, cn } from '@/lib/utils';
 import { removeBackground } from '@imgly/background-removal';
-import {
-    AsteriskIcon,
-    Check,
-    ChevronsUpDown,
-    ImageIcon,
-    ImagePlusIcon,
-} from 'lucide-react';
+import { AsteriskIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 
@@ -411,7 +405,7 @@ export default function Index() {
 
             setNewImage(new File([finalBlob], filename, { type: 'image/jpg' }));
         } catch (err) {
-            console.error('Background removal failed', err);
+            console.error('Processing image failed', err);
             toast.error('Failed to process image. Please try again.');
             setNewImage(null);
         } finally {
@@ -420,25 +414,25 @@ export default function Index() {
         }
     };
 
-    const handlePictureUpdate = () => {
-        if (updatingPicture) return;
+    // const handlePictureUpdate = () => {
+    //     if (updatingPicture) return;
 
-        router.post(
-            route('update.student.picture', student.id),
-            {
-                picture: newImage,
-            },
-            {
-                onSuccess: () => {
-                    setUpdatingPicture(false);
-                    setNewImage(null);
-                },
-                onError: (err) => {
-                    console.log('Error updating picture', err);
-                },
-            },
-        );
-    };
+    //     router.post(
+    //         route('update.student.picture', student.id),
+    //         {
+    //             picture: newImage,
+    //         },
+    //         {
+    //             onSuccess: () => {
+    //                 setUpdatingPicture(false);
+    //                 setNewImage(null);
+    //             },
+    //             onError: (err) => {
+    //                 console.log('Error updating picture', err);
+    //             },
+    //         },
+    //     );
+    // };
 
     // Show loading while initializing
     if (isInitializing && student?.province) {
@@ -492,21 +486,21 @@ export default function Index() {
                         {student.is_completed && (
                             <>
                                 <div className="relative space-y-3">
-                                    {newImage ? (
-                                        <img
-                                            src={URL.createObjectURL(newImage)}
-                                            alt="Student Picture"
-                                            className="h-auto w-full rounded-md"
-                                        />
-                                    ) : (
-                                        <img
-                                            src={`/storage/${student.picture}`}
-                                            alt="Student Picture"
-                                            className="h-auto w-full rounded-md shadow-lg"
-                                        />
-                                    )}
+                                    <img
+                                        src={student.picture}
+                                        alt="Student Picture"
+                                        className="h-auto w-full rounded-md shadow-lg"
+                                        loading="lazy"
+                                    />
 
-                                    <Button
+                                    <img
+                                        src={student.e_signature}
+                                        alt="Student Signature"
+                                        className="h-auto w-full rounded-md shadow-lg"
+                                        loading="lazy"
+                                    />
+
+                                    {/* <Button
                                         type="button"
                                         className="absolute top-3 right-3"
                                         disabled={updatingPicture}
@@ -515,9 +509,9 @@ export default function Index() {
                                         }
                                     >
                                         <ImagePlusIcon />
-                                    </Button>
+                                    </Button> */}
 
-                                    {newImage && (
+                                    {/* {newImage && (
                                         <Button
                                             type="button"
                                             variant="default"
@@ -538,7 +532,7 @@ export default function Index() {
                                                 </>
                                             )}
                                         </Button>
-                                    )}
+                                    )} */}
 
                                     <Input
                                         ref={fileInputRef}

@@ -5,8 +5,8 @@ export type StudentProps = {
     middle_init: string | null;
     last_name: string;
     suffix: string | null;
-    picture: File;
-    e_signature: File;
+    picture: string;
+    e_signature: string;
 
     campus: string;
     college: string;

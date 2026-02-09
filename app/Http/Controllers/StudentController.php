@@ -13,7 +13,9 @@ use App\Jobs\ImportStudentsJob;
 use App\Jobs\UpdateStudentsJob;
 use App\Repositories\ExportRepository;
 use App\Repositories\StudentRepository;
+use App\Services\GoogleDriveService;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -26,10 +28,13 @@ class StudentController extends Controller
     protected $students;
     protected $export;
 
-    public function __construct(StudentRepository $studentRepository, ExportRepository $exportRepository)
+    protected $googleDriveService;
+
+    public function __construct(StudentRepository $studentRepository, ExportRepository $exportRepository, GoogleDriveService $googleDriveService)
     {
         $this->students = $studentRepository;
         $this->export = $exportRepository;
+        $this->googleDriveService = $googleDriveService;
     }
     public function index()
     {
@@ -55,28 +60,44 @@ class StudentController extends Controller
 
     public function updateStudent(Step3Request $request)
     {
-        $data = $request->except([
-            'confirm_info',
-            'data_privacy',
-            'hasMajor',
-        ]);
+        try {
+            $data = $request->except([
+                'confirm_info',
+                'data_privacy',
+                'hasMajor',
+            ]);
 
-        $studentIdNumber = session('validated_student');
-        $student = $this->students->findStudentByIdNumber($studentIdNumber);
+            $studentIdNumber = session('validated_student');
+            $student = $this->students->findStudentByIdNumber($studentIdNumber);
 
-        $data['picture'] = $request->hasFile('picture')
-            ? $this->students->storeFile($request->file('picture'), $this->students->paths[$data['campus']]['picture'])
-            : null;
+            // Upload picture to Google Drive and store file ID
+            if ($request->hasFile('picture')) {
+                $uploaded = $this->students->storeFile(
+                    $request->file('picture'),
+                    $data['campus'],
+                    $this->students->paths[$data['campus']]['picture']
+                );
+                $data['picture'] = $uploaded['id']; // Store Drive ID in picture column
+            }
 
-        $data['e_signature'] = $request->hasFile('e_signature')
-            ? $this->students->storeFile($request->file('e_signature'), $this->students->paths[$data['campus']]['e_signature'])
-            : null;
+            // Upload signature to Google Drive and store file ID
+            if ($request->hasFile('e_signature')) {
+                $uploaded = $this->students->storeFile(
+                    $request->file('e_signature'),
+                    $data['campus'],
+                    $this->students->paths[$data['campus']]['e_signature']
+                );
+                $data['e_signature'] = $uploaded['id']; // Store Drive ID in e_signature column
+            }
 
-        UpdateStudentsJob::dispatch($data, $student->id_number);
+            UpdateStudentsJob::dispatch($data, $student->id_number);
 
-        session()->forget(['validated_student', 'validated_student_expires_at']);
+            session()->forget(['validated_student', 'validated_student_expires_at']);
 
-        return Inertia::render('Student/Index', ['success' => true]);
+            return Inertia::render('Student/Index', ['success' => true]);
+        } catch (Exception $e) {
+            return back()->with('error', 'Something went wrong, please try again');
+        }
     }
 
     public function cancel()
@@ -206,77 +227,92 @@ class StudentController extends Controller
 
         $zip = new ZipArchive;
 
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            return response()->json(['error' => 'Could not create ZIP file.'], 500);
+        }
 
-            // 1️⃣ Generate Excel file temporarily
-            $excelName = 'students.xlsx';
-            $excelTempPath = 'temp/' . $excelName;
+        // 1️⃣ Generate Excel file temporarily
+        $excelName = 'students.xlsx';
+        $excelStoragePath = 'temp/' . $excelName; // relative to storage/app
+
+        if (!Storage::exists('temp')) {
             Storage::makeDirectory('temp');
-            Excel::store(new StudentsExport($students), $excelTempPath);
+        }
 
-            $zip->addFile(Storage::path($excelTempPath), $excelName);
+        Excel::store(new StudentsExport($students), $excelStoragePath, 'local');
+        $zip->addFile(Storage::path($excelStoragePath), $excelName);
 
-            $user_id = $request->user()->id;
+        $user_id = $request->user()->id;
+        $export_id = $this->export->addExportHistory($user_id, $fileName);
 
-            $export_id = $this->export->addExportHistory($user_id, $fileName);
+        // 2️⃣ Loop through students
+        foreach ($students as $student) {
 
-            // 2️⃣ Loop through students
-            foreach ($students as $student) {
+            // Add PHOTO
+            if (!empty($student['picture'])) {
+                try {
+                    if (preg_match('/^[a-zA-Z0-9_-]{25,}$/', $student['picture'])) {
+                        // Google Drive ID
+                        $photoContent = $this->googleDriveService->getFileContent($student['picture']);
+                    } else {
+                        // Local storage path
+                        if (Storage::disk('public')->exists($student['picture'])) {
+                            $photoContent = Storage::disk('public')->get($student['picture']);
+                        } else {
+                            continue;
+                        }
+                    }
 
-                // Add PHOTO if exists
-                if (!empty($student['picture']) && Storage::disk('public')->exists($student['picture'])) {
-                    $zip->addEmptyDir('photos'); // create folder if not exists
-                    $zip->addFile(
-                        Storage::disk('public')->path($student['picture']),
-                        'photos/' . basename($student['picture'])
-                    );
+                    if (!empty($photoContent)) {
+                        $photoName = $student['id_number'] . '.jpg'; // 👈 renamed here
+                        $zip->addFromString('photos/' . $photoName, $photoContent);
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning("Failed to fetch photo for student {$student['id']}: " . $e->getMessage());
                 }
+            }
 
-                // Add SIGNATURE if exists
-                if (!empty($student['e_signature']) && Storage::disk('public')->exists($student['e_signature'])) {
-                    $zip->addEmptyDir('signatures');
-                    $zip->addFile(
-                        Storage::disk('public')->path($student['e_signature']),
-                        'signatures/' . basename($student['e_signature'])
-                    );
+            // Add SIGNATURE
+            if (!empty($student['e_signature'])) {
+                try {
+                    if (preg_match('/^[a-zA-Z0-9_-]{25,}$/', $student['e_signature'])) {
+                        // Google Drive ID
+                        $signatureContent = $this->googleDriveService->getFileContent($student['e_signature']);
+                    } else {
+                        // Local storage path
+                        if (Storage::disk('public')->exists($student['e_signature'])) {
+                            $signatureContent = Storage::disk('public')->get($student['e_signature']);
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    if (!empty($signatureContent)) {
+                        $signatureName = $student['id_number'] . '.bmp'; // 👈 renamed here
+                        $zip->addFromString('signatures/' . $signatureName, $signatureContent);
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning("Failed to fetch signature for student {$student['id']}: " . $e->getMessage());
                 }
-
-                // // Add AFFIDAVIT if exists
-                // if (!empty($student['affidavit_img']) && Storage::disk('public')->exists($student['affidavit_img'])) {
-                //     $zip->addEmptyDir('affidavits');
-                //     $zip->addFile(
-                //         Storage::disk('public')->path($student['affidavit_img']),
-                //         'affidavits/' . basename($student['affidavit_img'])
-                //     );
-                // }
-
-                // // Add RECEIPT if exists
-                // if (!empty($student['receipt_img']) && Storage::disk('public')->exists($student['receipt_img'])) {
-                //     $zip->addEmptyDir('receipts');
-                //     $zip->addFile(
-                //         Storage::disk('public')->path($student['receipt_img']),
-                //         'receipts/' . basename($student['receipt_img'])
-                //     );
-                // }
-
-                $this->students->setExported($student['id']);
-
-                $this->export->addExportedStudent($export_id, $student['id']);
             }
 
 
-
-            $zip->close();
+            // Mark student as exported
+            $this->students->setExported($student['id']);
+            $this->export->addExportedStudent($export_id, $student['id']);
         }
 
-
+        $zip->close();
 
         // Cleanup temp Excel
-        Storage::delete($excelTempPath);
+        if (Storage::exists($excelStoragePath)) {
+            Storage::delete($excelStoragePath);
+        }
 
         // Download ZIP
         return response()->download($zipPath)->deleteFileAfterSend(true);
     }
+
 
     public function addStudent(AddStudentRequest $request)
     {
@@ -292,19 +328,31 @@ class StudentController extends Controller
     {
         $student = $this->students->find($id);
 
+        $student['picture'] = "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->picture));
+
+
+        $student['e_signature'] = "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->e_signature));
+
+
         return Inertia::render('Campus/Edit/Index', [
             'student' => $student
         ]);
     }
-
     public function view(int $id)
     {
         $student = $this->students->find($id);
+
+
+        $student['picture'] = "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->picture));
+
+
+        $student['e_signature'] = "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->e_signature));
 
         return Inertia::render('Campus/View/Index', [
             'student' => $student
         ]);
     }
+
 
     public function update(UpdateStudentRequest $request, $id)
     {
@@ -331,92 +379,105 @@ class StudentController extends Controller
         return back()->with('success', 'Student basic information updated');
     }
 
-    public function updateStudentPicture(Request $request, $id)
-    {
-        $data = $request->validate([
-            'picture' => 'required|mimes:jpg|max:2048',
-        ]);
+    // public function updateStudentPicture(Request $request, $id)
+    // {
+    //     $data = $request->validate([
+    //         'picture' => 'required|mimes:jpg|max:2048',
+    //     ]);
 
-        $this->students->updateStudentPicture($data, $id);
+    //     $this->students->updateStudentPicture($data, $id);
 
-        return back()->with('success', 'Student picture updated');
-    }
+    //     return back()->with('success', 'Student picture updated');
+    // }
 
     public function exportSingleStudent($id)
     {
         $student = $this->students->find($id);
+
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
 
         $zipName = $student->id_number . '.zip';
         $zipPath = storage_path('app/' . $zipName);
 
         $zip = new ZipArchive;
 
-        // $user_id = auth()->user()->id;
-
-        // $export_id = $this->export->addExportHistory($user_id, $student->id_number);
-
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
-
-            // 1️⃣ Generate Excel file temporarily
-            $excelName = $student->id_number . '.xlsx';
-            $excelTempPath = 'temp/' . $excelName;
-            Storage::makeDirectory('temp');
-            Excel::store(new StudentsExport([$student]), $excelTempPath);
-
-            $zip->addFile(Storage::path($excelTempPath), $excelName);
-
-            // 2️⃣ Loop through students
-            // Add PHOTO if exists
-            if (!empty($student['picture']) && Storage::disk('public')->exists($student['picture'])) {
-                $zip->addEmptyDir('photos'); // create folder if not exists
-                $zip->addFile(
-                    Storage::disk('public')->path($student['picture']),
-                    'photos/' . basename($student['picture'])
-                );
-            }
-
-            // Add SIGNATURE if exists
-            if (!empty($student['e_signature']) && Storage::disk('public')->exists($student['e_signature'])) {
-                $zip->addEmptyDir('signatures');
-                $zip->addFile(
-                    Storage::disk('public')->path($student['e_signature']),
-                    'signatures/' . basename($student['e_signature'])
-                );
-            }
-
-            // // Add AFFIDAVIT if exists
-            // if (!empty($student['affidavit_img']) && Storage::disk('public')->exists($student['affidavit_img'])) {
-            //     $zip->addEmptyDir('affidavits');
-            //     $zip->addFile(
-            //         Storage::disk('public')->path($student['affidavit_img']),
-            //         'affidavits/' . basename($student['affidavit_img'])
-            //     );
-            // }
-
-            // // Add RECEIPT if exists
-            // if (!empty($student['receipt_img']) && Storage::disk('public')->exists($student['receipt_img'])) {
-            //     $zip->addEmptyDir('receipts');
-            //     $zip->addFile(
-            //         Storage::disk('public')->path($student['receipt_img']),
-            //         'receipts/' . basename($student['receipt_img'])
-            //     );
-            // }
-            $this->students->setExported($student->id);
-
-
-
-            // $this->export->addExportedStudent($export_id, $student->id);
-
-
-            $zip->close();
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            return response()->json(['error' => 'Could not create ZIP file'], 500);
         }
 
+        // 1️⃣ Generate Excel file temporarily
+        $excelName = $student->id_number . '.xlsx';
+        $excelStoragePath = 'temp/' . $excelName;
 
+        if (!Storage::exists('temp')) {
+            Storage::makeDirectory('temp');
+        }
+
+        Excel::store(new StudentsExport([$student]), $excelStoragePath, 'local');
+        $zip->addFile(Storage::path($excelStoragePath), $excelName);
+
+        // 2️⃣ PHOTO
+        if (!empty($student->picture)) {
+            try {
+                if (preg_match('/^[a-zA-Z0-9_-]{25,}$/', $student->picture)) {
+                    // Google Drive ID
+                    $photoContent = $this->googleDriveService->getFileContent($student->picture);
+                } else {
+                    // Local storage
+                    if (Storage::disk('public')->exists($student->picture)) {
+                        $photoContent = Storage::disk('public')->get($student->picture);
+                    } else {
+                        $photoContent = null;
+                    }
+                }
+
+                if (!empty($photoContent)) {
+                    $photoName = $student->id_number . '.jpg';
+                    $zip->addFromString('photos/' . $photoName, $photoContent);
+                }
+            } catch (\Exception $e) {
+                \Log::warning("Failed to fetch photo for student {$student->id}: {$e->getMessage()}");
+            }
+        }
+
+        // 3️⃣ SIGNATURE
+        if (!empty($student->e_signature)) {
+            try {
+                if (preg_match('/^[a-zA-Z0-9_-]{25,}$/', $student->e_signature)) {
+                    // Google Drive ID
+                    $signatureContent = $this->googleDriveService->getFileContent($student->e_signature);
+                } else {
+                    // Local storage
+                    if (Storage::disk('public')->exists($student->e_signature)) {
+                        $signatureContent = Storage::disk('public')->get($student->e_signature);
+                    } else {
+                        $signatureContent = null;
+                    }
+                }
+
+                if (!empty($signatureContent)) {
+                    $signatureName = $student->id_number . '.bmp';
+                    $zip->addFromString('signatures/' . $signatureName, $signatureContent);
+                }
+            } catch (\Exception $e) {
+                \Log::warning("Failed to fetch signature for student {$student->id}: {$e->getMessage()}");
+            }
+        }
+
+        // Mark student as exported
+        $this->students->setExported($student->id);
+
+        $zip->close();
 
         // Cleanup temp Excel
-        Storage::delete($excelTempPath);
+        if (Storage::exists($excelStoragePath)) {
+            Storage::delete($excelStoragePath);
+        }
 
         // Download ZIP
         return response()->download($zipPath)->deleteFileAfterSend(true);
     }
+
 }

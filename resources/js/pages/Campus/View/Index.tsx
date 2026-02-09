@@ -26,6 +26,8 @@ export default function Index() {
         return year.replace('Year', '').trim();
     };
 
+    console.log(student);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Student - View" />
@@ -41,14 +43,16 @@ export default function Index() {
                             <>
                                 <div className="space-y-3">
                                     <img
-                                        src={`/storage/${student.picture}`}
+                                        src={student.picture}
                                         alt="Student Picture"
                                         className="h-auto w-full rounded-md shadow-lg"
+                                        loading="lazy"
                                     />
 
                                     <img
-                                        src={`/storage/${student.e_signature}`}
+                                        src={student.e_signature}
                                         alt="Student Signature"
+                                        loading="lazy"
                                         className="h-auto w-full rounded-md shadow-lg"
                                     />
                                 </div>

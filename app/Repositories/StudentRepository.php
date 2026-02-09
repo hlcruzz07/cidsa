@@ -4,35 +4,37 @@ namespace App\Repositories;
 
 use App\Models\Student;
 use App\Jobs\CreateStudentsBatchJob;
+use App\Services\GoogleDriveService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
 
 class StudentRepository
 {
-    protected $model;
-    public $paths = [
+    public array $paths = [
         'Talisay' => [
-            'picture' => 'images/talisay/pictures',
-            'e_signature' => 'images/talisay/signatures',
+            'picture' => 'pictures',
+            'e_signature' => 'signatures',
         ],
         'Alijis' => [
-            'picture' => 'images/alijis/pictures',
-            'e_signature' => 'images/alijis/signatures',
+            'picture' => 'pictures',
+            'e_signature' => 'signatures',
         ],
         'Binalbagan' => [
-            'picture' => 'images/binalbagan/pictures',
-            'e_signature' => 'images/binalbagan/signatures',
+            'picture' => 'pictures',
+            'e_signature' => 'signatures',
         ],
         'Fortune Towne' => [
-            'picture' => 'images/fortune-towne/pictures',
-            'e_signature' => 'images/fortune-towne/signatures',
+            'picture' => 'pictures',
+            'e_signature' => 'signatures',
         ],
     ];
-
-    public function __construct(Student $student)
+    protected $model;
+    protected $googleDriveService;
+    public function __construct(Student $student, GoogleDriveService $googleDriveService)
     {
         $this->model = $student;
+        $this->googleDriveService = $googleDriveService;
     }
 
     public function all()
@@ -436,25 +438,11 @@ class StudentRepository
 
 
 
-    public function storeFile($file, string $folder): ?string
+    public function storeFile($file, string $campus, string $typeFolder): array
     {
-        if (!$file) {
-            return null;
-        }
-
-        // Already a path? Just return
-        if (is_string($file)) {
-            return $file;
-        }
-
-        // Use original file name
-        $originalName = $file->getClientOriginalName();
-
-        // Store using original name
-        $file->storeAs($folder, $originalName, 'public');
-
-        return $folder . '/' . $originalName;
+        return $this->googleDriveService->uploadPicture($file, $campus, $typeFolder);
     }
+
     public function setExported(int $id)
     {
         $student = $this->model->findOrFail($id);
@@ -599,25 +587,6 @@ class StudentRepository
         ]);
 
         // No need to call save() again
-        return $student;
-    }
-
-
-    public function updateStudentPicture(array $data, int $id)
-    {
-        $student = $this->model->findOrFail($id);
-
-        $student->timestamps = false;
-
-        $campus = $student->campus;
-
-        $picturePath = $this->storeFile($data['picture'] ?? null, $this->paths[$campus]['picture']);
-
-        $student->update([
-            'picture' => $picturePath,
-            'updated_at' => null,
-        ]);
-
         return $student;
     }
 

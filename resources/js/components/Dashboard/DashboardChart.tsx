@@ -62,15 +62,24 @@ export function DashboardChart() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await apiService.get<ChartRow[]>(
+            const response = await apiService.get<any[]>(
                 '/api/dashboard-chart',
                 {
                     params: { timeRange },
                 },
             );
 
+            // Normalize chart data: use 'any' here for raw API row
+            const normalized: ChartRow[] = response.data.map((row: any) => ({
+                date: row.date,
+                tal: row.tal ?? 0,
+                ali: row.ali ?? 0,
+                bin: row.bin ?? 0,
+                ft: row.ft ?? row['fortune towne'] ?? 0, // now allowed
+            }));
+
             setChartData(
-                response.data.sort(
+                normalized.sort(
                     (a, b) => dayjs(a.date).unix() - dayjs(b.date).unix(),
                 ),
             );
