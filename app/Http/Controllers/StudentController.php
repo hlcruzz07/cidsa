@@ -96,7 +96,7 @@ class StudentController extends Controller
 
             return Inertia::render('Student/Index', ['success' => true]);
         } catch (Exception $e) {
-            return back()->with('error', 'Something went wrong, please try again');
+            return back()->with('error', 'Something went wrong, please try again' . $e->getMessage());
         }
     }
 
