@@ -533,7 +533,7 @@ export default function Index() {
                                             )}
                                         </Button>
                                     )} */}
-
+                                    {/* 
                                     <Input
                                         ref={fileInputRef}
                                         type="file"
@@ -541,7 +541,7 @@ export default function Index() {
                                         accept="image/jpeg,image/png"
                                         hidden
                                         onChange={handleFileChange}
-                                    />
+                                    /> */}
                                 </div>
                             </>
                         )}

@@ -5,6 +5,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { formatCount } from '@/lib/utils';
 import dayjs from 'dayjs';
 import { CheckCircle2, TrendingUp } from 'lucide-react';
 
@@ -78,7 +79,7 @@ export default function Widget({ count, type }: WidgetProps) {
                 <div
                     className={`tabular-lining-nums flex items-center gap-5 text-4xl font-extrabold ${config.color.text}`}
                 >
-                    {count.toLocaleString()}
+                    {formatCount(count)}
                     <TrendingUp size={55} />
                 </div>
 

@@ -83,6 +83,8 @@ export function DashboardChart() {
                     (a, b) => dayjs(a.date).unix() - dayjs(b.date).unix(),
                 ),
             );
+
+            console.log(normalized);
         } catch (error) {
             console.error('Failed to fetch chart data:', error);
         } finally {
@@ -95,7 +97,7 @@ export function DashboardChart() {
     }, [timeRange]);
     return (
         <Card className="pt-0">
-            <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
+            <CardHeader className="flex flex-col items-start gap-2 space-y-0 border-b py-5 sm:flex-row md:items-center">
                 <div className="grid flex-1 gap-1">
                     <CardTitle>Student Update Activity</CardTitle>
                     <CardDescription>
@@ -105,7 +107,7 @@ export function DashboardChart() {
                 </div>
                 <Select value={timeRange} onValueChange={setTimeRange}>
                     <SelectTrigger
-                        className="hidden w-[160px] rounded-lg sm:ml-auto sm:flex"
+                        className="w-[160px] rounded-lg sm:ml-auto"
                         aria-label="Select a value"
                     >
                         <SelectValue placeholder="Last 3 months" />

@@ -46,7 +46,6 @@ import {
     PencilIcon,
     Trash2Icon,
     UploadCloudIcon,
-    UserPlus2Icon,
     XIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -54,7 +53,6 @@ import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 import { StudentsUpdateChart } from '../../../components/Campus/StudentChart';
 import Widget from '../../../components/Campus/Widget';
-import { AddStudentModal } from '../Modal/AddStudentModal';
 import ExportModal from '../Modal/ExportModal';
 import PreviewModal from '../Modal/PreviewModal';
 
@@ -308,12 +306,6 @@ export default function Index() {
                 setIsOpen={() => setOpenPreviewModal(false)}
             />
 
-            <AddStudentModal
-                isOpen={openAddStudentModal}
-                setIsOpen={() => setOpenAddStudentModal(false)}
-                campus={titlePage}
-            />
-
             <ExportModal
                 isOpen={openExportModal}
                 onPreview={(students) => {
@@ -464,14 +456,6 @@ export default function Index() {
                                 <UploadCloudIcon /> Export
                             </Button>
                         </div>
-                        <Button
-                            type="button"
-                            onClick={() => setOpenAddStudentModal(true)}
-                            className="w-full lg:w-auto"
-                        >
-                            <UserPlus2Icon />
-                            Add
-                        </Button>
                     </div>
                     <div className="mt-3 flex flex-col items-start justify-between gap-5 md:flex-row md:items-start">
                         <div className="flex w-full grow flex-wrap gap-3 xl:w-auto">

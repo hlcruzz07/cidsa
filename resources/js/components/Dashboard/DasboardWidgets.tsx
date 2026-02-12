@@ -5,6 +5,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { formatCount } from '@/lib/utils';
 import dayjs from 'dayjs';
 import { GraduationCap } from 'lucide-react';
 
@@ -84,7 +85,7 @@ export default function DashboardWidget({ count, type }: WidgetProps) {
                 <div
                     className={`text-4xl font-black tracking-tight ${config.color.text}`}
                 >
-                    {count.toLocaleString()}
+                    {formatCount(count)}
                 </div>
 
                 <span className="text-xs text-muted-foreground">

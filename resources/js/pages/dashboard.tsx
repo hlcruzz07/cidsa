@@ -133,12 +133,12 @@ export default function Dashboard() {
                     <div className="my-5">
                         <Card>
                             <CardHeader>
-                                <div className="flex items-start justify-between gap-5">
+                                <div className="flex flex-wrap items-start justify-between gap-5">
                                     <HeadingSmall
                                         title="Incomplete Students"
                                         description="Students who have not yet completed their required ID information."
                                     />
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex grow flex-col items-start gap-3 md:grow-0 md:flex-row md:items-center">
                                         <p className="text-sm whitespace-nowrap">
                                             Total Entries:{' '}
                                             <Badge>
@@ -149,6 +149,7 @@ export default function Dashboard() {
                                         </p>
                                         <Button
                                             type="button"
+                                            className="w-full md:w-auto"
                                             onClick={() =>
                                                 setOpenAddModal(true)
                                             }
@@ -302,7 +303,7 @@ export default function Dashboard() {
                                                         {range?.from &&
                                                         range?.to
                                                             ? `${range.from.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} – ${range.to.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
-                                                            : 'Date Imported'}
+                                                            : 'Date Added'}
 
                                                         <ChevronDownIcon />
                                                     </Button>
@@ -352,7 +353,7 @@ export default function Dashboard() {
                                                     'ID Number',
                                                     'Name',
 
-                                                    'Date Imported',
+                                                    'Date Added',
 
                                                     'Action',
                                                 ].map((header) => (
@@ -395,7 +396,7 @@ export default function Dashboard() {
 
                                                         <td
                                                             className="p-2 whitespace-nowrap"
-                                                            data-label="Date Imported"
+                                                            data-label="Date Added"
                                                         >
                                                             {row.created_at
                                                                 ? dayjs(

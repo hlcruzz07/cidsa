@@ -26,8 +26,6 @@ export default function Index() {
         return year.replace('Year', '').trim();
     };
 
-    console.log(student);
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Student - View" />

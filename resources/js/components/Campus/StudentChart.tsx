@@ -103,7 +103,7 @@ export function StudentsUpdateChart({ campus }: { campus: string }) {
     return (
         <Card>
             <CardHeader>
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col items-start justify-between gap-3 md:flex-row md:gap-0">
                     <div>
                         <Heading
                             title="Students Updated by College"

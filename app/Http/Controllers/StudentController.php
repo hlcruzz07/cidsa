@@ -328,10 +328,8 @@ class StudentController extends Controller
     {
         $student = $this->students->find($id);
 
-        $student['picture'] = "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->picture));
-
-
-        $student['e_signature'] = "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->e_signature));
+        $student['picture'] = ($student['picture'] !== null) ? "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->picture)) : null;
+        $student['e_signature'] = ($student['e_signature'] !== null) ? "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->e_signature)) : null;
 
 
         return Inertia::render('Campus/Edit/Index', [
@@ -342,11 +340,9 @@ class StudentController extends Controller
     {
         $student = $this->students->find($id);
 
+        $student['picture'] = ($student['picture'] !== null) ? "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->picture)) : null;
 
-        $student['picture'] = "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->picture));
-
-
-        $student['e_signature'] = "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->e_signature));
+        $student['e_signature'] = ($student['e_signature'] !== null) ? "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->e_signature)) : null;
 
         return Inertia::render('Campus/View/Index', [
             'student' => $student
@@ -389,7 +385,6 @@ class StudentController extends Controller
 
     //     return back()->with('success', 'Student picture updated');
     // }
-
     public function exportSingleStudent($id)
     {
         $student = $this->students->find($id);
@@ -407,20 +402,25 @@ class StudentController extends Controller
             return response()->json(['error' => 'Could not create ZIP file'], 500);
         }
 
-        // 1️⃣ Generate Excel file temporarily
-        $excelName = $student->id_number . '.xlsx';
-        $excelStoragePath = 'temp/' . $excelName;
-
-        if (!Storage::exists('temp')) {
-            Storage::makeDirectory('temp');
+        // ========================
+        // 1️⃣ Generate Excel in memory
+        // ========================
+        try {
+            $excelContent = Excel::raw(new StudentsExport([$student]), \Maatwebsite\Excel\Excel::XLSX);
+            $excelName = $student->id_number . '.xlsx';
+            $zip->addFromString($excelName, $excelContent);
+        } catch (\Exception $e) {
+            $zip->close();
+            return response()->json(['error' => 'Failed to generate Excel file: ' . $e->getMessage()], 500);
         }
 
-        Excel::store(new StudentsExport([$student]), $excelStoragePath, 'local');
-        $zip->addFile(Storage::path($excelStoragePath), $excelName);
-
-        // 2️⃣ PHOTO
+        // ========================
+        // 2️⃣ Add PHOTO
+        // ========================
         if (!empty($student->picture)) {
             try {
+                $photoContent = null;
+
                 if (preg_match('/^[a-zA-Z0-9_-]{25,}$/', $student->picture)) {
                     // Google Drive ID
                     $photoContent = $this->googleDriveService->getFileContent($student->picture);
@@ -428,8 +428,6 @@ class StudentController extends Controller
                     // Local storage
                     if (Storage::disk('public')->exists($student->picture)) {
                         $photoContent = Storage::disk('public')->get($student->picture);
-                    } else {
-                        $photoContent = null;
                     }
                 }
 
@@ -442,9 +440,13 @@ class StudentController extends Controller
             }
         }
 
-        // 3️⃣ SIGNATURE
+        // ========================
+        // 3️⃣ Add SIGNATURE
+        // ========================
         if (!empty($student->e_signature)) {
             try {
+                $signatureContent = null;
+
                 if (preg_match('/^[a-zA-Z0-9_-]{25,}$/', $student->e_signature)) {
                     // Google Drive ID
                     $signatureContent = $this->googleDriveService->getFileContent($student->e_signature);
@@ -452,8 +454,6 @@ class StudentController extends Controller
                     // Local storage
                     if (Storage::disk('public')->exists($student->e_signature)) {
                         $signatureContent = Storage::disk('public')->get($student->e_signature);
-                    } else {
-                        $signatureContent = null;
                     }
                 }
 
@@ -466,17 +466,16 @@ class StudentController extends Controller
             }
         }
 
+        // ========================
         // Mark student as exported
+        // ========================
         $this->students->setExported($student->id);
 
         $zip->close();
 
-        // Cleanup temp Excel
-        if (Storage::exists($excelStoragePath)) {
-            Storage::delete($excelStoragePath);
-        }
-
-        // Download ZIP
+        // ========================
+        // Return ZIP as download
+        // ========================
         return response()->download($zipPath)->deleteFileAfterSend(true);
     }
 
