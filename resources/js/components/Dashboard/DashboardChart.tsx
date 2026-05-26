@@ -136,7 +136,7 @@ export function DashboardChart() {
                     <>
                         <ChartContainer
                             config={chartConfig}
-                            className="aspect-auto h-[250px] w-full"
+                            className="aspect-auto h-[300px] w-full"
                         >
                             <AreaChart data={chartData}>
                                 <defs>
@@ -255,7 +255,7 @@ export function DashboardChart() {
                                     type="natural"
                                     fill="url(#fillTal)"
                                     stroke="#10b981"
-                                    stackId="a"
+                                    stackId="tal"
                                 />
 
                                 <Area
@@ -263,7 +263,7 @@ export function DashboardChart() {
                                     type="natural"
                                     fill="url(#fillAli)"
                                     stroke="#a855f7"
-                                    stackId="a"
+                                    stackId="ali"
                                 />
 
                                 <Area
@@ -271,7 +271,7 @@ export function DashboardChart() {
                                     type="natural"
                                     fill="url(#fillFt)"
                                     stroke="#3b82f6"
-                                    stackId="a"
+                                    stackId="ft"
                                 />
 
                                 <Area
@@ -279,7 +279,7 @@ export function DashboardChart() {
                                     type="natural"
                                     fill="url(#fillBin)"
                                     stroke="#ef4444"
-                                    stackId="a"
+                                    stackId="bin"
                                 />
 
                                 <ChartLegend content={<ChartLegendContent />} />

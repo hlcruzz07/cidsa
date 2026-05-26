@@ -82,6 +82,7 @@ export default function Index() {
     const [students, setStudents] = useState<PaginateStudents | null>(null);
 
     const [searchValue, setSearchValue] = useState<string | null>(null);
+    const [selectedType, setSelectedType] = useState<string | null>(null);
     const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
     const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
     const [selectedMajor, setSelectedMajor] = useState<string | null>(null);
@@ -121,6 +122,7 @@ export default function Index() {
             const params = {
                 params: {
                     search: searchValue || null,
+                    type: selectedType || null,
                     college: selectedCollege || null,
                     program: selectedProgram || null,
                     major: selectedMajor || null,
@@ -148,6 +150,8 @@ export default function Index() {
 
             setCanExport(checkData);
 
+            console.log(checkData);
+
             setStudents(paginateData);
 
             const cleanedSections = paginateData.data
@@ -163,6 +167,7 @@ export default function Index() {
 
     const resetFilters = () => {
         setSearchValue(null);
+        setSelectedType(null);
         setSelectedCollege(null);
         setSelectedProgram(null);
         setSelectedMajor(null);
@@ -178,6 +183,7 @@ export default function Index() {
 
     const DEFAULTS = {
         searchValue: null,
+        selectedType: null,
         selectedCollege: null,
         selectedProgram: null,
         selectedMajor: null,
@@ -194,6 +200,7 @@ export default function Index() {
     const hasActiveFilters = useMemo(() => {
         return (
             searchValue !== DEFAULTS.searchValue ||
+            selectedType !== DEFAULTS.selectedType ||
             selectedCollege !== DEFAULTS.selectedCollege ||
             selectedProgram !== DEFAULTS.selectedProgram ||
             selectedMajor !== DEFAULTS.selectedMajor ||
@@ -208,6 +215,7 @@ export default function Index() {
         );
     }, [
         searchValue,
+        selectedType,
         selectedCollege,
         selectedProgram,
         selectedMajor,
@@ -225,6 +233,7 @@ export default function Index() {
         handleFilter();
     }, [
         searchValue,
+        selectedType,
         selectedCollege,
         selectedProgram,
         selectedMajor,
@@ -245,6 +254,7 @@ export default function Index() {
         const paramsExport = {
             params: {
                 search: searchValue || null,
+                type: selectedType || null,
                 college: selectedCollege || null,
                 program: selectedProgram || null,
                 major: selectedMajor || null,
@@ -285,7 +295,6 @@ export default function Index() {
     >(null);
     const [openPreviewModal, setOpenPreviewModal] = useState(false);
 
-    const [openAddStudentModal, setOpenAddStudentModal] = useState(false);
     const [openExportModal, setOpenExportModal] = useState(false);
 
     const handleSingleExport = (student: StudentProps) => {
@@ -459,6 +468,41 @@ export default function Index() {
                     </div>
                     <div className="mt-3 flex flex-col items-start justify-between gap-5 md:flex-row md:items-start">
                         <div className="flex w-full grow flex-wrap gap-3 xl:w-auto">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline">
+                                        Student Type{' '}
+                                        {selectedType && (
+                                            <Badge className="ml-2">
+                                                {selectedType}
+                                            </Badge>
+                                        )}
+                                        <ChevronsLeftRight className="trasform rotate-90" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    className="w-max"
+                                    align="end"
+                                >
+                                    {['Undergraduate', 'Graduate Studies'].map(
+                                        (item, index) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={index}
+                                                checked={selectedType === item}
+                                                onSelect={() => {
+                                                    setSelectedType((prev) =>
+                                                        prev === item
+                                                            ? null
+                                                            : item,
+                                                    );
+                                                }}
+                                            >
+                                                {item}
+                                            </DropdownMenuCheckboxItem>
+                                        ),
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline">
@@ -1097,6 +1141,9 @@ export default function Index() {
                                                                                     params: {
                                                                                         search:
                                                                                             searchValue ||
+                                                                                            null,
+                                                                                        type:
+                                                                                            selectedType ||
                                                                                             null,
                                                                                         college:
                                                                                             selectedCollege ||

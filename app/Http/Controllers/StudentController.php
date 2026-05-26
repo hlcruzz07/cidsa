@@ -9,8 +9,12 @@ use App\Http\Requests\Step2Request;
 use App\Http\Requests\Step3Request;
 use App\Http\Requests\UpdateStudentRequest;
 use App\Http\Requests\ValidateStudentRequest;
+use App\Jobs\ExportStudentsJob;
 use App\Jobs\ImportStudentsJob;
 use App\Jobs\UpdateStudentsJob;
+use App\Models\PrintedStudents;
+use App\Models\Student;
+use App\Models\StudentExport;
 use App\Repositories\ExportRepository;
 use App\Repositories\StudentRepository;
 use App\Services\GoogleDriveService;
@@ -95,6 +99,7 @@ class StudentController extends Controller
             session()->forget(['validated_student', 'validated_student_expires_at']);
 
             return Inertia::render('Student/Index', ['success' => true]);
+
         } catch (Exception $e) {
             return back()->with('error', 'Something went wrong, please try again' . $e->getMessage());
         }
@@ -122,7 +127,7 @@ class StudentController extends Controller
     public function importStudents(Request $request)
     {
         $request->validate([
-            'students_file' => 'required|file|mimes:csv,txt',
+            'students_file' => 'required|file|mimes:csv',
         ]);
 
         $file = $request->file('students_file');
@@ -216,103 +221,108 @@ class StudentController extends Controller
         return redirect()->back()->with('success', "Students imported: " . $result['to_insert']);
     }
 
+    public function importPrintedStudents(Request $request)
+    {
+        $request->validate([
+            'students_file' => 'required|file|mimes:csv,txt',
+        ]);
+
+        $file = $request->file('students_file');
+        $now = Carbon::now();
+
+        $handle = fopen($file->getRealPath(), 'r');
+
+        $header = fgetcsv($handle);
+
+        $students = [];
+
+        while (($row = fgetcsv($handle)) !== false) {
+
+            // Expect only 1 column: id_number
+            $idNumber = trim($row[0] ?? '');
+
+            if ($idNumber === '') {
+                continue;
+            }
+
+            $students[] = [
+                'id_number' => $idNumber,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        fclose($handle);
+
+        if (empty($students)) {
+            return redirect()->back()->with('error', 'No valid student records found.');
+        }
+
+        // Insert using PrintedStudent model
+        PrintedStudents::upsert(
+            $students,
+            ['id_number'],
+            ['updated_at']
+        );
+
+        return redirect()->back()->with('success', 'Students imported successfully: ' . count($students));
+    }
+
 
     public function exportStudents(Request $request)
     {
-        $students = $request->input('students', []);
-        $fileName = $request->input('file_name', 'students');
+        $studentIds = $request->input('student_ids', []);
 
-        $zipName = $fileName . '.zip';
-        $zipPath = storage_path('app/' . $zipName);
+        $export = StudentExport::create([
+            'user_id' => $request->user()->id,
+            'file_name' => $request->input('file_name', 'students'),
+            'status' => 'pending'
+        ]);
 
-        $zip = new ZipArchive;
+        ExportStudentsJob::dispatch(
+            $studentIds,
+            $export->id,
+            $request->input('file_name', 'students'),
+        );
 
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            return response()->json(['error' => 'Could not create ZIP file.'], 500);
+        return response()->json([
+            'message' => 'Export started.',
+            'export_id' => $export->id
+        ]);
+    }
+    public function download(StudentExport $export)
+    {
+        if ($export->status !== 'completed') {
+
+            return response()->json([
+                'error' => 'Export not ready.'
+            ], 422);
         }
 
-        // 1️⃣ Generate Excel file temporarily
-        $excelName = 'students.xlsx';
-        $excelStoragePath = 'temp/' . $excelName; // relative to storage/app
-
-        if (!Storage::exists('temp')) {
-            Storage::makeDirectory('temp');
-        }
-
-        Excel::store(new StudentsExport($students), $excelStoragePath, 'local');
-        $zip->addFile(Storage::path($excelStoragePath), $excelName);
-
-        $user_id = $request->user()->id;
-        $export_id = $this->export->addExportHistory($user_id, $fileName);
-
-        // 2️⃣ Loop through students
-        foreach ($students as $student) {
-
-            // Add PHOTO
-            if (!empty($student['picture'])) {
-                try {
-                    if (preg_match('/^[a-zA-Z0-9_-]{25,}$/', $student['picture'])) {
-                        // Google Drive ID
-                        $photoContent = $this->googleDriveService->getFileContent($student['picture']);
-                    } else {
-                        // Local storage path
-                        if (Storage::disk('public')->exists($student['picture'])) {
-                            $photoContent = Storage::disk('public')->get($student['picture']);
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    if (!empty($photoContent)) {
-                        $photoName = $student['id_number'] . '.jpg'; // 👈 renamed here
-                        $zip->addFromString('photos/' . $photoName, $photoContent);
-                    }
-                } catch (\Exception $e) {
-                    \Log::warning("Failed to fetch photo for student {$student['id']}: " . $e->getMessage());
-                }
-            }
-
-            // Add SIGNATURE
-            if (!empty($student['e_signature'])) {
-                try {
-                    if (preg_match('/^[a-zA-Z0-9_-]{25,}$/', $student['e_signature'])) {
-                        // Google Drive ID
-                        $signatureContent = $this->googleDriveService->getFileContent($student['e_signature']);
-                    } else {
-                        // Local storage path
-                        if (Storage::disk('public')->exists($student['e_signature'])) {
-                            $signatureContent = Storage::disk('public')->get($student['e_signature']);
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    if (!empty($signatureContent)) {
-                        $signatureName = $student['id_number'] . '.bmp'; // 👈 renamed here
-                        $zip->addFromString('signatures/' . $signatureName, $signatureContent);
-                    }
-                } catch (\Exception $e) {
-                    \Log::warning("Failed to fetch signature for student {$student['id']}: " . $e->getMessage());
-                }
-            }
-
-
-            // Mark student as exported
-            $this->students->setExported($student['id']);
-            $this->export->addExportedStudent($export_id, $student['id']);
-        }
-
-        $zip->close();
-
-        // Cleanup temp Excel
-        if (Storage::exists($excelStoragePath)) {
-            Storage::delete($excelStoragePath);
-        }
-
-        // Download ZIP
-        return response()->download($zipPath)->deleteFileAfterSend(true);
+        return response()->download(
+            storage_path('app/' . $export->file_path)
+        );
     }
 
+    public function status($exportId)
+    {
+        $export = StudentExport::find($exportId);
+
+        if (!$export) {
+            return response()->json([
+                'status' => 'not_found',
+                'message' => 'Export record does not exist.'
+            ], 404);
+        }
+
+        return response()->json([
+            'id' => $export->id,
+            'status' => $export->status,
+            'file_path' => $export->file_path,
+            'error_message' => $export->error_message,
+            'completed_at' => $export->completed_at,
+        ]);
+    }
 
     public function addStudent(AddStudentRequest $request)
     {

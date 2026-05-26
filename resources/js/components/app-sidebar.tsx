@@ -9,22 +9,18 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { ImportModal } from '@/pages/Campus/Modal/ImportModal';
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import {
     Building2,
-    CloudDownloadIcon,
     FolderUpIcon,
     Landmark,
     LayoutGrid,
     School,
     Trees,
 } from 'lucide-react';
-import { useState } from 'react';
 import AppLogo from './app-logo';
-import { Button } from './ui/button';
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
@@ -85,15 +81,9 @@ const manageNavItems: NavItem[] = [
 
 export function AppSidebar() {
     // Modal
-    const [openImportModal, setOpenImportModal] = useState(false);
 
     return (
         <>
-            <ImportModal
-                isOpen={openImportModal}
-                setIsOpen={() => setOpenImportModal(false)}
-            />
-
             <Sidebar collapsible="icon" variant="inset">
                 <SidebarHeader>
                     <SidebarMenu>
@@ -114,12 +104,6 @@ export function AppSidebar() {
                 </SidebarContent>
 
                 <SidebarFooter>
-                    <Button
-                        type="button"
-                        onClick={() => setOpenImportModal(true)}
-                    >
-                        <CloudDownloadIcon /> Import Students
-                    </Button>
                     <NavUser />
                 </SidebarFooter>
             </Sidebar>

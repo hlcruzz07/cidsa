@@ -20,7 +20,7 @@ class ExportRepository
     public function addExportHistory(int $user_id, string $file_name): int
     {
         $result = $this->exportHistory->create([
-            'user_id'   => $user_id,
+            'user_id' => $user_id,
             'file_name' => $file_name,
         ]);
 
@@ -30,7 +30,7 @@ class ExportRepository
     public function addExportedStudent(int $export_id, int $student_id)
     {
         return $this->exportedStudent->create([
-            'export_id'  => $export_id,
+            'export_id' => $export_id,
             'student_id' => $student_id,
         ]);
     }

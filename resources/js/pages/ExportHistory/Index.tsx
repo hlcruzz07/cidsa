@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useInitials } from '@/hooks/use-initials';
 import AppLayout from '@/layouts/app-layout';
-import { DateRange, PaginateExportHistory } from '@/lib/custom-types';
+import { DateRange } from '@/lib/custom-types';
 import apiService from '@/services/apiService';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
@@ -40,11 +40,42 @@ import {
     ChevronsLeftRight,
     DownloadIcon,
     Trash2Icon,
-    Users,
     XIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { route } from 'ziggy-js';
+
+interface StudentExportRecord {
+    id: number;
+    file_name: string;
+    file_path: string;
+    status: string;
+    completed_at: string;
+    created_at: string;
+    user: {
+        id: number;
+        name: string;
+        email: string;
+        role: string;
+    };
+}
+
+interface PaginateStudentExports {
+    data: StudentExportRecord[];
+    current_page: number;
+    from: number;
+    to: number;
+    total: number;
+    per_page: number;
+    last_page: number;
+    links: Array<{
+        url: string | null;
+        label: string;
+        active: boolean;
+    }>;
+}
+
 export default function Index() {
     const titlePage = 'Export History';
     const hrefPage = '/export-history';
@@ -57,8 +88,8 @@ export default function Index() {
 
     const getInitials = useInitials();
 
-    const [exportedData, setExportedData] =
-        useState<PaginateExportHistory | null>(null);
+    const [studentExports, setStudentExports] =
+        useState<PaginateStudentExports | null>(null);
 
     const [searchValue, setSearchValue] = useState<string | null>(null);
     const [range, setRange] = useState<DateRange | undefined>(undefined);
@@ -84,14 +115,14 @@ export default function Index() {
                     order: order,
                 },
             };
-            const { data: paginateData } = await apiService.get(
-                route('filter.export.history'),
+
+            const exportsRes = await apiService.get(
+                route('filter.student.exports'),
                 params,
             );
-
-            setExportedData(paginateData);
+            setStudentExports(exportsRes.data);
         } catch (error) {
-            console.error('Error fetching exportedData:', error);
+            console.error('Error fetching data:', error);
         }
     };
 
@@ -99,11 +130,13 @@ export default function Index() {
         handleFilter();
     }, [searchValue, range, perPage, sort, order]);
 
-    const downloadExport = (ids: number[], file_name: string) => {
-        window.location.href = route('download.export.history', {
-            student_ids: ids,
-            file_name: file_name,
+    // Direct download for already completed exports
+    const downloadDirectExport = (exportId: number, fileName: string) => {
+        toast.success('Downloading export...', {
+            description: fileName,
+            duration: 2000,
         });
+        window.location.href = route('exports.download', exportId);
     };
 
     return (
@@ -121,7 +154,7 @@ export default function Index() {
                                 Total Entries:{' '}
                                 <Badge>
                                     {Number(
-                                        exportedData?.total || 0,
+                                        studentExports?.total || 0,
                                     ).toLocaleString()}
                                 </Badge>
                             </p>
@@ -131,7 +164,7 @@ export default function Index() {
                         <div className="flex flex-col items-start justify-between gap-3 xl:flex-row">
                             <Input
                                 type="search"
-                                placeholder="Search Name, Email..."
+                                placeholder="Search Name, Email, File Name..."
                                 className="w-full"
                                 value={searchValue || ''}
                                 onChange={(e) => {
@@ -302,10 +335,9 @@ export default function Index() {
                                             '#',
                                             'Exported By',
                                             'Role',
-                                            'Campus',
                                             'File Name',
-                                            'Type',
                                             'Date Exported',
+                                            'Status',
                                             'Action',
                                         ].map((header) => (
                                             <th
@@ -319,7 +351,7 @@ export default function Index() {
                                     </tr>
                                 </thead>
                                 <tbody className="lg:border-b">
-                                    {exportedData?.data.map((row, index) => (
+                                    {studentExports?.data.map((row, index) => (
                                         <tr
                                             key={index}
                                             className="hover:bg-muted/50"
@@ -363,17 +395,6 @@ export default function Index() {
                                             >
                                                 {row.user.role}
                                             </td>
-                                            <td
-                                                className="p-2 whitespace-nowrap"
-                                                data-label="Campus"
-                                            >
-                                                {
-                                                    row.exported_students.map(
-                                                        (item) =>
-                                                            item.student.campus,
-                                                    )[0]
-                                                }
-                                            </td>
 
                                             <td
                                                 className="p-2 whitespace-nowrap"
@@ -384,33 +405,7 @@ export default function Index() {
 
                                             <td
                                                 className="p-2 whitespace-nowrap"
-                                                data-label="Type"
-                                            >
-                                                {row.exported_students.length >
-                                                1 ? (
-                                                    <>
-                                                        <Badge
-                                                            variant="secondary"
-                                                            className="bg-blue-500 text-white"
-                                                        >
-                                                            Multiple
-                                                        </Badge>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Badge
-                                                            variant="secondary"
-                                                            className="bg-yellow-500 text-white"
-                                                        >
-                                                            Single
-                                                        </Badge>
-                                                    </>
-                                                )}
-                                            </td>
-
-                                            <td
-                                                className="p-2 whitespace-nowrap"
-                                                data-label="Date Imported"
+                                                data-label="Date Exported"
                                             >
                                                 {row.created_at
                                                     ? dayjs(
@@ -423,61 +418,49 @@ export default function Index() {
 
                                             <td
                                                 className="p-2 whitespace-nowrap"
+                                                data-label="Status"
+                                            >
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="bg-green-500 text-white"
+                                                >
+                                                    {row.status}
+                                                </Badge>
+                                            </td>
+
+                                            <td
+                                                className="p-2 whitespace-nowrap"
                                                 data-label="Action"
                                             >
-                                                <div className="flex flex-wrap gap-3">
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                size="icon"
-                                                                onClick={() => {
-                                                                    downloadExport(
-                                                                        row.exported_students.map(
-                                                                            (
-                                                                                item,
-                                                                            ) =>
-                                                                                item.student_id,
-                                                                        ),
-                                                                        row.file_name,
-                                                                    );
-                                                                }}
-                                                            >
-                                                                <DownloadIcon />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent
-                                                            side="top"
-                                                            align="center"
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            size="icon"
+                                                            onClick={() => {
+                                                                downloadDirectExport(
+                                                                    row.id,
+                                                                    row.file_name,
+                                                                );
+                                                            }}
                                                         >
-                                                            Download
-                                                        </TooltipContent>
-                                                    </Tooltip>
-
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="outline"
-                                                                size="icon"
-                                                            >
-                                                                <Users />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent
-                                                            side="top"
-                                                            align="center"
-                                                        >
-                                                            Exported Students
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </div>
+                                                            <DownloadIcon />
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent
+                                                        side="top"
+                                                        align="center"
+                                                    >
+                                                        Download
+                                                    </TooltipContent>
+                                                </Tooltip>
                                             </td>
                                         </tr>
                                     ))}
-                                    {exportedData?.data.length === 0 ? (
+                                    {studentExports?.data.length === 0 ? (
                                         <>
                                             <tr>
                                                 <td
-                                                    colSpan={13}
+                                                    colSpan={7}
                                                     className="force-center border p-3 text-center"
                                                 >
                                                     No records found.
@@ -490,27 +473,26 @@ export default function Index() {
                                 </tbody>
                                 <tfoot>
                                     <tr>
-                                        <td colSpan={12} className="px-6 py-4">
+                                        <td colSpan={7} className="px-6 py-4">
                                             <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
                                                 <p className="text-sm text-muted-foreground">
                                                     Showing{' '}
                                                     <span className="font-medium">
-                                                        {exportedData?.from}
+                                                        {studentExports?.from}
                                                     </span>
                                                     –
                                                     <span className="font-medium">
-                                                        {exportedData?.to}
+                                                        {studentExports?.to}
                                                     </span>{' '}
                                                     of{' '}
                                                     <span className="font-medium">
-                                                        {exportedData?.total}
+                                                        {studentExports?.total}
                                                     </span>
                                                 </p>
 
                                                 <div className="flex flex-wrap gap-2">
-                                                    {exportedData?.links?.map(
+                                                    {studentExports?.links?.map(
                                                         (link, idx) => {
-                                                            // Extract page number from link URL
                                                             let page:
                                                                 | string
                                                                 | null = null;
@@ -546,7 +528,7 @@ export default function Index() {
                                                                             } =
                                                                                 await apiService.get(
                                                                                     route(
-                                                                                        'filter.export.history',
+                                                                                        'filter.student.exports',
                                                                                     ),
                                                                                     {
                                                                                         params: {
@@ -568,7 +550,7 @@ export default function Index() {
                                                                                     },
                                                                                 );
 
-                                                                            setExportedData(
+                                                                            setStudentExports(
                                                                                 data,
                                                                             );
                                                                         } catch (error) {
@@ -585,7 +567,6 @@ export default function Index() {
                                                                     }`}
                                                                     type="button"
                                                                 >
-                                                                    {/* Use inner text instead of dangerouslySetInnerHTML */}
                                                                     <span
                                                                         dangerouslySetInnerHTML={{
                                                                             __html: link.label,

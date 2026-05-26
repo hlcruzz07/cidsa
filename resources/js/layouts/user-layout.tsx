@@ -1,4 +1,3 @@
-import { Toaster } from '@/components/ui/sonner';
 import { usePage } from '@inertiajs/react';
 import { ReactNode, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -26,7 +25,6 @@ export default function UserLayout({ children }: AppLayoutProps) {
 
     return (
         <>
-            <Toaster richColors position="top-right" closeButton />
             <div className="flex h-screen justify-center bg-[var(--main-color)] text-white lg:items-center dark:bg-green-900 dark:text-gray-100">
                 {children}
             </div>

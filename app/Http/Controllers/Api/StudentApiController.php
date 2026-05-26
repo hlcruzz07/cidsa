@@ -20,6 +20,7 @@ class StudentApiController extends Controller
 
         $filters = $request->only([
             'search',
+            'type',
             'college',
             'program',
             'major',
@@ -65,6 +66,7 @@ class StudentApiController extends Controller
         $filters = $request->only([
 
             'campus',
+            'type',
             'search',
             'college',
             'program',
@@ -87,6 +89,7 @@ class StudentApiController extends Controller
     {
         $filters = $request->only([
             'campus',
+            'type',
             'search',
             'college',
             'program',

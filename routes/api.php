@@ -16,4 +16,5 @@ Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(f
     Route::get('/api/dashboard-chart', [StudentApiController::class, 'dashboardChart']);
 
     Route::get('/api/export-history', [ExportHistoryApiController::class, 'exportHistoryPaginate'])->name('filter.export.history');
+    Route::get('/api/student-exports', [ExportHistoryApiController::class, 'studentExportsPaginate'])->name('filter.student.exports');
 });

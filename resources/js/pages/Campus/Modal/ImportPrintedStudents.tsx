@@ -1,0 +1,116 @@
+import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+import { useForm } from '@inertiajs/react';
+import { toast } from 'sonner';
+import { route } from 'ziggy-js';
+type ImportPrintedStudentsProps = {
+    isOpen: boolean;
+    setIsOpen: (open: boolean) => void;
+    reload?: () => void;
+};
+export function ImportPrintedStudents({
+    isOpen,
+    setIsOpen,
+    reload,
+}: ImportPrintedStudentsProps) {
+    const { data, setData, processing, errors, post, clearErrors, reset } =
+        useForm({
+            students_file: null as File | null,
+        });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (processing) return;
+
+        try {
+            post(route('import.printed.students'), {
+                onSuccess: () => {
+                    setIsOpen(false);
+                    clearErrors();
+                    reset();
+                    if (reload) reload();
+                },
+                onError: (errors) => {
+                    console.log('Error importing students:', errors);
+                    toast.error(
+                        'Failed to import students. Please check your file and try again.',
+                    );
+                },
+                preserveScroll: true, // optional: keep scroll position
+            });
+        } catch (err: any) {
+            console.error('Unexpected error:', err);
+            toast.error('An unexpected error occurred. Please try again.');
+        }
+    };
+
+    return (
+        <Dialog open={isOpen || processing} onOpenChange={setIsOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handleSubmit}>
+                    <DialogHeader>
+                        <DialogTitle>Import Printed Students Data</DialogTitle>
+                        <DialogDescription>
+                            Upload a CSV file containing student records.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="my-5 grid gap-4">
+                        <div className="grid gap-3">
+                            <Label>Students CSV File</Label>
+                            <Input
+                                disabled={processing}
+                                type="file"
+                                name="students_file"
+                                accept=".csv"
+                                onChange={(e) =>
+                                    setData(
+                                        'students_file',
+                                        e.target.files?.[0] ?? null,
+                                    )
+                                }
+                                required
+                            />
+
+                            <InputError message={errors.students_file} />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button
+                                disabled={processing}
+                                type="button"
+                                variant="outline"
+                            >
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={processing}>
+                            {processing ? (
+                                <>
+                                    Loading... <Spinner />
+                                </>
+                            ) : (
+                                <>Submit</>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\PrintedStudents;
 use App\Repositories\StudentRepository;
 use Closure;
 use Illuminate\Http\Request;
@@ -29,9 +30,18 @@ class ValidateStudent
 
         $isExisting = $this->students->isStudentExisting($id_number, $first_name, $last_name);
         $isCompleted = $this->students->isStudentCompleted($id_number);
+        $isPrinted = PrintedStudents::where('id_number', $id_number)->exists();
+
+        if ($isPrinted) {
+            return redirect()->back()->with('warning', 'Student already printed');
+        }
 
         if (!$isExisting) {
             return redirect()->back()->with('error', 'Invalid student credentials');
+        }
+
+        if ($isCompleted) {
+            return redirect()->back()->with('warning', 'Student already submitted');
         }
 
         if ($isCompleted) {

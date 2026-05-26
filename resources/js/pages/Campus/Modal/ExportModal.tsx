@@ -8,13 +8,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { AsteriskIcon, DownloadIcon, EyeIcon } from 'lucide-react';
-import { useState } from 'react';
-
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { StudentProps } from '@/lib/custom-types';
+import axios from 'axios';
+import { AsteriskIcon, DownloadIcon, EyeIcon } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 
@@ -34,58 +34,205 @@ export default function ExportModal({
     onLoad,
 }: ExportModalProps) {
     const [isPreviewing, setIsPreviewing] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+
     const [exportLimit, setExportLimit] = useState<number | null>(null);
-    const [fileName, setFileName] = useState<string | null>(null);
+    const [fileName, setFileName] = useState('');
 
     const resetAll = () => {
-        setFileName(null);
+        setFileName('');
         setExportLimit(null);
         setIsPreviewing(false);
+        setIsExporting(false);
+
         setIsOpen(false);
+
         onLoad();
     };
 
-    const exportStudents = () => {
+    /*
+    |--------------------------------------------------------------------------
+    | Validation
+    |--------------------------------------------------------------------------
+    */
+    const validate = () => {
         if (!students || students.length === 0) {
             toast.error('Students not found');
-            return;
+            return false;
         }
 
         if (students.length <= 1) {
             toast.error('Students required for export is up to 2-100');
-            return;
+            return false;
         }
 
-        if (!fileName) {
-            toast.error('Please Enter File Name');
-            return;
+        if (!fileName.trim()) {
+            toast.error('Please enter file name');
+            return false;
         }
 
         if (!exportLimit) {
             toast.error('Please set limit first');
-            return;
+            return false;
         }
 
         if (exportLimit <= 1) {
             toast.error('Limit should be more than 1');
-            return;
+            return false;
         }
 
         if (exportLimit > 100) {
-            toast.error('Limit should be more than 1');
-            return;
+            toast.error('Limit should not exceed 100');
+            return false;
         }
 
-        window.location.href = route('export.students', {
-            students: students.slice(0, exportLimit),
-            file_name: fileName,
-        });
-
-        onLoad();
-        resetAll();
+        return true;
     };
+
+    /*
+    |--------------------------------------------------------------------------
+    | Export Students
+    |--------------------------------------------------------------------------
+    */
+    const exportStudents = async () => {
+        if (!validate()) return;
+
+        let toastId: string | number | null = null;
+
+        try {
+            setIsExporting(true);
+
+            const payload = {
+                student_ids: students!.slice(0, exportLimit!).map((s) => s.id),
+                file_name: fileName,
+            };
+
+            /*
+        |--------------------------------------------------------------------------
+        | API Request
+        |--------------------------------------------------------------------------
+        */
+            toastId = toast.loading('Starting export...');
+
+            const response = await axios.post(
+                route('export.students'),
+                payload,
+            );
+
+            const exportId = response.data.export_id;
+
+            if (!exportId) {
+                setIsExporting(false);
+
+                toast.error('Export ID not found.', {
+                    id: toastId ?? undefined,
+                });
+
+                return;
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | Polling
+        |--------------------------------------------------------------------------
+        */
+            const poll = setInterval(async () => {
+                try {
+                    const res = await axios.get(
+                        route('exports.status', exportId),
+                    );
+
+                    const exportData = res.data;
+
+                    /*
+                |--------------------------------------------------------------------------
+                | COMPLETED
+                |--------------------------------------------------------------------------
+                */
+                    if (exportData.status === 'completed') {
+                        clearInterval(poll);
+
+                        toast.success('Export completed successfully.', {
+                            id: toastId ?? undefined,
+                        });
+
+                        setIsExporting(false);
+
+                        resetAll();
+
+                        setTimeout(() => {
+                            window.location.href = route(
+                                'exports.download',
+                                exportId,
+                            );
+                        }, 1000);
+
+                        return;
+                    }
+
+                    /*
+                |--------------------------------------------------------------------------
+                | FAILED
+                |--------------------------------------------------------------------------
+                */
+                    if (exportData.status === 'failed') {
+                        clearInterval(poll);
+
+                        setIsExporting(false);
+
+                        toast.error(
+                            exportData.error_message ?? 'Export failed.',
+                            {
+                                id: toastId ?? undefined,
+                            },
+                        );
+
+                        return;
+                    }
+                } catch (error) {
+                    clearInterval(poll);
+
+                    setIsExporting(false);
+
+                    console.error(error);
+
+                    toast.error('Failed checking export status.', {
+                        id: toastId ?? undefined,
+                    });
+                }
+            }, 3000);
+        } catch (error) {
+            console.error(error);
+
+            setIsExporting(false);
+
+            toast.error('Export failed.', {
+                id: toastId ?? undefined,
+            });
+        }
+    };
+
+    /*
+    |--------------------------------------------------------------------------
+    | Preview
+    |--------------------------------------------------------------------------
+    */
+    const previewStudents = async () => {
+        if (!validate()) return;
+
+        try {
+            setIsPreviewing(true);
+
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            onPreview(students!.slice(0, exportLimit!));
+        } finally {
+            setIsPreviewing(false);
+        }
+    };
+
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen || isExporting} onOpenChange={setIsOpen}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Export Students Modal</DialogTitle>
@@ -97,42 +244,48 @@ export default function ExportModal({
                             Enter File Name
                             <AsteriskIcon color="red" size={12} />
                         </Label>
+
                         <Input
                             type="text"
-                            value={fileName ?? ''}
+                            value={fileName}
                             placeholder="Enter File Name"
                             maxLength={25}
+                            disabled={isPreviewing || isExporting}
                             onChange={(e) => {
                                 setFileName(e.target.value);
                             }}
                         />
                     </div>
+
                     <div className="grid grid-cols-1 gap-3">
                         <Label>
-                            Enter Limit (2-100){' '}
+                            Enter Limit (2-100)
                             <AsteriskIcon color="red" size={12} />
                         </Label>
+
                         <Input
-                            type="text"
+                            type="number"
                             value={exportLimit ?? ''}
                             placeholder="Enter Student Limit"
-                            min={1}
-                            max={150}
+                            min={2}
+                            disabled={isPreviewing || isExporting}
+                            max={100}
                             onChange={(e) => {
                                 let value = e.target.value;
 
-                                // limit to 3 digits
                                 if (value.length > 3) return;
 
                                 let num = Number(value);
 
-                                // enforce max 150
-                                if (num > 100) num = 100;
+                                if (num > 100) {
+                                    num = 100;
+                                }
 
                                 setExportLimit(value ? num : null);
                             }}
                         />
                     </div>
+
                     <p className="text-center text-sm whitespace-nowrap">
                         Ready for exporting:
                         <Badge>
@@ -143,78 +296,55 @@ export default function ExportModal({
 
                 <DialogFooter className="pt-4">
                     <DialogClose asChild>
-                        <Button variant="outline">Close</Button>
+                        <Button
+                            variant="outline"
+                            disabled={isPreviewing || isExporting}
+                        >
+                            Close
+                        </Button>
                     </DialogClose>
+
                     <Button
-                        onClick={() => {
-                            if (!students || students.length === 0) return;
-                            if (!exportLimit) return;
-                            if (!students || students.length === 0) {
-                                toast.error('Students not found');
-                                return;
-                            }
-
-                            if (students.length <= 1) {
-                                toast.error(
-                                    'Students required for export is up to 2-100',
-                                );
-                                return;
-                            }
-
-                            if (!fileName) {
-                                toast.error('Please Enter File Name');
-                                return;
-                            }
-
-                            if (!exportLimit) {
-                                toast.error('Please set limit first');
-                                return;
-                            }
-
-                            if (exportLimit <= 1) {
-                                toast.error('Limit should be more than 1');
-                                return;
-                            }
-
-                            if (exportLimit > 100) {
-                                toast.error('Limit should be more than 1');
-                                return;
-                            }
-                            setIsPreviewing(true);
-                            setTimeout(() => {
-                                onPreview(students.slice(0, exportLimit));
-
-                                setIsPreviewing(false);
-                            }, 2000);
-                        }}
+                        onClick={previewStudents}
                         disabled={
                             isPreviewing ||
-                            students?.length === 0 ||
-                            !exportLimit ||
-                            exportLimit <= 1
+                            isExporting ||
+                            students?.length === 0
                         }
                         variant="secondary"
                     >
                         {isPreviewing ? (
                             <>
-                                Loading... <Spinner />
+                                Loading...
+                                <Spinner />
                             </>
                         ) : (
                             <>
-                                Preview <EyeIcon />
+                                Preview
+                                <EyeIcon />
                             </>
                         )}
                     </Button>
+
                     <Button
+                        onClick={exportStudents}
                         disabled={
                             isPreviewing ||
-                            students?.length === 0 ||
-                            !exportLimit ||
-                            exportLimit <= 1
+                            isExporting ||
+                            students?.length === 0
                         }
-                        onClick={exportStudents}
                     >
-                        Download <DownloadIcon />
+                        {isExporting ? (
+                            <>
+                                Exporting...
+                                <Spinner />
+                            </>
+                        ) : (
+                            <>
+                                Download
+                                <DownloadIcon />
+                            </>
+                        )}
                     </Button>
                 </DialogFooter>
             </DialogContent>

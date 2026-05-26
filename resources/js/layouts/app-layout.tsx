@@ -1,4 +1,3 @@
-import { Toaster } from '@/components/ui/sonner';
 import AppLayoutTemplate from '@/layouts/app/app-sidebar-layout';
 import { type BreadcrumbItem } from '@/types';
 import { usePage } from '@inertiajs/react';
@@ -29,7 +28,6 @@ export default function AppLayout({ children, breadcrumbs }: AppLayoutProps) {
 
     return (
         <>
-            <Toaster richColors position="top-right" />
             <AppLayoutTemplate breadcrumbs={breadcrumbs}>
                 {children}
             </AppLayoutTemplate>

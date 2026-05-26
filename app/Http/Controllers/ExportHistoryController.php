@@ -2,16 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\StudentsExport;
-use App\Models\ExportHistory;
+use App\Jobs\ExportStudentsJob;
+use App\Models\StudentExport;
 use App\Repositories\ExportRepository;
 use App\Repositories\StudentRepository;
 use App\Services\GoogleDriveService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Storage;
-use Maatwebsite\Excel\Facades\Excel;
-use ZipArchive;
 
 class ExportHistoryController extends Controller
 {
@@ -40,86 +37,26 @@ class ExportHistoryController extends Controller
 
     public function exportStudents(Request $request)
     {
-        $student_ids = (array) $request->student_ids;
-        $students = $this->studentRepository->getStudetsByIds($student_ids);
-        $fileName = $request->file_name;
+        $studentIds = (array) $request->input('student_ids', []);
+        $fileName = $request->input('file_name', 'students');
 
-        $zipName = $fileName . '.zip';
-        $zipPath = storage_path('app/' . $zipName);
-
-        $zip = new ZipArchive;
-
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            return response()->json(['error' => 'Could not create ZIP file.'], 500);
+        if (empty($studentIds)) {
+            return response()->json([
+                'message' => 'No students selected for export.',
+            ], 422);
         }
 
-        // 1️⃣ Generate Excel file temporarily
-        $excelName = 'students.xlsx';
-        $excelTempPath = 'temp/' . $excelName;
+        $export = StudentExport::create([
+            'user_id' => $request->user()->id,
+            'file_name' => $fileName,
+            'status' => 'pending',
+        ]);
 
-        Storage::makeDirectory('temp');
-        Excel::store(new StudentsExport($students), $excelTempPath);
+        ExportStudentsJob::dispatch($studentIds, $export->id, $fileName);
 
-        $zip->addFile(Storage::path($excelTempPath), $excelName);
-
-        // 2️⃣ Loop through students
-        foreach ($students as $student) {
-
-            // 📸 PHOTO
-            if (!empty($student->picture)) {
-                try {
-                    if (preg_match('/^[a-zA-Z0-9_-]{25,}$/', $student->picture)) {
-                        // Google Drive ID
-                        $photoContent = $this->googleDriveService->getFileContent($student->picture);
-                    } else {
-                        // Local storage
-                        if (Storage::disk('public')->exists($student->picture)) {
-                            $photoContent = Storage::disk('public')->get($student->picture);
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    if (!empty($photoContent)) {
-                        $photoName = $student->id_number . '.jpg';
-                        $zip->addFromString('photos/' . $photoName, $photoContent);
-                    }
-                } catch (\Exception $e) {
-                    \Log::warning("Failed to fetch photo for student {$student->id}: {$e->getMessage()}");
-                }
-            }
-
-            // ✍️ SIGNATURE
-            if (!empty($student->e_signature)) {
-                try {
-                    if (preg_match('/^[a-zA-Z0-9_-]{25,}$/', $student->e_signature)) {
-                        // Google Drive ID
-                        $signatureContent = $this->googleDriveService->getFileContent($student->e_signature);
-                    } else {
-                        // Local storage
-                        if (Storage::disk('public')->exists($student->e_signature)) {
-                            $signatureContent = Storage::disk('public')->get($student->e_signature);
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    if (!empty($signatureContent)) {
-                        $signatureName = $student->id_number . '.bmp';
-                        $zip->addFromString('signatures/' . $signatureName, $signatureContent);
-                    }
-                } catch (\Exception $e) {
-                    \Log::warning("Failed to fetch signature for student {$student->id}: {$e->getMessage()}");
-                }
-            }
-        }
-
-        $zip->close();
-
-        // Cleanup temp Excel
-        Storage::delete($excelTempPath);
-
-        // Download ZIP
-        return response()->download($zipPath)->deleteFileAfterSend(true);
+        return response()->json([
+            'message' => 'Export started.',
+            'export_id' => $export->id,
+        ]);
     }
 }

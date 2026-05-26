@@ -33,14 +33,18 @@ import {
     CalendarIcon,
     ChevronDownIcon,
     ChevronsLeftRight,
+    CloudDownloadIcon,
     EyeIcon,
     PencilIcon,
     Trash2Icon,
+    UserPlus,
     XIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
 import { AddStudentModal } from './Campus/Modal/AddStudentModal';
+import { ImportModal } from './Campus/Modal/ImportModal';
+import { ImportPrintedStudents } from './Campus/Modal/ImportPrintedStudents';
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Dashboard',
@@ -103,13 +107,23 @@ export default function Dashboard() {
     }, [searchValue, range, perPage, sort, order]);
 
     const [openAddModal, setOpenAddModal] = useState(false);
-
+    const [openImportModal, setOpenImportModal] = useState(false);
+    const [openImportPrintedModal, setOpenImportPrintedModal] = useState(false);
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
             <AddStudentModal
                 isOpen={openAddModal}
                 setIsOpen={() => setOpenAddModal(false)}
+            />
+            <ImportModal
+                isOpen={openImportModal}
+                setIsOpen={() => setOpenImportModal(false)}
+            />
+            <ImportPrintedStudents
+                isOpen={openImportPrintedModal}
+                setIsOpen={() => setOpenImportPrintedModal(false)}
+                reload={handleFilter}
             />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="grid auto-rows-min gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -147,15 +161,43 @@ export default function Dashboard() {
                                                 ).toLocaleString()}
                                             </Badge>
                                         </p>
-                                        <Button
-                                            type="button"
-                                            className="w-full md:w-auto"
-                                            onClick={() =>
-                                                setOpenAddModal(true)
-                                            }
-                                        >
-                                            Add Student
-                                        </Button>
+                                        <div className="flex w-full flex-wrap items-center justify-end gap-3 md:w-auto">
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                className="w-full md:w-auto"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    setOpenImportPrintedModal(
+                                                        true,
+                                                    )
+                                                }
+                                            >
+                                                <CloudDownloadIcon /> Import
+                                                Printed Students
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                className="w-full md:w-auto"
+                                                size="sm"
+                                                onClick={() =>
+                                                    setOpenAddModal(true)
+                                                }
+                                            >
+                                                <UserPlus /> Add Student
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                className="w-full md:w-auto"
+                                                onClick={() =>
+                                                    setOpenImportModal(true)
+                                                }
+                                            >
+                                                <CloudDownloadIcon /> Import
+                                                Students
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                             </CardHeader>
