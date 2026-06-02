@@ -150,16 +150,19 @@ export default function Index() {
 
             setCanExport(checkData);
 
-            console.log(checkData);
-
             setStudents(paginateData);
 
-            const cleanedSections = paginateData.data
-                .map((item: any) => item.section)
-                .filter((section: any): section is string => Boolean(section))
-                .sort((a: any, b: any) => a.localeCompare(b));
+            const cleanedSections: string[] = [
+                ...new Set(
+                    (paginateData.data as StudentProps[])
+                        .map((item) => item.section)
+                        .filter((section): section is string =>
+                            Boolean(section),
+                        ),
+                ),
+            ].sort((a: string, b: string) => a.localeCompare(b));
 
-            setSectionsArr(cleanedSections);
+            setSectionsArr(cleanedSections as any);
         } catch (error) {
             console.error('Error fetching students:', error);
         }
@@ -282,7 +285,7 @@ export default function Index() {
             setExportedStudents(data);
             setIsFetchingExport(false);
         } catch (error) {
-            console.log('Eror Fetching exportable students', error);
+            console.error('Eror Fetching exportable students', error);
         }
     };
 
@@ -1027,27 +1030,45 @@ export default function Index() {
                                                         className="w-max"
                                                         align="end"
                                                     >
-                                                        <Link
-                                                            href={route(
-                                                                'campus.view.student',
-                                                                row.id,
-                                                            )}
-                                                        >
-                                                            <DropdownMenuItem>
+                                                        {row.is_completed ? (
+                                                            <Link
+                                                                href={route(
+                                                                    'campus.view.student',
+                                                                    row.id,
+                                                                )}
+                                                            >
+                                                                <DropdownMenuItem>
+                                                                    <EyeIcon />{' '}
+                                                                    View
+                                                                </DropdownMenuItem>
+                                                            </Link>
+                                                        ) : (
+                                                            <DropdownMenuItem
+                                                                disabled
+                                                            >
                                                                 <EyeIcon /> View
                                                             </DropdownMenuItem>
-                                                        </Link>
-                                                        <Link
-                                                            href={route(
-                                                                'campus.edit.student',
-                                                                row.id,
-                                                            )}
-                                                        >
-                                                            <DropdownMenuItem>
+                                                        )}
+                                                        {row.is_completed ? (
+                                                            <Link
+                                                                href={route(
+                                                                    'campus.edit.student',
+                                                                    row.id,
+                                                                )}
+                                                            >
+                                                                <DropdownMenuItem>
+                                                                    <PencilIcon />{' '}
+                                                                    Edit
+                                                                </DropdownMenuItem>
+                                                            </Link>
+                                                        ) : (
+                                                            <DropdownMenuItem
+                                                                disabled
+                                                            >
                                                                 <PencilIcon />{' '}
                                                                 Edit
                                                             </DropdownMenuItem>
-                                                        </Link>
+                                                        )}
                                                         <DropdownMenuItem
                                                             disabled={
                                                                 !row.is_completed

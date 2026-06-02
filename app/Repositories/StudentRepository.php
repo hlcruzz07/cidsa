@@ -117,9 +117,11 @@ class StudentRepository
 
         if (!empty($filters['type'])) {
             if ($filters['type'] === 'Graduate Studies') {
-                $query->where('program', 'LIKE', 'Master%')
-                    ->orWhere('program', 'LIKE', 'Doctor%')
-                    ->orWhere('program', 'LIKE', 'Teacher%');
+                $query->where(function ($q) {
+                    $q->where('program', 'LIKE', 'Master%')
+                        ->orWhere('program', 'LIKE', 'Doctor%')
+                        ->orWhere('program', 'LIKE', 'Teacher%');
+                });
             } else {
                 $query->where('program', 'LIKE', 'Bachelor%');
             }
@@ -288,8 +290,6 @@ class StudentRepository
         $result->update($data);
         $result->save();
 
-        $this->setCompleted($id);
-
         return $result;
     }
 
@@ -312,19 +312,11 @@ class StudentRepository
 
         if (!empty($filters['type'])) {
             if ($filters['type'] === 'Graduate Studies') {
-                $query->where('program', 'LIKE', 'Master%')
-                    ->orWhere('program', 'LIKE', 'Doctor%')
-                    ->orWhere('program', 'LIKE', 'Teacher%');
-            } else {
-                $query->where('program', 'LIKE', 'Bachelor%');
-            }
-        }
-
-        if (!empty($filters['type'])) {
-            if ($filters['type'] === 'Graduate Studies') {
-                $query->where('program', 'LIKE', 'Master%')
-                    ->orWhere('program', 'LIKE', 'Doctor%')
-                    ->orWhere('program', 'LIKE', 'Teacher%');
+                $query->where(function ($q) {
+                    $q->where('program', 'LIKE', 'Master%')
+                        ->orWhere('program', 'LIKE', 'Doctor%')
+                        ->orWhere('program', 'LIKE', 'Teacher%');
+                });
             } else {
                 $query->where('program', 'LIKE', 'Bachelor%');
             }
@@ -403,19 +395,11 @@ class StudentRepository
 
         if (!empty($filters['type'])) {
             if ($filters['type'] === 'Graduate Studies') {
-                $query->where('program', 'LIKE', 'Master%')
-                    ->orWhere('program', 'LIKE', 'Doctor%')
-                    ->orWhere('program', 'LIKE', 'Teacher%');
-            } else {
-                $query->where('program', 'LIKE', 'Bachelor%');
-            }
-        }
-
-        if (!empty($filters['type'])) {
-            if ($filters['type'] === 'Graduate Studies') {
-                $query->where('program', 'LIKE', 'Master%')
-                    ->orWhere('program', 'LIKE', 'Doctor%')
-                    ->orWhere('program', 'LIKE', 'Teacher%');
+                $query->where(function ($q) {
+                    $q->where('program', 'LIKE', 'Master%')
+                        ->orWhere('program', 'LIKE', 'Doctor%')
+                        ->orWhere('program', 'LIKE', 'Teacher%');
+                });
             } else {
                 $query->where('program', 'LIKE', 'Bachelor%');
             }

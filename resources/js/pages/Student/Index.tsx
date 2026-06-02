@@ -30,7 +30,7 @@ export default function Index() {
         post(route('validate.student'), {
             preserveScroll: true,
             onError: (err) => {
-                console.log('Error validating student', err);
+                console.error('Error validating student', err);
             },
         });
     };

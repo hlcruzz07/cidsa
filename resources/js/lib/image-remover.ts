@@ -1,15 +1,30 @@
 import * as faceapi from 'face-api.js';
 
+let faceDetectorPromise: Promise<void> | null = null;
+
+const loadFaceDetectorModels = (): Promise<void> => {
+    if (!faceDetectorPromise) {
+        faceDetectorPromise =
+            faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+    }
+    return faceDetectorPromise;
+};
+
 export const applyWhiteBackground = (blob: Blob): Promise<Blob> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
+        const url = URL.createObjectURL(blob);
+
         img.onload = () => {
             const canvas = document.createElement('canvas');
             canvas.width = img.width;
             canvas.height = img.height;
 
             const ctx = canvas.getContext('2d');
-            if (!ctx) return reject('Canvas context error');
+            if (!ctx) {
+                URL.revokeObjectURL(url);
+                return reject('Canvas context error');
+            }
 
             // Fill white background
             ctx.fillStyle = '#ffffff';
@@ -18,7 +33,7 @@ export const applyWhiteBackground = (blob: Blob): Promise<Blob> => {
             // Draw transparent image on top
             ctx.drawImage(img, 0, 0);
 
-            // Export as JPEG with white background
+            URL.revokeObjectURL(url);
             canvas.toBlob(
                 (jpgBlob) => {
                     if (!jpgBlob) reject('Failed to convert to JPEG');
@@ -29,8 +44,11 @@ export const applyWhiteBackground = (blob: Blob): Promise<Blob> => {
             );
         };
 
-        img.onerror = reject;
-        img.src = URL.createObjectURL(blob);
+        img.onerror = (error) => {
+            URL.revokeObjectURL(url);
+            reject(error);
+        };
+        img.src = url;
     });
 };
 
@@ -39,13 +57,13 @@ export const resizeWithFaceCentering = async (
     targetWidth: number,
     targetHeight: number,
 ): Promise<Blob> => {
-    // Load face-api models (only once)
-    await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+    await loadFaceDetectorModels();
 
     return new Promise(async (resolve, reject) => {
         const img = new Image();
+        const url = URL.createObjectURL(blob);
+
         img.onload = async () => {
-            // Detect the face
             const detection = await faceapi.detectSingleFace(
                 img,
                 new faceapi.TinyFaceDetectorOptions(),
@@ -56,9 +74,11 @@ export const resizeWithFaceCentering = async (
             canvas.height = targetHeight;
 
             const ctx = canvas.getContext('2d');
-            if (!ctx) return reject('Canvas error');
+            if (!ctx) {
+                URL.revokeObjectURL(url);
+                return reject('Canvas error');
+            }
 
-            // White background
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, targetWidth, targetHeight);
 
@@ -69,11 +89,8 @@ export const resizeWithFaceCentering = async (
 
             if (detection) {
                 const box = detection.box;
-
-                // Desired framing — expand crop around face
                 const centerX = box.x + box.width / 2;
                 const centerY = box.y + box.height / 2;
-
                 const cropSize = Math.max(box.width, box.height) * 2.2;
 
                 srcX = centerX - cropSize / 2;
@@ -88,11 +105,8 @@ export const resizeWithFaceCentering = async (
             }
 
             const ratio = Math.max(targetWidth / srcW, targetHeight / srcH);
-
             const newWidth = srcW * ratio;
             const newHeight = srcH * ratio;
-
-            // Center horizontally and vertically (crop may overflow to remove bottom space)
             const offsetX = (targetWidth - newWidth) / 2;
             const offsetY = (targetHeight - newHeight) / 2;
 
@@ -108,6 +122,7 @@ export const resizeWithFaceCentering = async (
                 newHeight,
             );
 
+            URL.revokeObjectURL(url);
             canvas.toBlob(
                 (blobOut) => {
                     if (!blobOut) reject('Resize failed');
@@ -118,7 +133,10 @@ export const resizeWithFaceCentering = async (
             );
         };
 
-        img.onerror = reject;
-        img.src = URL.createObjectURL(blob);
+        img.onerror = (error) => {
+            URL.revokeObjectURL(url);
+            reject(error);
+        };
+        img.src = url;
     });
 };

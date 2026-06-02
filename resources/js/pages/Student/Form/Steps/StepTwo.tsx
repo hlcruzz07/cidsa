@@ -23,7 +23,7 @@ import {
     Smile,
     Square,
 } from 'lucide-react';
-import { ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import SignatureModal from '../Modal/SignatureModal';
 
@@ -55,13 +55,23 @@ export default function StepTwo({
     onCancel,
 }: StepTwoProps) {
     const { student } = usePage<PageProps>().props;
-    const previewUrl = useMemo(() => {
-        if (!data.picture) return '/placeholder.jpg';
-        return URL.createObjectURL(data.picture);
-    }, [data.picture]);
-
+    const [previewUrl, setPreviewUrl] = useState('/placeholder.jpg');
     const [isBgRemoving, setIsBgRemoving] = useState<boolean>(false);
     const [progress, setProgress] = useState<number>(0);
+
+    useEffect(() => {
+        if (!data.picture) {
+            setPreviewUrl('/placeholder.jpg');
+            return;
+        }
+
+        const url = URL.createObjectURL(data.picture);
+        setPreviewUrl(url);
+
+        return () => {
+            URL.revokeObjectURL(url);
+        };
+    }, [data.picture]);
 
     useEffect(() => {
         if (isBgRemoving) {
@@ -79,6 +89,9 @@ export default function StepTwo({
 
         setIsBgRemoving(true);
         setProgress(0);
+
+        // Allow React to render the overlay before processing begins
+        await new Promise((resolve) => setTimeout(resolve, 0));
 
         try {
             // 1. Remove background → transparent PNG
@@ -117,7 +130,7 @@ export default function StepTwo({
         } catch (err) {
             console.error('Background removal failed', err);
             toast.error('Failed to process image. Please try again.');
-            setData('picure', null);
+            setData('picture', null);
         } finally {
             setIsBgRemoving(false);
             setProgress(0);
@@ -131,23 +144,56 @@ export default function StepTwo({
     return (
         <>
             {isBgRemoving && (
-                <div className="fixed top-0 left-0 z-20 flex h-full w-full items-center justify-center overflow-hidden bg-black/70">
-                    <div className="relative flex h-80 w-80 items-center justify-center">
-                        <div className="z-10 flex flex-col items-center gap-5">
+                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                    <div className="relative flex flex-col items-center rounded-3xl border border-white/10 bg-white/5 px-10 py-8 shadow-2xl backdrop-blur-md">
+                        <div className="relative flex h-32 w-32 items-center justify-center">
+                            {/* Animated Ring */}
+                            <div className="absolute inset-0">
+                                <div className="h-full w-full animate-spin rounded-full border-4 border-white/20 border-t-green-500" />
+                            </div>
+
+                            {/* Logo */}
                             <img
                                 src="/logo.webp"
-                                className="h-18 w-18 md:h-20 md:w-20"
                                 alt="CHMSU Logo"
+                                className="animate-float relative z-10 h-20 w-20"
                                 loading="eager"
                             />
-                            <h1 className="text-center text-white">
-                                Processing Picture...
+                        </div>
+
+                        {/* Text */}
+                        <div className="mt-6 text-center">
+                            <h1 className="text-lg font-semibold text-white">
+                                Processing Picture
+                                <span className="ms-2 inline-flex">
+                                    <span className="animate-bounce">.</span>
+                                    <span
+                                        className="animate-bounce"
+                                        style={{ animationDelay: '0.2s' }}
+                                    >
+                                        .
+                                    </span>
+                                    <span
+                                        className="animate-bounce"
+                                        style={{ animationDelay: '0.4s' }}
+                                    >
+                                        .
+                                    </span>
+                                </span>
                             </h1>
-                            <div className="w-full max-w-xs">
-                                <Progress value={progress} className="w-full" />
-                                <p className="mt-2 text-center text-sm text-white">
-                                    {progress}%
-                                </p>
+
+                            <p className="mt-2 text-sm text-gray-300">
+                                Please wait while we prepare your image
+                            </p>
+                        </div>
+
+                        {/* Progress */}
+                        <div className="mt-6 w-72">
+                            <Progress value={progress} className="h-3" />
+
+                            <div className="mt-2 flex justify-between text-sm text-white">
+                                <span>Uploading</span>
+                                <span>{progress}%</span>
                             </div>
                         </div>
                     </div>
@@ -155,165 +201,212 @@ export default function StepTwo({
             )}
             <Heading
                 title="Photo & E-Signature Upload"
-                description="Upload your 1×1 ID photo and provide your electronic signature to proceed with your application."
+                description="Upload your picture and provide your e-signature to proceed with your application."
             />
-            <div className="grid gap-5 lg:grid-cols-2">
-                <div className="rounded-2xl border bg-gray-50 p-6 dark:border-gray-600 dark:bg-gray-800">
-                    <h1 className="flex items-center gap-3 text-2xl font-bold text-[var(--main-color)] dark:text-[var(--main-color)]">
-                        Picture Guidelines
-                        <InfoIcon />
-                    </h1>
-
-                    <div className="mt-3 space-y-4 text-sm">
-                        {/* 1 */}
-                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
-                            <div className="flex gap-3">
-                                <Camera className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
-                                <p className="m-0 p-0 dark:text-gray-100">
-                                    The photo must show a frontal pose looking
-                                    directly at the camera, with your full face,
-                                    both ears, and shoulders clearly visible.
-                                </p>
-                            </div>
+            <div className="space-y-8">
+                <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Guidelines */}
+                    <div className="rounded-3xl border border-gray-200 bg-gradient-to-b from-white to-gray-50 p-6 shadow-lg dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
+                        <div className="mb-6 flex items-center gap-3 border-b border-gray-200 pb-4 dark:border-gray-700">
+                            <InfoIcon className="h-6 w-6 text-[var(--main-color)]" />
+                            <h1 className="text-2xl font-bold text-[var(--main-color)]">
+                                Picture Guidelines
+                            </h1>
                         </div>
 
-                        {/* 2 */}
-                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
-                            <div className="flex gap-3">
-                                <Smile className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
-                                <p className="m-0 p-0 dark:text-gray-100">
-                                    Maintain a neutral expression with both eyes
-                                    open and mouth closed.
-                                </p>
+                        <div className="space-y-4 text-sm">
+                            {/* 1 */}
+                            <div className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md dark:border-gray-600 dark:bg-gray-700">
+                                <div className="flex gap-4">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--main-color)]/10">
+                                        <Camera className="h-5 w-5 text-[var(--main-color)]" />
+                                    </div>
+                                    <p className="leading-relaxed dark:text-gray-100">
+                                        The photo must show a frontal pose
+                                        looking directly at the camera, with
+                                        your full face, both ears, and shoulders
+                                        clearly visible.
+                                    </p>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* 3 */}
-                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
-                            <div className="flex gap-3">
-                                <Ban className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
-                                <p className="m-0 p-0 dark:text-gray-100">
-                                    Remove accessories such as caps, headbands,
-                                    sunglasses, or face masks before taking the
-                                    photo.
-                                </p>
+                            {/* 2 */}
+                            <div className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md dark:border-gray-600 dark:bg-gray-700">
+                                <div className="flex gap-4">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--main-color)]/10">
+                                        <Smile className="h-5 w-5 text-[var(--main-color)]" />
+                                    </div>
+                                    <p className="leading-relaxed dark:text-gray-100">
+                                        Maintain a neutral expression with both
+                                        eyes open and mouth closed.
+                                    </p>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* 4 */}
-                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
-                            <div className="flex gap-3">
-                                <Square className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
-                                <p className="m-0 p-0 dark:text-gray-100">
-                                    The photo must be taken in front of a plain
-                                    white or off-white background.
-                                </p>
+                            {/* 3 */}
+                            <div className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md dark:border-gray-600 dark:bg-gray-700">
+                                <div className="flex gap-4">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--main-color)]/10">
+                                        <Ban className="h-5 w-5 text-[var(--main-color)]" />
+                                    </div>
+                                    <p className="leading-relaxed dark:text-gray-100">
+                                        Remove accessories such as caps,
+                                        headbands, sunglasses, or face masks
+                                        before taking the photo.
+                                    </p>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* 5 */}
-                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
-                            <div className="flex gap-3">
-                                <Shirt className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
-                                <p className="m-0 p-0 dark:text-gray-100">
-                                    Wear appropriate attire and ensure proper
-                                    grooming.
-                                </p>
+                            {/* 4 */}
+                            <div className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md dark:border-gray-600 dark:bg-gray-700">
+                                <div className="flex gap-4">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--main-color)]/10">
+                                        <Square className="h-5 w-5 text-[var(--main-color)]" />
+                                    </div>
+                                    <p className="leading-relaxed dark:text-gray-100">
+                                        The photo must be taken in front of a
+                                        plain white or off-white background.
+                                    </p>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* 6 */}
-                        <div className="flex items-start gap-4 rounded-xl border bg-white p-4 shadow-sm dark:border-gray-600 dark:bg-gray-700">
-                            <div className="flex gap-3">
-                                <ImageIcon className="mt-1 h-6 w-6 flex-shrink-0 text-[var(--main-color)]" />
-                                <p className="m-0 p-0 dark:text-gray-100">
-                                    File Requirements: The image must be cropped
-                                    to a 1×1 photo dimension.
-                                </p>
+                            {/* 5 */}
+                            <div className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md dark:border-gray-600 dark:bg-gray-700">
+                                <div className="flex gap-4">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--main-color)]/10">
+                                        <Shirt className="h-5 w-5 text-[var(--main-color)]" />
+                                    </div>
+                                    <p className="leading-relaxed dark:text-gray-100">
+                                        Wear appropriate attire and ensure
+                                        proper grooming.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* 6 */}
+                            <div className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md dark:border-gray-600 dark:bg-gray-700">
+                                <div className="flex gap-4">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--main-color)]/10">
+                                        <ImageIcon className="h-5 w-5 text-[var(--main-color)]" />
+                                    </div>
+                                    <p className="leading-relaxed dark:text-gray-100">
+                                        File Requirements: The image must be
+                                        cropped to a 1×1 photo dimension.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="grid gap-3">
-                    <img
-                        src={previewUrl}
-                        alt="Preview"
-                        className="h-auto w-full border object-contain dark:border-gray-600"
-                    />
-                    <Input
-                        type="file"
-                        name="picture"
-                        id="picture"
-                        accept=".jpg, .jpeg, .png"
-                        onChange={handleFileChange}
-                        className="hidden"
-                    />
+                    {/* Upload Section */}
+                    <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                        <div className="mb-4 flex items-center gap-2">
+                            <ImageIcon className="h-5 w-5 text-[var(--main-color)]" />
+                            <h2 className="text-lg font-semibold">
+                                Photo Preview
+                            </h2>
+                        </div>
 
-                    <Button type="button" className="p-0">
-                        <Label
-                            htmlFor="picture"
-                            className="m-0 flex h-full w-full items-center justify-center"
+                        <div className="overflow-hidden rounded-2xl border border-dashed border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-900">
+                            <img
+                                src={previewUrl}
+                                alt="Preview"
+                                className="h-auto max-h-[500px] w-full object-contain"
+                            />
+                        </div>
+
+                        <Input
+                            type="file"
+                            name="picture"
+                            id="picture"
+                            accept=".jpg, .jpeg, .png"
+                            onChange={handleFileChange}
+                            className="hidden"
+                        />
+
+                        <Button
+                            type="button"
+                            className="mt-5 h-12 w-full rounded-xl text-base font-medium"
                         >
-                            Upload ID Picture
-                            <ImageUpIcon />
-                        </Label>
-                    </Button>
+                            <Label
+                                htmlFor="picture"
+                                className="flex h-full w-full cursor-pointer items-center justify-center gap-2"
+                            >
+                                <ImageUpIcon className="h-5 w-5" />
+                                Upload ID Picture
+                            </Label>
+                        </Button>
 
-                    <InputError message={errors.picture} />
-                </div>
-            </div>
-            <div>
-                <div className="flex items-center justify-between">
-                    <Label>
-                        E - Signature <AsteriskIcon size={12} color="red" />
-                    </Label>
-                    <SignatureModal
-                        idNumber={student.id_number}
-                        onSave={handleSaveSignature}
-                    />
+                        <InputError message={errors.picture} />
+                    </div>
                 </div>
 
-                <div className="mt-3 flex h-56 items-center justify-center border dark:bg-white">
-                    {data.e_signature ? (
-                        <>
+                {/* Signature Section */}
+                <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <Label className="text-base font-semibold">
+                                E - Signature{' '}
+                                <AsteriskIcon size={12} color="red" />
+                            </Label>
+                            <p className="mt-1 text-sm text-gray-500">
+                                Draw or upload your signature.
+                            </p>
+                        </div>
+
+                        <SignatureModal
+                            idNumber={student.id_number}
+                            onSave={handleSaveSignature}
+                        />
+                    </div>
+
+                    <div className="mt-5 flex h-64 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-white">
+                        {data.e_signature ? (
                             <img
                                 src={URL.createObjectURL(data.e_signature)}
                                 alt="Signature Preview"
-                                className="max-h-full w-auto"
+                                className="max-h-full w-auto p-4"
                             />
-                        </>
-                    ) : (
-                        <h1 className="text-xl font-semibold tracking-widest text-gray-400 italic">
-                            Signature Preview
-                        </h1>
-                    )}
+                        ) : (
+                            <div className="text-center">
+                                <h1 className="text-xl font-semibold tracking-widest text-gray-400 italic">
+                                    Signature Preview
+                                </h1>
+                                <p className="mt-2 text-sm text-gray-400">
+                                    No signature uploaded yet
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <InputError message={errors.e_signature} />
                 </div>
 
-                <InputError message={errors.e_signature} />
-            </div>
-            <div className="mb-10 flex justify-end">
-                <div className="space-x-3">
-                    <Button
-                        type="button"
-                        onClick={onCancel}
-                        className="ml-auto text-center"
-                        size="lg"
-                        variant="outline"
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        type="button"
-                        onClick={setModalOpen}
-                        className="ml-auto text-center"
-                        size="lg"
-                    >
-                        Next
-                        <ArrowBigRight />
-                    </Button>
+                {/* Actions */}
+                <div className="flex justify-end border-t border-gray-200 pt-6 dark:border-gray-700">
+                    <div className="flex gap-3">
+                        <Button
+                            type="button"
+                            onClick={onCancel}
+                            size="lg"
+                            variant="outline"
+                            className="min-w-[120px]"
+                        >
+                            Cancel
+                        </Button>
+
+                        <Button
+                            type="button"
+                            onClick={setModalOpen}
+                            size="lg"
+                            className="min-w-[140px]"
+                        >
+                            Next
+                            <ArrowBigRight />
+                        </Button>
+                    </div>
                 </div>
-            </div>{' '}
+            </div>
         </>
     );
 }

@@ -40,7 +40,7 @@ export function ImportModal({ isOpen, setIsOpen, reload }: ImportModalProps) {
                     if (reload) reload();
                 },
                 onError: (errors) => {
-                    console.log('Error importing students:', errors);
+                    console.error('Error importing students:', errors);
                     toast.error(
                         'Failed to import students. Please check your file and try again.',
                     );

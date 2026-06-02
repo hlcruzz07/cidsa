@@ -83,8 +83,6 @@ export function DashboardChart() {
                     (a, b) => dayjs(a.date).unix() - dayjs(b.date).unix(),
                 ),
             );
-
-            console.log(normalized);
         } catch (error) {
             console.error('Failed to fetch chart data:', error);
         } finally {

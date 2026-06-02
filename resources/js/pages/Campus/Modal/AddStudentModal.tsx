@@ -50,7 +50,7 @@ export function AddStudentModal({ isOpen, setIsOpen }: ImportModalProps) {
                 reset();
             },
             onError: (error) => {
-                console.log('Error importing students', error);
+                console.error('Error importing students', error);
             },
         });
     };

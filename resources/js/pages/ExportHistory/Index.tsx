@@ -368,7 +368,7 @@ export default function Index() {
                                                 data-label="Exported By"
                                             >
                                                 <div className="flex gap-3">
-                                                    <Avatar className="h-10 w-10 overflow-hidden rounded-full">
+                                                    <Avatar className="hidden h-10 w-10 overflow-hidden rounded-full md:block">
                                                         <AvatarImage
                                                             src={''}
                                                             alt={row.user.name}

@@ -12,6 +12,7 @@ use App\Http\Requests\ValidateStudentRequest;
 use App\Jobs\ExportStudentsJob;
 use App\Jobs\ImportStudentsJob;
 use App\Jobs\UpdateStudentsJob;
+use App\Jobs\UploadStudentFilesJob;
 use App\Models\PrintedStudents;
 use App\Models\Student;
 use App\Models\StudentExport;
@@ -74,27 +75,28 @@ class StudentController extends Controller
             $studentIdNumber = session('validated_student');
             $student = $this->students->findStudentByIdNumber($studentIdNumber);
 
-            // Upload picture to Google Drive and store file ID
             if ($request->hasFile('picture')) {
                 $uploaded = $this->students->storeFile(
                     $request->file('picture'),
                     $data['campus'],
                     $this->students->paths[$data['campus']]['picture']
                 );
-                $data['picture'] = $uploaded['id']; // Store Drive ID in picture column
+                $data['picture'] = $uploaded['id'];
             }
 
-            // Upload signature to Google Drive and store file ID
+
             if ($request->hasFile('e_signature')) {
                 $uploaded = $this->students->storeFile(
                     $request->file('e_signature'),
                     $data['campus'],
                     $this->students->paths[$data['campus']]['e_signature']
                 );
-                $data['e_signature'] = $uploaded['id']; // Store Drive ID in e_signature column
+                $data['e_signature'] = $uploaded['id'];
             }
 
-            UpdateStudentsJob::dispatch($data, $student->id_number);
+            $data['is_completed'] = true;
+
+            $this->students->update($data, $student->id_number);
 
             session()->forget(['validated_student', 'validated_student_expires_at']);
 
