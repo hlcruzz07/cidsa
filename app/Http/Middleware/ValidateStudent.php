@@ -33,7 +33,10 @@ class ValidateStudent
         $isPrinted = PrintedStudents::where('id_number', $id_number)->exists();
 
         if ($isPrinted) {
-            return redirect()->back()->with('warning', 'Student already printed');
+            return redirect()->back()->with(
+                'error',
+                'You already have an existing student ID. Please contact our office if you require a replacement or have concerns regarding with your ID.'
+            );
         }
 
         if (!$isExisting) {
@@ -41,16 +44,15 @@ class ValidateStudent
         }
 
         if ($isCompleted) {
-            return redirect()->back()->with('warning', 'Student already submitted');
-        }
-
-        if ($isCompleted) {
-            return redirect()->back()->with('warning', 'Student already submitted');
+            return redirect()->back()->with(
+                'success',
+                'You have already submitted your information. Please wait for the release of your student ID.'
+            );
         }
 
         $request->session()->put([
             'validated_student' => $id_number,
-            'validated_student_expires_at' => now()->addMinutes(500),
+            'validated_student_expires_at' => now()->addMinutes((int) config('session.lifetime', 500)),
         ]);
 
         return $next($request);

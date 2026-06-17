@@ -30,7 +30,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'validate.student' => ValidateStudent::class,
             'student.validated' => CheckValidatedStudent::class,
             'student.has.session' => CheckStudentHasSession::class,
-            'check.is.exported' => CheckIsExported::class,
         ]);
         $middleware->web(append: [
             HandleAppearance::class,

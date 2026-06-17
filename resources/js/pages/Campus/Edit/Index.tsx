@@ -366,6 +366,29 @@ export default function Index() {
     const [progress, setProgress] = useState<number>(0);
     const [updatingPicture, setUpdatingPicture] = useState(false);
 
+    const imglyConfig = {
+        publicPath: import.meta.env.VITE_IMGLY_PUBLIC_PATH || '/imgly/',
+        fetchArgs: {
+            cache: 'force-cache' as RequestCache,
+        },
+    };
+
+    const withTimeout = async <T,>(
+        promise: Promise<T>,
+        timeoutMs: number,
+        errorMessage: string,
+    ) => {
+        const timeout = new Promise<T>((_, reject) => {
+            const timer = window.setTimeout(() => {
+                reject(new Error(errorMessage));
+            }, timeoutMs);
+
+            promise.finally(() => window.clearTimeout(timer));
+        });
+
+        return Promise.race([promise, timeout]);
+    };
+
     const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -376,7 +399,11 @@ export default function Index() {
         try {
             // 1. Remove background → transparent PNG
             setProgress(10);
-            const removedBlob: Blob = await removeBackground(file);
+            const removedBlob: Blob = await withTimeout(
+                removeBackground(file, imglyConfig),
+                30000,
+                'Image processing timed out.',
+            );
 
             // 2. Convert transparent → white background
             setProgress(30);
@@ -406,8 +433,10 @@ export default function Index() {
             setNewImage(new File([finalBlob], filename, { type: 'image/jpg' }));
         } catch (err) {
             console.error('Processing image failed', err);
-            toast.error('Failed to process image. Please try again.');
-            setNewImage(null);
+            toast.warning(
+                'Image cleanup could not complete. The original image will be used instead.',
+            );
+            setNewImage(file);
         } finally {
             setIsBgRemoving(false);
             setProgress(0);

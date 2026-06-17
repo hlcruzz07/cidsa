@@ -397,7 +397,7 @@ export default function StepOne({
                     </div>
                     <Input
                         type="text"
-                        maxLength={data.college === 'CIT' ? 2 : 1}
+                        maxLength={4}
                         disabled={data.college === ''}
                         placeholder="Enter Section"
                         value={data.section}

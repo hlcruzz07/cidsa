@@ -328,7 +328,7 @@ export const campusDirectoryArr: CampusData[] = [
                 name: 'College of Business Management & Accountancy',
                 programs: [
                     {
-                        name: 'Bachelor of Science in Hospitality Management',
+                        name: 'Bachelor of Science in Business Administration',
                         majors: ['Financial Management'],
                     },
                 ],

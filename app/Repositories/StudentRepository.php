@@ -75,10 +75,10 @@ class StudentRepository
             ->exists();
     }
 
-    public function isStudentExported(int $id): bool
+    public function isStudentExported(string $id_number): bool
     {
         return $this->model
-            ->where('id', $id)
+            ->where('id_number', $id_number)
             ->where('is_exported', true)
             ->exists();
     }

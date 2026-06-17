@@ -59,6 +59,29 @@ export default function StepTwo({
     const [isBgRemoving, setIsBgRemoving] = useState<boolean>(false);
     const [progress, setProgress] = useState<number>(0);
 
+    const imglyConfig = {
+        publicPath: import.meta.env.VITE_IMGLY_PUBLIC_PATH || '/imgly/',
+        fetchArgs: {
+            cache: 'force-cache' as RequestCache,
+        },
+    };
+
+    const withTimeout = async <T,>(
+        promise: Promise<T>,
+        timeoutMs: number,
+        errorMessage: string,
+    ) => {
+        const timeout = new Promise<T>((_, reject) => {
+            const timer = window.setTimeout(() => {
+                reject(new Error(errorMessage));
+            }, timeoutMs);
+
+            promise.finally(() => window.clearTimeout(timer));
+        });
+
+        return Promise.race([promise, timeout]);
+    };
+
     useEffect(() => {
         if (!data.picture) {
             setPreviewUrl('/placeholder.jpg');
@@ -96,7 +119,11 @@ export default function StepTwo({
         try {
             // 1. Remove background → transparent PNG
             setProgress(10);
-            const removedBlob: Blob = await removeBackground(file);
+            const removedBlob: Blob = await withTimeout(
+                removeBackground(file, imglyConfig),
+                30000,
+                'Image processing timed out.',
+            );
 
             // 2. Convert transparent → white background
             setProgress(30);
@@ -129,8 +156,10 @@ export default function StepTwo({
             );
         } catch (err) {
             console.error('Background removal failed', err);
-            toast.error('Failed to process image. Please try again.');
-            setData('picture', null);
+            toast.warning(
+                'Image cleanup could not complete. The original image will be used instead.',
+            );
+            setData('picture', file);
         } finally {
             setIsBgRemoving(false);
             setProgress(0);
@@ -144,7 +173,7 @@ export default function StepTwo({
     return (
         <>
             {isBgRemoving && (
-                <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                <div className="fixed inset-0 z-100 flex h-screen w-screen items-center justify-center bg-black/70 backdrop-blur-sm">
                     <div className="relative flex flex-col items-center rounded-3xl border border-white/10 bg-white/5 px-10 py-8 shadow-2xl backdrop-blur-md">
                         <div className="relative flex h-32 w-32 items-center justify-center">
                             {/* Animated Ring */}
@@ -279,19 +308,6 @@ export default function StepTwo({
                                     <p className="leading-relaxed dark:text-gray-100">
                                         Wear appropriate attire and ensure
                                         proper grooming.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* 6 */}
-                            <div className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md dark:border-gray-600 dark:bg-gray-700">
-                                <div className="flex gap-4">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--main-color)]/10">
-                                        <ImageIcon className="h-5 w-5 text-[var(--main-color)]" />
-                                    </div>
-                                    <p className="leading-relaxed dark:text-gray-100">
-                                        File Requirements: The image must be
-                                        cropped to a 1×1 photo dimension.
                                     </p>
                                 </div>
                             </div>
