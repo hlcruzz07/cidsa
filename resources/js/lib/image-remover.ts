@@ -4,8 +4,9 @@ let faceDetectorPromise: Promise<void> | null = null;
 
 const loadFaceDetectorModels = (): Promise<void> => {
     if (!faceDetectorPromise) {
+        const modelBaseUrl = `${window.location.origin}/models`;
         faceDetectorPromise =
-            faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+            faceapi.nets.tinyFaceDetector.loadFromUri(modelBaseUrl);
     }
     return faceDetectorPromise;
 };

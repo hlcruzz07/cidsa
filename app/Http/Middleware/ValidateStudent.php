@@ -52,7 +52,7 @@ class ValidateStudent
 
         $request->session()->put([
             'validated_student' => $id_number,
-            'validated_student_expires_at' => now()->addMinutes((int) config('session.lifetime', 500)),
+            'validated_student_expires_at' => now()->addMinutes((int) config('session.lifetime', 120)),
         ]);
 
         return $next($request);

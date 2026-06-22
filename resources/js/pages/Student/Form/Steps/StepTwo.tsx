@@ -8,7 +8,6 @@ import {
     applyWhiteBackground,
     resizeWithFaceCentering,
 } from '@/lib/image-remover';
-import { removeBackground } from '@imgly/background-removal';
 import { usePage } from '@inertiajs/react';
 import * as imageConversion from 'image-conversion';
 import {
@@ -23,10 +22,12 @@ import {
     Smile,
     Square,
 } from 'lucide-react';
+
 import { ChangeEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import SignatureModal from '../Modal/SignatureModal';
 
+import * as hf from '@huggingface/transformers';
 interface StepTwoProps {
     data: {
         picture: File | null;
@@ -59,29 +60,6 @@ export default function StepTwo({
     const [isBgRemoving, setIsBgRemoving] = useState<boolean>(false);
     const [progress, setProgress] = useState<number>(0);
 
-    const imglyConfig = {
-        publicPath: import.meta.env.VITE_IMGLY_PUBLIC_PATH || '/imgly/',
-        fetchArgs: {
-            cache: 'force-cache' as RequestCache,
-        },
-    };
-
-    const withTimeout = async <T,>(
-        promise: Promise<T>,
-        timeoutMs: number,
-        errorMessage: string,
-    ) => {
-        const timeout = new Promise<T>((_, reject) => {
-            const timer = window.setTimeout(() => {
-                reject(new Error(errorMessage));
-            }, timeoutMs);
-
-            promise.finally(() => window.clearTimeout(timer));
-        });
-
-        return Promise.race([promise, timeout]);
-    };
-
     useEffect(() => {
         if (!data.picture) {
             setPreviewUrl('/placeholder.jpg');
@@ -106,6 +84,13 @@ export default function StepTwo({
         return () => document.body.classList.remove('overflow-hidden');
     }, [isBgRemoving]);
 
+    // --- CONFIGURATION FOR LOCAL-ONLY EXECUTION ---
+    hf.env.allowRemoteModels = false;
+    hf.env.allowLocalModels = true;
+    hf.env.localModelPath = `${window.location.origin}/models/`;
+
+    // (Keep your React component wrapper shell layout here)
+
     const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -113,59 +98,196 @@ export default function StepTwo({
         setIsBgRemoving(true);
         setProgress(0);
 
-        // Allow React to render the overlay before processing begins
         await new Promise((resolve) => setTimeout(resolve, 0));
 
+        let imageSrc = '';
+
         try {
-            // 1. Remove background → transparent PNG
+            hf.env.allowRemoteModels = false;
+            hf.env.allowLocalModels = true;
+            hf.env.localModelPath = `${window.location.origin}/models/`;
+
             setProgress(10);
-            const removedBlob: Blob = await withTimeout(
-                removeBackground(file, imglyConfig),
-                30000,
-                'Image processing timed out.',
+
+            const modelId = 'briaai/RMBG-1.4';
+
+            const model = await hf.AutoModel.from_pretrained(modelId);
+
+            setProgress(30);
+
+            const processor = await hf.AutoProcessor.from_pretrained(modelId);
+
+            setProgress(45);
+
+            imageSrc = URL.createObjectURL(file);
+
+            const image = await hf.RawImage.fromURL(imageSrc);
+
+            const inputs = await processor(image);
+
+            setProgress(60);
+
+            const outputs = await model({
+                input: inputs.pixel_values,
+            });
+
+            console.log('===== RMBG OUTPUTS =====');
+            console.log(outputs);
+            console.log('Output keys:', Object.keys(outputs));
+
+            const outputTensor =
+                (outputs as any).output ??
+                (outputs as any).logits ??
+                (outputs as any).pred_masks ??
+                Object.values(outputs)[0];
+
+            if (!outputTensor) {
+                throw new Error('No output tensor found');
+            }
+
+            console.log('Selected tensor:', outputTensor);
+            console.log('Tensor dims:', outputTensor.dims);
+
+            const dims = outputTensor.dims;
+
+            if (!dims || dims.length !== 4) {
+                throw new Error(
+                    `Unexpected tensor shape: ${JSON.stringify(dims)}`,
+                );
+            }
+
+            const [, , height, width] = dims;
+
+            const tensorData = Array.from(outputTensor.data as Float32Array);
+
+            let min = Infinity;
+            let max = -Infinity;
+
+            for (const value of tensorData) {
+                if (value < min) min = value;
+                if (value > max) max = value;
+            }
+
+            console.log('Min value:', min);
+            console.log('Max value:', max);
+
+            const maskCanvas = document.createElement('canvas');
+            maskCanvas.width = width;
+            maskCanvas.height = height;
+
+            const maskCtx = maskCanvas.getContext('2d');
+
+            if (!maskCtx) {
+                throw new Error('Failed to create mask canvas');
+            }
+
+            const maskImageData = maskCtx.createImageData(width, height);
+
+            for (let i = 0; i < tensorData.length; i++) {
+                const normalized = ((tensorData[i] - min) / (max - min)) * 255;
+
+                const alpha = Math.max(
+                    0,
+                    Math.min(255, Math.round(normalized)),
+                );
+
+                maskImageData.data[i * 4] = 255;
+                maskImageData.data[i * 4 + 1] = 255;
+                maskImageData.data[i * 4 + 2] = 255;
+                maskImageData.data[i * 4 + 3] = alpha;
+            }
+
+            maskCtx.putImageData(maskImageData, 0, 0);
+
+            setProgress(70);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = image.width;
+            canvas.height = image.height;
+
+            const ctx = canvas.getContext('2d');
+
+            if (!ctx) {
+                throw new Error('Failed to create output canvas');
+            }
+
+            ctx.drawImage(image.toCanvas(), 0, 0);
+
+            ctx.globalCompositeOperation = 'destination-in';
+
+            ctx.drawImage(
+                maskCanvas,
+                0,
+                0,
+                width,
+                height,
+                0,
+                0,
+                image.width,
+                image.height,
             );
 
-            // 2. Convert transparent → white background
-            setProgress(30);
-            const whiteBgBlob: Blob = await applyWhiteBackground(removedBlob);
+            setProgress(80);
 
-            // 3. Resize + auto-center on face
-            setProgress(60);
-            const centeredBlob: Blob = await resizeWithFaceCentering(
+            const removedBlob: Blob = await new Promise((resolve, reject) => {
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        resolve(blob);
+                    } else {
+                        reject(new Error('Failed to export transparent image'));
+                    }
+                }, 'image/png');
+            });
+
+            setProgress(85);
+
+            const whiteBgBlob = await applyWhiteBackground(removedBlob);
+
+            setProgress(90);
+
+            const centeredBlob = await resizeWithFaceCentering(
                 whiteBgBlob,
                 320,
                 378,
             );
 
-            // 4. Compress final image
-            setProgress(90);
+            setProgress(95);
+
             const finalBlob: Blob = await (imageConversion.compress as any)(
                 centeredBlob,
                 {
-                    type: 'image/jpg',
+                    type: 'image/jpeg',
                     quality: centeredBlob.size > 2 * 1024 * 1024 ? 0.7 : 0.95,
                 },
             );
 
-            setProgress(100);
             const filename = `${student.id_number}.jpg`;
 
             setData(
                 'picture',
-                new File([finalBlob], filename, { type: 'image/jpg' }),
+                new File([finalBlob], filename, {
+                    type: 'image/jpeg',
+                }),
             );
+
+            setProgress(100);
+
+            toast.success('Image processed successfully');
         } catch (err) {
-            console.error('Background removal failed', err);
-            toast.warning(
-                'Image cleanup could not complete. The original image will be used instead.',
-            );
-            setData('picture', file);
+            console.error('Background removal failed:', err);
+
+            toast.error('Failed to process image. Check console logs.');
+
+            setData('picture', null);
         } finally {
+            if (imageSrc) {
+                URL.revokeObjectURL(imageSrc);
+            }
+
             setIsBgRemoving(false);
             setProgress(0);
         }
     };
-
     const handleSaveSignature = (file: File) => {
         setData('e_signature', file);
     };
