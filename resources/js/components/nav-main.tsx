@@ -17,6 +17,7 @@ export function NavMain({
     title: string;
 }) {
     const page = usePage();
+    const currentUrl = decodeURIComponent(page.url);
     return (
         <SidebarGroup className="px-2 py-0">
             <SidebarGroupLabel>{title}</SidebarGroupLabel>
@@ -25,9 +26,10 @@ export function NavMain({
                     <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
                             asChild
-                            isActive={page.url.startsWith(
-                                resolveUrl(item.href),
-                            )}
+                            isActive={
+                                currentUrl ===
+                                decodeURIComponent(resolveUrl(item.href))
+                            }
                             tooltip={{ children: item.title }}
                         >
                             <Link href={item.href} prefetch>

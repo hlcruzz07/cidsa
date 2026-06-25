@@ -1,4 +1,7 @@
 type FormDataProps = {
+    type: 'new' | 'replacement';
+    receipt?: File | null;
+    reason?: string | null;
     emergency_first_name: string;
     emergency_middle_init: string | null;
     emergency_last_name: string;
@@ -16,7 +19,6 @@ type FormDataProps = {
     hasMajor: boolean;
     major: string | null;
     year: string;
-    section: string;
     picture: File | null;
     e_signature: File | null;
     data_privacy: boolean;

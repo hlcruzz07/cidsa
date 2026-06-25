@@ -16,7 +16,7 @@ class CampusRouteController extends Controller
     }
     public function index()
     {
-        return redirect()->route('campus.talisay');
+        return redirect()->route('campus.show', ['campus' => 'Talisay']);
     }
 
     public function dashboard()
@@ -33,65 +33,23 @@ class CampusRouteController extends Controller
         ]);
     }
 
-    public function talisay()
+    public function show(string $campus)
     {
+        $validCampuses = ['Talisay', 'Alijis', 'Binalbagan', 'Fortune Towne'];
+
+        if (!in_array($campus, $validCampuses)) {
+            abort(404);
+        }
+
         $counts = [
-            'totalUpdates' => $this->students->countStudentsHasUpdatesByCampus('Talisay'),
-            'readyStudents' => $this->students->countStudentsReadyForExportByCampus('Talisay'),
-            'incompleteStudents' => $this->students->countIncompleteStudentsByCampus('Talisay'),
-            'exportedStudents' => $this->students->countStudentsHasExportedByCampus('Talisay'),
+            'totalUpdates' => $this->students->countStudentsHasUpdatesByCampus($campus),
         ];
 
-        $studentsChart = $this->students->studentsUpdateChart('Talisay', '90d');
-        return Inertia::render('Campus/Talisay/Index', [
-            'counts' => $counts,
-            'studentsChart' => $studentsChart,
-        ]);
-    }
+        $studentsChart = $this->students->studentsUpdateChart($campus, '90d');
 
-    public function alijis()
-    {
-        $counts = [
-            'totalUpdates' => $this->students->countStudentsHasUpdatesByCampus('Alijis'),
-            'readyStudents' => $this->students->countStudentsReadyForExportByCampus('Alijis'),
-            'incompleteStudents' => $this->students->countIncompleteStudentsByCampus('Alijis'),
-            'exportedStudents' => $this->students->countStudentsHasExportedByCampus('Alijis'),
-        ];
-
-        $studentsChart = $this->students->studentsUpdateChart('Alijis', '90d');
-        return Inertia::render('Campus/Alijis/Index', [
-            'counts' => $counts,
-            'studentsChart' => $studentsChart,
-        ]);
-    }
-
-    public function binalbagan()
-    {
-        $counts = [
-            'totalUpdates' => $this->students->countStudentsHasUpdatesByCampus('Binalbagan'),
-            'readyStudents' => $this->students->countStudentsReadyForExportByCampus('Binalbagan'),
-            'incompleteStudents' => $this->students->countIncompleteStudentsByCampus('Binalbagan'),
-            'exportedStudents' => $this->students->countStudentsHasExportedByCampus('Binalbagan'),
-        ];
-
-        $studentsChart = $this->students->studentsUpdateChart('Binalbagan', '90d');
-        return Inertia::render('Campus/Binalbagan/Index', [
-            'counts' => $counts,
-            'studentsChart' => $studentsChart,
-        ]);
-    }
-
-    public function fortuneTowne()
-    {
-        $counts = [
-            'totalUpdates' => $this->students->countStudentsHasUpdatesByCampus('Fortune Towne'),
-            'readyStudents' => $this->students->countStudentsReadyForExportByCampus('Fortune Towne'),
-            'incompleteStudents' => $this->students->countIncompleteStudentsByCampus('Fortune Towne'),
-            'exportedStudents' => $this->students->countStudentsHasExportedByCampus('Fortune Towne'),
-        ];
-
-        $studentsChart = $this->students->studentsUpdateChart('Fortune Towne', '90d');
-        return Inertia::render('Campus/FortuneTowne/Index', [
+        // Use a single view for all campuses
+        return Inertia::render('Campus/Index', [
+            'campus' => $campus,
             'counts' => $counts,
             'studentsChart' => $studentsChart,
         ]);

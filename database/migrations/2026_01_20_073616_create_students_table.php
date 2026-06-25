@@ -35,7 +35,6 @@ return new class extends Migration {
             $table->string('major')->nullable();
             $table->enum('year', ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'])->nullable();
             $table->string('section')->nullable();
-            $table->boolean('is_exported')->default(false);
             $table->boolean('is_completed')->default(false);
             $table->timestamps();
         });

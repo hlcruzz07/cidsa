@@ -108,7 +108,6 @@ export default function Index() {
             hasMajor: false,
             major: null as string | null,
             year: '',
-            section: '',
         });
 
     const [openProvince, setOpenProvince] = useState(false);
@@ -214,7 +213,6 @@ export default function Index() {
             hasMajor: Boolean(student.major),
             major: student.major ?? null,
             year: student.year ?? '',
-            section: student.section ?? '',
         });
         // Enable program dropdown if college is set
         if (student.college) {
@@ -271,8 +269,6 @@ export default function Index() {
 
         setData('major', null);
         setIsMajorDisabled(true);
-
-        setData('section', '');
     };
 
     const resetForCollegeChange = () => {
@@ -280,13 +276,11 @@ export default function Index() {
         setIsProgramDisabled(false);
         setData('major', null);
         setIsMajorDisabled(true);
-        setData('section', '');
     };
 
     const resetForProgramChange = () => {
         setData('major', null);
         setIsMajorDisabled(false);
-        setData('section', '');
     };
 
     const resetForProvinceChange = () => {
@@ -907,80 +901,44 @@ export default function Index() {
                                         <InputError message={errors.major} />
                                     </div>
                                 </div>
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center justify-between">
-                                            <Label htmlFor="zip_code">
-                                                Section
-                                                <AsteriskIcon
-                                                    size={12}
-                                                    color="red"
-                                                />
-                                            </Label>
-                                            <span className="text-xs text-muted-foreground">
-                                                (ex: A, B, C, D, A1, A2, etc.)
-                                            </span>
-                                        </div>
-                                        <Input
-                                            type="text"
-                                            maxLength={
-                                                data.college === 'CIT' ? 2 : 1
-                                            }
-                                            disabled={!data.college}
-                                            placeholder="Enter Section"
-                                            value={data.section}
-                                            onChange={(e) => {
-                                                setData(
-                                                    'section',
-                                                    e.target.value.toUpperCase(),
-                                                );
-                                            }}
-                                        />
-                                        <InputError message={errors.section} />
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <Label>
-                                            Year Level
-                                            <AsteriskIcon
-                                                size={12}
-                                                color="red"
-                                            />
-                                        </Label>
-                                        <Select
-                                            value={data.year}
-                                            onValueChange={(value) => {
-                                                setData('year', value);
-                                            }}
-                                        >
-                                            <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Choose an option">
-                                                    {data.year ||
-                                                        'Choose an option'}
-                                                </SelectValue>
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectGroup>
-                                                    {[
-                                                        '1st Year',
-                                                        '2nd Year',
-                                                        '3rd Year',
-                                                        '4th Year',
-                                                        '5th Year',
-                                                    ].map((item, key) => (
-                                                        <SelectItem
-                                                            key={key}
-                                                            value={item}
-                                                        >
-                                                            {item}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectGroup>
-                                            </SelectContent>
-                                        </Select>
-                                        <InputError message={errors.year} />
-                                    </div>
+                                <div className="flex flex-col gap-2">
+                                    <Label>
+                                        Year Level
+                                        <AsteriskIcon size={12} color="red" />
+                                    </Label>
+                                    <Select
+                                        value={data.year}
+                                        onValueChange={(value) => {
+                                            setData('year', value);
+                                        }}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Choose an option">
+                                                {data.year ||
+                                                    'Choose an option'}
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                {[
+                                                    '1st Year',
+                                                    '2nd Year',
+                                                    '3rd Year',
+                                                    '4th Year',
+                                                    '5th Year',
+                                                ].map((item, key) => (
+                                                    <SelectItem
+                                                        key={key}
+                                                        value={item}
+                                                    >
+                                                        {item}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={errors.year} />
                                 </div>
-
                                 <Heading
                                     title="In-Case of Emergency Contact Information"
                                     description="Enter the details of a person we can contact during emergencies."

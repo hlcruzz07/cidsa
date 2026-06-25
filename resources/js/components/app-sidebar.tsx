@@ -9,17 +9,10 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
+import { campusShow, dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import {
-    Building2,
-    FolderUpIcon,
-    Landmark,
-    LayoutGrid,
-    School,
-    Trees,
-} from 'lucide-react';
+import { Building2, Landmark, LayoutGrid, School, Trees } from 'lucide-react';
 import AppLogo from './app-logo';
 const mainNavItems: NavItem[] = [
     {
@@ -31,32 +24,27 @@ const mainNavItems: NavItem[] = [
 const campusesNavItems: NavItem[] = [
     {
         title: 'Talisay',
-        href: '/campus/talisay',
+        href: campusShow('Talisay'),
         icon: School,
     },
     {
         title: 'Alijis',
-        href: '/campus/alijis',
+        href: campusShow('Alijis'),
         icon: Building2,
     },
     {
         title: 'Fortune Towne',
-        href: '/campus/fortune-towne',
+        href: campusShow('Fortune Towne'),
         icon: Landmark,
     },
     {
         title: 'Binalbagan',
-        href: '/campus/binalbagan',
+        href: campusShow('Binalbagan'),
         icon: Trees,
     },
 ];
 
 const manageNavItems: NavItem[] = [
-    {
-        title: 'Export History',
-        href: '/export-history',
-        icon: FolderUpIcon,
-    },
     // {
     //     title: 'Reports',
     //     href: dashboard(),

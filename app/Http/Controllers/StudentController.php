@@ -2,68 +2,64 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\StudentsExport;
 use App\Http\Requests\AddStudentRequest;
-use App\Http\Requests\Step1Request;
-use App\Http\Requests\Step2Request;
-use App\Http\Requests\Step3Request;
+use App\Http\Requests\CompleteStudentRequest;
 use App\Http\Requests\UpdateStudentRequest;
 use App\Http\Requests\ValidateStudentRequest;
-use App\Jobs\ExportStudentsJob;
-use App\Jobs\ImportStudentsJob;
-use App\Jobs\UpdateStudentsJob;
-use App\Jobs\UploadStudentFilesJob;
 use App\Models\PrintedStudents;
-use App\Models\Student;
-use App\Models\StudentExport;
-use App\Repositories\ExportRepository;
+use App\Models\StudentReplacement;
 use App\Repositories\StudentRepository;
 use App\Services\GoogleDriveService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
-use Maatwebsite\Excel\Facades\Excel;
-use ZipArchive;
+
 
 class StudentController extends Controller
 {
 
     protected $students;
-    protected $export;
 
     protected $googleDriveService;
 
-    public function __construct(StudentRepository $studentRepository, ExportRepository $exportRepository, GoogleDriveService $googleDriveService)
+    public function __construct(StudentRepository $studentRepository, GoogleDriveService $googleDriveService)
     {
         $this->students = $studentRepository;
-        $this->export = $exportRepository;
         $this->googleDriveService = $googleDriveService;
     }
     public function index()
     {
-        session()->forget('success');
+        if (session()->has('validated_student')) {
+            return redirect()->route('student.form');
+        }
         return Inertia::render('Student/Index');
     }
 
     public function validate(ValidateStudentRequest $request)
     {
+        $id_number = $request->id_number;
+        $first_name = $request->first_name;
+        $last_name = $request->last_name;
+
+        $isExisting = $this->students->isStudentExisting($id_number, $first_name, $last_name);
+
+        if (!$isExisting) {
+            return redirect()->back()->with('error', 'Invalid student credentials');
+        }
+
+        $student = $this->students->findStudentByIdNumber($id_number);
+
+        session([
+            'validated_student' => $student->id_number
+        ]);
+
         return redirect()->route('student.form');
     }
 
-    public function validateStepOne(Step1Request $request)
-    {
-        return back()->with('success', 'Step one completed');
-    }
 
-    public function validateStepTwo(Step2Request $request)
-    {
-
-        return back()->with('success', 'Step two completed');
-    }
-
-    public function updateStudent(Step3Request $request)
+    public function updateStudent(CompleteStudentRequest $request)
     {
         try {
             $data = $request->except([
@@ -71,6 +67,10 @@ class StudentController extends Controller
                 'data_privacy',
                 'hasMajor',
             ]);
+
+            if (!session()->has('validated_student')) {
+                return redirect()->route('home')->with('error', 'Session Expired');
+            }
 
             $studentIdNumber = session('validated_student');
             $student = $this->students->findStudentByIdNumber($studentIdNumber);
@@ -95,10 +95,32 @@ class StudentController extends Controller
             }
 
             $data['is_completed'] = true;
+            DB::transaction(function () use ($request, &$student, $data) {
 
-            $this->students->update($data, $student->id_number);
+                $student = $this->students->update($data, $student->id_number);
 
-            session()->forget(['validated_student', 'validated_student_expires_at']);
+                if ($request->type === 'replacement') {
+
+                    $uploadedReceipt = $this->students->storeFile(
+                        $request->file('receipt'),
+                        $data['campus'],
+                        $this->students->paths[$data['campus']]['receipt']
+                    );
+
+                    StudentReplacement::create([
+                        'student_id' => $student->id,
+                        'reason' => $request->reason,
+                        'receipt' => $uploadedReceipt['id'],
+                        'is_printed' => false,
+                    ]);
+
+                    PrintedStudents::firstOrCreate([
+                        'id_number' => $student->id_number,
+                    ]);
+                }
+            });
+
+            session()->forget('validated_student');
 
             return Inertia::render('Student/Index', ['success' => true]);
 
@@ -109,17 +131,20 @@ class StudentController extends Controller
 
     public function cancel()
     {
-        session()->forget([
-            'validated_student',
-            'validated_student_expires_at',
-        ]);
-
+        session()->forget('validated_student');
         return redirect()->route('home');
     }
 
     public function studentForm()
     {
-        $student = $this->students->findStudentByIdNumber(session('validated_student'));
+        if (!session()->has('validated_student')) {
+            return redirect()->route('home')->with('error', 'Session Expired');
+        }
+
+        $student = $this->students->findStudentByIdNumber(
+            session('validated_student')
+        );
+
         return Inertia::render('Student/Form/Index', [
             'student' => $student
         ]);
@@ -270,62 +295,6 @@ class StudentController extends Controller
         return redirect()->back()->with('success', 'Students imported successfully: ' . count($students));
     }
 
-
-    public function exportStudents(Request $request)
-    {
-        $studentIds = $request->input('student_ids', []);
-
-        $export = StudentExport::create([
-            'user_id' => $request->user()->id,
-            'file_name' => $request->input('file_name', 'students'),
-            'status' => 'pending'
-        ]);
-
-        ExportStudentsJob::dispatch(
-            $studentIds,
-            $export->id,
-            $request->input('file_name', 'students'),
-        );
-
-        return response()->json([
-            'message' => 'Export started.',
-            'export_id' => $export->id
-        ]);
-    }
-    public function download(StudentExport $export)
-    {
-        if ($export->status !== 'completed') {
-
-            return response()->json([
-                'error' => 'Export not ready.'
-            ], 422);
-        }
-
-        return response()->download(
-            storage_path('app/' . $export->file_path)
-        );
-    }
-
-    public function status($exportId)
-    {
-        $export = StudentExport::find($exportId);
-
-        if (!$export) {
-            return response()->json([
-                'status' => 'not_found',
-                'message' => 'Export record does not exist.'
-            ], 404);
-        }
-
-        return response()->json([
-            'id' => $export->id,
-            'status' => $export->status,
-            'file_path' => $export->file_path,
-            'error_message' => $export->error_message,
-            'completed_at' => $export->completed_at,
-        ]);
-    }
-
     public function addStudent(AddStudentRequest $request)
     {
         $student = $request->validated();
@@ -340,8 +309,13 @@ class StudentController extends Controller
     {
         $student = $this->students->find($id);
 
-        $student['picture'] = ($student['picture'] !== null) ? "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->picture)) : null;
-        $student['e_signature'] = ($student['e_signature'] !== null) ? "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->e_signature)) : null;
+        $student['picture'] = $student['picture'] ? route('gdrive.image', [
+            'fileId' => $student['picture']
+        ]) : null;
+
+        $student['e_signature'] = $student['e_signature'] ? route('gdrive.image', [
+            'fileId' => $student['e_signature']
+        ]) : null;
 
 
         return Inertia::render('Campus/Edit/Index', [
@@ -352,9 +326,13 @@ class StudentController extends Controller
     {
         $student = $this->students->find($id);
 
-        $student['picture'] = ($student['picture'] !== null) ? "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->picture)) : null;
+        $student['picture'] = $student['picture'] ? route('gdrive.image', [
+            'fileId' => $student['picture']
+        ]) : null;
 
-        $student['e_signature'] = ($student['e_signature'] !== null) ? "data:image/jpg;base64," . base64_encode($this->googleDriveService->getFileContent($student->e_signature)) : null;
+        $student['e_signature'] = $student['e_signature'] ? route('gdrive.image', [
+            'fileId' => $student['e_signature']
+        ]) : null;
 
         return Inertia::render('Campus/View/Index', [
             'student' => $student
@@ -397,98 +375,5 @@ class StudentController extends Controller
 
     //     return back()->with('success', 'Student picture updated');
     // }
-    public function exportSingleStudent($id)
-    {
-        $student = $this->students->find($id);
-
-        if (!$student) {
-            return response()->json(['error' => 'Student not found'], 404);
-        }
-
-        $zipName = $student->id_number . '.zip';
-        $zipPath = storage_path('app/' . $zipName);
-
-        $zip = new ZipArchive;
-
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            return response()->json(['error' => 'Could not create ZIP file'], 500);
-        }
-
-        // ========================
-        // 1️⃣ Generate Excel in memory
-        // ========================
-        try {
-            $excelContent = Excel::raw(new StudentsExport([$student]), \Maatwebsite\Excel\Excel::XLSX);
-            $excelName = $student->id_number . '.xlsx';
-            $zip->addFromString($excelName, $excelContent);
-        } catch (\Exception $e) {
-            $zip->close();
-            return response()->json(['error' => 'Failed to generate Excel file: ' . $e->getMessage()], 500);
-        }
-
-        // ========================
-        // 2️⃣ Add PHOTO
-        // ========================
-        if (!empty($student->picture)) {
-            try {
-                $photoContent = null;
-
-                if (preg_match('/^[a-zA-Z0-9_-]{25,}$/', $student->picture)) {
-                    // Google Drive ID
-                    $photoContent = $this->googleDriveService->getFileContent($student->picture);
-                } else {
-                    // Local storage
-                    if (Storage::disk('public')->exists($student->picture)) {
-                        $photoContent = Storage::disk('public')->get($student->picture);
-                    }
-                }
-
-                if (!empty($photoContent)) {
-                    $photoName = $student->id_number . '.jpg';
-                    $zip->addFromString('photos/' . $photoName, $photoContent);
-                }
-            } catch (\Exception $e) {
-                \Log::warning("Failed to fetch photo for student {$student->id}: {$e->getMessage()}");
-            }
-        }
-
-        // ========================
-        // 3️⃣ Add SIGNATURE
-        // ========================
-        if (!empty($student->e_signature)) {
-            try {
-                $signatureContent = null;
-
-                if (preg_match('/^[a-zA-Z0-9_-]{25,}$/', $student->e_signature)) {
-                    // Google Drive ID
-                    $signatureContent = $this->googleDriveService->getFileContent($student->e_signature);
-                } else {
-                    // Local storage
-                    if (Storage::disk('public')->exists($student->e_signature)) {
-                        $signatureContent = Storage::disk('public')->get($student->e_signature);
-                    }
-                }
-
-                if (!empty($signatureContent)) {
-                    $signatureName = $student->id_number . '.bmp';
-                    $zip->addFromString('signatures/' . $signatureName, $signatureContent);
-                }
-            } catch (\Exception $e) {
-                \Log::warning("Failed to fetch signature for student {$student->id}: {$e->getMessage()}");
-            }
-        }
-
-        // ========================
-        // Mark student as exported
-        // ========================
-        $this->students->setExported($student->id);
-
-        $zip->close();
-
-        // ========================
-        // Return ZIP as download
-        // ========================
-        return response()->download($zipPath)->deleteFileAfterSend(true);
-    }
 
 }

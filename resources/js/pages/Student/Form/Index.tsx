@@ -1,16 +1,11 @@
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import StudentFormLayout from '@/layouts/student-form-layout';
 import { useForm } from '@inertiajs/react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 
+import { Button } from '@/components/ui/button';
+import { CheckCheckIcon, XIcon } from 'lucide-react';
 import { CancelModal } from './Modal/CancelModal';
 import { ConfirmModal } from './Modal/Confirm';
 import { SubmittingModal } from './Modal/SubmittingModal';
@@ -19,7 +14,6 @@ import StepThree from './Steps/StepThree';
 import StepTwo from './Steps/StepTwo';
 
 export default function Index() {
-    const [step, setStep] = useState(1);
     const [isOpen, setIsOpen] = useState(false);
     const [openCancelModal, setOpenCancelModal] = useState(false);
     const [openSubmittingModal, setOpenSubmittingModal] = useState(false);
@@ -30,6 +24,9 @@ export default function Index() {
 
     const { data, setData, processing, errors, post, clearErrors, reset } =
         useForm({
+            type: '' as 'new' | 'replacement',
+            receipt: null as File | null,
+            reason: null as string | null,
             emergency_first_name: '',
             emergency_middle_init: null as string | null,
             emergency_last_name: '',
@@ -47,7 +44,6 @@ export default function Index() {
             hasMajor: false,
             major: null as string | null,
             year: '',
-            section: '',
             picture: null as File | null,
             e_signature: null as File | null,
             confirm_info: false,
@@ -58,27 +54,6 @@ export default function Index() {
         e.preventDefault();
         if (processing) return;
 
-        /* ---------------- STEP 1 ---------------- */
-        if (step === 1) {
-            post(route('validateStepOne'), {
-                preserveScroll: true,
-                onSuccess: () => setStep(2),
-                onError: handleErrors,
-            });
-            return;
-        }
-
-        /* ---------------- STEP 2 ---------------- */
-        if (step === 2) {
-            post(route('validateStepTwo'), {
-                preserveScroll: true,
-                onSuccess: () => setStep(3),
-                onError: handleErrors,
-            });
-            return;
-        }
-
-        /* ---------------- FINAL SUBMIT ---------------- */
         setIsOpen(false);
         setProgress(0);
         setOpenSubmittingModal(true);
@@ -113,7 +88,9 @@ export default function Index() {
                 reset();
             },
 
-            onError: handleErrors,
+            onError: (err) => {
+                handleErrors(err);
+            },
         });
     };
 
@@ -129,94 +106,96 @@ export default function Index() {
         setOpenSubmittingModal(false);
         setIsOpen(false);
 
-        Object.values(errors).forEach((messages) => {
+        const errorKeys = Object.keys(errors);
+
+        // Show all toasts
+        [...errorKeys].reverse().forEach((key) => {
+            const messages = errors[key];
             if (Array.isArray(messages)) {
                 messages.forEach((message) => toast.error(message));
             } else {
                 toast.error(messages);
             }
         });
+
+        // Scroll to the first error field
+        if (errorKeys.length > 0) {
+            const firstErrorKey = errorKeys[0]; // ✅ use original order, not reversed
+
+            // Try name/id first (works for Input fields)
+            let element: Element | null =
+                document.getElementsByName(firstErrorKey)[0] ||
+                document.getElementById(firstErrorKey);
+
+            // Fallback: find the InputError message element rendered near the field
+            // This catches Select/Popover/Button-based fields that have no real input
+            if (!element) {
+                const allInputErrors =
+                    document.querySelectorAll('[data-error-for]');
+                allInputErrors.forEach((el) => {
+                    if (el.getAttribute('data-error-for') === firstErrorKey) {
+                        element = el;
+                    }
+                });
+            }
+
+            // Last resort: scroll to the first visible error message text
+            if (!element) {
+                const errorMessages = document.querySelectorAll(
+                    '.text-destructive, [class*="text-red"]',
+                );
+                if (errorMessages.length > 0) {
+                    element = errorMessages[0];
+                }
+            }
+
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
     };
 
+    const [isCompleteForm, setIsCompleteForm] = useState(false);
+    const isFormComplete = () => {
+        const requiredFields = [
+            'type',
+            'emergency_first_name',
+            'emergency_last_name',
+            'relationship',
+            'contact_number',
+            'province',
+            'city',
+            'barangay',
+            'zip_code',
+            'campus',
+            'college',
+            'college_name',
+            'program',
+            'year',
+            'picture',
+            'e_signature',
+        ] as const;
+
+        const missingFields = requiredFields.filter((field) => {
+            const value = data[field];
+
+            return value === null || value === undefined || value === '';
+        });
+
+        return missingFields.length ? missingFields.join(', ') : true;
+    };
+
+    useEffect(() => {
+        setIsCompleteForm(isFormComplete() === true);
+    }, [data]);
+
+    console.log(data);
     return (
         <StudentFormLayout>
             <CancelModal
                 open={openCancelModal}
                 onClose={() => setOpenCancelModal(false)}
             />
-
-            {/* STEP PROGRESS BAR */}
-            <div className="relative my-5">
-                <Progress value={step === 1 ? 0 : step === 2 ? 50 : 100} />
-                <div className="absolute top-[-12px] left-0 flex w-full justify-between">
-                    {[
-                        'Student Information',
-                        'Photo & E-Signature Upload',
-                        'ID Preview & Confirmation',
-                    ].map((label, index) => {
-                        const stepIndex = index + 1;
-                        const active = step >= stepIndex;
-
-                        return (
-                            <Tooltip key={label}>
-                                <TooltipTrigger asChild>
-                                    <Badge
-                                        variant="secondary"
-                                        className={`text-sm hover:cursor-default md:text-lg ${
-                                            active
-                                                ? 'bg-green-600 text-white'
-                                                : 'bg-green-200 text-gray-400 dark:bg-green-950'
-                                        }`}
-                                    >
-                                        {stepIndex}
-                                    </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{label}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* FORM */}
-            <form
-                ref={formRef}
-                onSubmit={handleFormSubmit}
-                className="mt-10 space-y-5"
-            >
-                {step === 1 && (
-                    <StepOne
-                        data={data}
-                        setData={setData}
-                        errors={errors}
-                        setModalOpen={() => setIsOpen(true)}
-                        onCancel={() => setOpenCancelModal(true)}
-                    />
-                )}
-
-                {step === 2 && (
-                    <StepTwo
-                        data={data}
-                        setData={setData}
-                        errors={errors}
-                        setModalOpen={() => setIsOpen(true)}
-                        onCancel={() => setOpenCancelModal(true)}
-                    />
-                )}
-
-                {step === 3 && (
-                    <StepThree
-                        data={data}
-                        setData={setData}
-                        errors={errors}
-                        setModalOpen={() => setIsOpen(true)}
-                        onCancel={() => setOpenCancelModal(true)}
-                    />
-                )}
-            </form>
-
             {isOpen && (
                 <ConfirmModal
                     open={isOpen}
@@ -237,6 +216,41 @@ export default function Index() {
                           : 'Finalizing submission…'
                 }
             />
+            {/* FORM */}
+            <form
+                ref={formRef}
+                onSubmit={handleFormSubmit}
+                className="mt-10 space-y-5"
+            >
+                <StepOne data={data} setData={setData} errors={errors} />
+
+                <StepTwo data={data} setData={setData} errors={errors} />
+
+                {isCompleteForm && (
+                    <StepThree data={data} setData={setData} errors={errors} />
+                )}
+
+                <div className="flex items-center justify-end">
+                    <div className="flex w-full flex-col gap-3 md:w-max md:flex-row">
+                        <Button
+                            type="button"
+                            onClick={() => setOpenCancelModal(true)}
+                            variant={'outline'}
+                            disabled={processing}
+                            className="grow"
+                        >
+                            Cancel <XIcon />
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={processing || !isCompleteForm}
+                            className="grow"
+                        >
+                            Submit <CheckCheckIcon />
+                        </Button>
+                    </div>
+                </div>
+            </form>
         </StudentFormLayout>
     );
 }

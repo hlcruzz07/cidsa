@@ -4,15 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Repositories\StudentRepository;
+use App\Services\GoogleDriveService;
 use Illuminate\Http\Request;
 
 class StudentApiController extends Controller
 {
-    protected StudentRepository $studentRepository;
 
-    public function __construct(StudentRepository $studentRepository)
+    public function __construct(protected StudentRepository $studentRepository, protected GoogleDriveService $googleDriveService)
     {
-        $this->studentRepository = $studentRepository;
+
     }
 
     public function filterPaginate(Request $request)
@@ -24,10 +24,7 @@ class StudentApiController extends Controller
             'college',
             'program',
             'major',
-            'section',
             'year',
-            'is_exported',
-            'is_completed',
             'from',
             'to',
             'sort',
@@ -39,6 +36,30 @@ class StudentApiController extends Controller
 
 
         return $this->studentRepository->filterPaginate($filters);
+    }
+
+    public function filterPaginateReplacement(Request $request)
+    {
+
+
+        $filters = $request->only([
+            'search',
+            'college',
+            'program',
+            'major',
+            'year',
+            'is_printed',
+            'from',
+            'to',
+            'sort',
+            'order',
+            'perPage',
+            'campus',
+        ]);
+
+
+
+        return $this->studentRepository->filterPaginateReplacement($filters);
     }
 
     public function filterPaginateAll(Request $request)
@@ -60,52 +81,6 @@ class StudentApiController extends Controller
     }
 
 
-    public function filterExport(Request $request)
-    {
-
-        $filters = $request->only([
-
-            'campus',
-            'type',
-            'search',
-            'college',
-            'program',
-            'major',
-            'section',
-            'year',
-            'is_exported',
-            'is_completed',
-            'from',
-            'to',
-            'sort',
-            'order',
-            'limit'
-        ]);
-
-        return $this->studentRepository->filterExport($filters);
-    }
-
-    public function isStudentsExport(Request $request)
-    {
-        $filters = $request->only([
-            'campus',
-            'type',
-            'search',
-            'college',
-            'program',
-            'major',
-            'section',
-            'year',
-            'is_exported',
-            'is_completed',
-            'from',
-            'to',
-        ]);
-
-        $result = $this->studentRepository->isStudentsCanExport($filters);
-
-        return response()->json($result);
-    }
 
     public function studentsChart(Request $request)
     {
@@ -130,5 +105,42 @@ class StudentApiController extends Controller
 
 
         return $this->studentRepository->countStudentUpdatesPerCampus($filters['timeRange']);
+    }
+
+
+    public function getStudentById(int $id)
+    {
+
+        $student = $this->studentRepository->find($id);
+
+        $student['picture'] = route('gdrive.image', [
+            'fileId' => $student['picture']
+        ]);
+
+        $student['e_signature'] = route('gdrive.image', [
+            'fileId' => $student['e_signature']
+        ]);
+
+
+        return $student;
+    }
+
+    public function getStudentByIds(Request $request)
+    {
+        $ids = $request->input('ids');
+        return $this->studentRepository->getStudetsByIds($ids)
+            ->transform(function ($student) {
+                foreach (['picture', 'e_signature'] as $field) {
+                    $student->{$field} = filled($student->{$field})
+                        ? route('gdrive.image', ['fileId' => $student->{$field}])
+                        : null;
+                }
+
+                return $student;
+            });
+    }
+    public function image(string $fileId)
+    {
+        return $this->googleDriveService->getGDriveImage($fileId);
     }
 }

@@ -8,10 +8,12 @@ import {
     applyWhiteBackground,
     resizeWithFaceCentering,
 } from '@/lib/image-remover';
+import { cleanMask } from '@/lib/mask-utils';
+import * as hf from '@huggingface/transformers';
 import { usePage } from '@inertiajs/react';
 import * as imageConversion from 'image-conversion';
 import {
-    ArrowBigRight,
+    AlertTriangle,
     AsteriskIcon,
     Ban,
     Camera,
@@ -22,12 +24,9 @@ import {
     Smile,
     Square,
 } from 'lucide-react';
-
 import { ChangeEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import SignatureModal from '../Modal/SignatureModal';
-
-import * as hf from '@huggingface/transformers';
 interface StepTwoProps {
     data: {
         picture: File | null;
@@ -35,8 +34,6 @@ interface StepTwoProps {
     };
     setData: (key: string, value: any) => void;
     errors: Record<string, string>;
-    setModalOpen: () => void;
-    onCancel: () => void;
 }
 type PageProps = {
     student: StudentProps;
@@ -48,13 +45,7 @@ type StudentProps = {
     last_name: string;
 };
 
-export default function StepTwo({
-    data,
-    setData,
-    errors,
-    setModalOpen,
-    onCancel,
-}: StepTwoProps) {
+export default function StepTwo({ data, setData, errors }: StepTwoProps) {
     const { student } = usePage<PageProps>().props;
     const [previewUrl, setPreviewUrl] = useState('/placeholder.jpg');
     const [isBgRemoving, setIsBgRemoving] = useState<boolean>(false);
@@ -131,10 +122,6 @@ export default function StepTwo({
                 input: inputs.pixel_values,
             });
 
-            console.log('===== RMBG OUTPUTS =====');
-            console.log(outputs);
-            console.log('Output keys:', Object.keys(outputs));
-
             const outputTensor =
                 (outputs as any).output ??
                 (outputs as any).logits ??
@@ -144,9 +131,6 @@ export default function StepTwo({
             if (!outputTensor) {
                 throw new Error('No output tensor found');
             }
-
-            console.log('Selected tensor:', outputTensor);
-            console.log('Tensor dims:', outputTensor.dims);
 
             const dims = outputTensor.dims;
 
@@ -168,9 +152,6 @@ export default function StepTwo({
                 if (value > max) max = value;
             }
 
-            console.log('Min value:', min);
-            console.log('Max value:', max);
-
             const maskCanvas = document.createElement('canvas');
             maskCanvas.width = width;
             maskCanvas.height = height;
@@ -181,23 +162,28 @@ export default function StepTwo({
                 throw new Error('Failed to create mask canvas');
             }
 
-            const maskImageData = maskCtx.createImageData(width, height);
+            const rawMaskData = maskCtx.createImageData(width, height);
 
             for (let i = 0; i < tensorData.length; i++) {
                 const normalized = ((tensorData[i] - min) / (max - min)) * 255;
-
                 const alpha = Math.max(
                     0,
                     Math.min(255, Math.round(normalized)),
                 );
-
-                maskImageData.data[i * 4] = 255;
-                maskImageData.data[i * 4 + 1] = 255;
-                maskImageData.data[i * 4 + 2] = 255;
-                maskImageData.data[i * 4 + 3] = alpha;
+                rawMaskData.data[i * 4] = 255;
+                rawMaskData.data[i * 4 + 1] = 255;
+                rawMaskData.data[i * 4 + 2] = 255;
+                rawMaskData.data[i * 4 + 3] = alpha;
             }
 
-            maskCtx.putImageData(maskImageData, 0, 0);
+            // ✅ Clean the mask: threshold speckles, erode fringe, feather edges
+            const cleanedMask = cleanMask(rawMaskData, width, height, {
+                threshold: 100,
+                closeRadius: 4, // ← new param, fills interior dots
+                erodeRadius: 1,
+                blurRadius: 2,
+            });
+            maskCtx.putImageData(cleanedMask, 0, 0);
 
             setProgress(70);
 
@@ -479,6 +465,31 @@ export default function StepTwo({
                     </div>
                 </div>
 
+                <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/30">
+                    <div className="flex gap-3">
+                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                        <div>
+                            <h3 className="font-semibold text-amber-800 dark:text-amber-300">
+                                Important Notice
+                            </h3>
+                            <p className="mt-1 text-sm leading-relaxed text-amber-700 dark:text-amber-200">
+                                Uploaded photos are automatically processed to
+                                remove the background, apply a white background,
+                                center the subject, and resize the image for ID
+                                printing. Because of this process, image
+                                quality, cropping, alignment, and facial
+                                proportions may be affected depending on the
+                                original photo.
+                            </p>
+                            <p className="mt-2 text-sm font-medium text-amber-800 dark:text-amber-300">
+                                If the preview does not look clear, properly
+                                centered, or suitable for an ID picture, please
+                                upload a different photo before proceeding.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Signature Section */}
                 <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                     <div className="flex items-center justify-between">
@@ -518,31 +529,6 @@ export default function StepTwo({
                     </div>
 
                     <InputError message={errors.e_signature} />
-                </div>
-
-                {/* Actions */}
-                <div className="flex justify-end border-t border-gray-200 pt-6 dark:border-gray-700">
-                    <div className="flex gap-3">
-                        <Button
-                            type="button"
-                            onClick={onCancel}
-                            size="lg"
-                            variant="outline"
-                            className="min-w-[120px]"
-                        >
-                            Cancel
-                        </Button>
-
-                        <Button
-                            type="button"
-                            onClick={setModalOpen}
-                            size="lg"
-                            className="min-w-[140px]"
-                        >
-                            Next
-                            <ArrowBigRight />
-                        </Button>
-                    </div>
                 </div>
             </div>
         </>

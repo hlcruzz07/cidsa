@@ -9,4 +9,9 @@ class PrintedStudents extends Model
     protected $fillable = [
         'id_number',
     ];
+
+    public function student()
+    {
+        return $this->belongsTo(Student::class, 'id_number');
+    }
 }

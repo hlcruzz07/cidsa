@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class Student extends Model
 {
     protected $casts = [
-        'is_exported' => 'boolean',
         'is_completed' => 'boolean'
     ];
     protected $fillable = [
@@ -39,9 +38,21 @@ class Student extends Model
         'program',
         'major',
         'year',
-        'section',
 
-        'is_exported',
         'is_completed',
     ];
+
+    public function printed()
+    {
+        return $this->hasOne(
+            PrintedStudents::class,
+            'id_number',
+            'id_number'
+        );
+    }
+
+    public function replacements()
+    {
+        return $this->hasMany(StudentReplacement::class, 'student_id');
+    }
 }

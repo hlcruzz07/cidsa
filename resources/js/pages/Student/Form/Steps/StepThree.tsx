@@ -1,12 +1,11 @@
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { StudentProps } from '@/lib/custom-types';
 import { usePage } from '@inertiajs/react';
-import { AlertCircleIcon, SendIcon } from 'lucide-react';
+import { AlertCircleIcon } from 'lucide-react';
 import { useMemo } from 'react';
 interface StepTwoProps {
     data: {
@@ -32,21 +31,13 @@ interface StepTwoProps {
     };
     setData: (key: string, value: any) => void;
     errors: Record<string, string>;
-    setModalOpen: () => void;
-    onCancel: () => void;
 }
 
 type PageProps = {
     student: StudentProps;
 };
 
-export default function StepThree({
-    data,
-    setData,
-    errors,
-    setModalOpen,
-    onCancel,
-}: StepTwoProps) {
+export default function StepThree({ data, setData, errors }: StepTwoProps) {
     const { student } = usePage<PageProps>().props;
     const previewPicture = useMemo(() => {
         if (!data.picture) return '/placeholder.jpg';
@@ -227,28 +218,6 @@ export default function StepThree({
                     </div>
 
                     <InputError message={errors.data_privacy} />
-                </div>
-
-                <div className="mb-10 flex justify-end">
-                    <div className="space-x-3">
-                        <Button
-                            type="button"
-                            onClick={onCancel}
-                            className="ml-auto text-center"
-                            size="lg"
-                            variant="outline"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="button"
-                            className="ml-auto text-center"
-                            onClick={setModalOpen}
-                        >
-                            Submit
-                            <SendIcon />
-                        </Button>
-                    </div>
                 </div>
             </div>
         </>

@@ -75,7 +75,7 @@ class UpdateStudentRequest extends FormRequest
             'program' => 'required|string',
             'major' => 'required_if:hasMajor,true|nullable|string',
             'year' => 'required|in:1st Year,2nd Year,3rd Year,4th Year,5th Year',
-            'section' => 'required|string',
+
         ];
     }
 
@@ -113,7 +113,7 @@ class UpdateStudentRequest extends FormRequest
             'program.required' => 'Program field is required.',
             'major.required_if' => 'You must select a major because the chosen program has available majors.',
             'year.required' => 'Year level is required.',
-            'section.required' => 'Section is required.',
+
         ];
     }
 

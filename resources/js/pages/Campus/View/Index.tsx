@@ -158,27 +158,6 @@ export default function Index() {
                                         />
                                     </div>
                                 </div>
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    <div className="flex flex-col gap-2">
-                                        <Label htmlFor="zip_code">
-                                            Section
-                                        </Label>
-                                        <Input
-                                            type="text"
-                                            placeholder="Section"
-                                            value={student.section}
-                                            disabled
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <Label>Year Level</Label>
-                                        <Input
-                                            type="text"
-                                            value={student.year || ''}
-                                            disabled
-                                        />
-                                    </div>
-                                </div>
 
                                 <Heading
                                     title="In-Case of Emergency Contact Information"

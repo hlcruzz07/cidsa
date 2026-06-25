@@ -1,14 +1,10 @@
 <?php
-use App\Http\Middleware\CheckIsExported;
-use App\Http\Middleware\CheckStudentComplete;
-use App\Http\Middleware\CheckStudentExportable;
+
 use App\Http\Middleware\CheckStudentHasSession;
-use App\Http\Middleware\CheckStudentInfo;
 use App\Http\Middleware\CheckUserRole;
 use App\Http\Middleware\CheckValidatedStudent;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
-use App\Http\Middleware\StudentSuccess;
 use App\Http\Middleware\ValidateStudent;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;

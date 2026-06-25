@@ -5,19 +5,82 @@ namespace App\Http\Requests;
 use App\Models\Student;
 use Illuminate\Foundation\Http\FormRequest;
 
-class Step1Request extends FormRequest
+class CompleteStudentRequest extends FormRequest
 {
-
+    /**
+     * Determine if the user is authorized to make this request.
+     */
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     */
     public function rules(): array
     {
 
         return [
 
+            'type' => [
+                'required',
+                'in:new,replacement',
+                function ($attribute, $value, $fail) {
+                    $student = Student::where(
+                        'id_number',
+                        session('validated_student')
+                    )->first();
+
+                    if (!$student) {
+                        return;
+                    }
+
+                    // NEW application
+                    if ($value === 'new') {
+
+                        if ($student->printed()->exists()) {
+                            $fail(
+                                'Your ID has already been printed. If you need changes or a new ID, please submit a Replacement request instead.'
+                            );
+
+                            return;
+                        }
+
+                        if ($student->is_completed) {
+                            $fail(
+                                'You have already submitted an ID application. Please wait for the release of your ID.'
+                            );
+                        }
+                    }
+
+                    // REPLACEMENT application
+                    if ($value === 'replacement') {
+
+                        $hasPendingReplacement = $student->replacements()
+                            ->where('is_printed', false)
+                            ->exists();
+
+                        if ($hasPendingReplacement) {
+                            $fail(
+                                'You already have a pending replacement request. Please wait for it to be printed before submitting another replacement request.'
+                            );
+                        }
+                    }
+                },
+            ],
+            'receipt' => [
+                'required_if:type,replacement',
+                'max:2048',
+            ],
+
+            'reason' => [
+                'nullable',
+                'string',
+                'max:250',
+            ],
             'emergency_first_name' => [
                 'required',
                 function ($attribute, $value, $fail) {
@@ -64,6 +127,12 @@ class Step1Request extends FormRequest
             'major' => 'required_if:hasMajor,true|nullable',
             'year' => 'required|in:1st Year,2nd Year,3rd Year,4th Year,5th Year',
 
+
+            'picture' => 'required|max:2048',
+            'e_signature' => 'required|max:1024',
+
+            'confirm_info' => 'required|accepted',
+            'data_privacy' => 'required|accepted'
         ];
     }
 
@@ -90,6 +159,18 @@ class Step1Request extends FormRequest
             'college.required' => 'Please select your college.',
             'program.required' => 'Program field is required.',
             'major.required_if' => 'You must select a major because the chosen program has available majors.',
+
+            'picture.required' => 'Please upload your picture.',
+            'picture.max' => 'The picture must not be larger than 2MB.',
+
+            'e_signature.required' => 'Please provide your e-signature.',
+            'e_signature.max' => 'The e-signature file must not exceed 1MB.',
+
+            'confirm_info.required' => 'Please confirm that the information you provided is true and correct.',
+            'confirm_info.accepted' => 'You must confirm that all provided information is accurate before proceeding.',
+
+            'data_privacy.required' => 'You must agree to the Data Privacy Act to continue.',
+            'data_privacy.accepted' => 'Consent to data privacy is required to proceed with your application.',
         ];
     }
 }

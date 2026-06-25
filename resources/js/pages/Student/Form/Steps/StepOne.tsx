@@ -24,35 +24,23 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { StudentProps } from '@/lib/custom-types';
 import { campusDirectoryArr, cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
-import {
-    ArrowBigRight,
-    AsteriskIcon,
-    Check,
-    ChevronsUpDown,
-} from 'lucide-react';
+import { AsteriskIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface StepOneProps {
     data: FormDataProps;
     setData: (key: string, value: any) => void;
     errors: Record<string, string>;
-    setModalOpen: () => void;
-    onCancel: () => void;
 }
 type PageProps = {
     student: StudentProps;
 };
 
-export default function StepOne({
-    data,
-    setData,
-    errors,
-    setModalOpen,
-    onCancel,
-}: StepOneProps) {
+export default function StepOne({ data, setData, errors }: StepOneProps) {
     const { student } = usePage<PageProps>().props;
 
     // Popovers
@@ -132,8 +120,6 @@ export default function StepOne({
 
         setData('major', null);
         setIsMajorDisabled(true);
-
-        setData('section', '');
     };
 
     const resetForCollegeChange = () => {
@@ -142,15 +128,11 @@ export default function StepOne({
 
         setData('major', null);
         setIsMajorDisabled(true);
-
-        setData('section', '');
     };
 
     const resetForProgramChange = () => {
         setData('major', null);
         setIsMajorDisabled(false);
-
-        setData('section', '');
     };
 
     const resetForProvinceChange = () => {
@@ -187,13 +169,93 @@ export default function StepOne({
                 description="Provide your basic personal details as they will appear on your ID."
             />
             <div className="flex flex-col gap-2">
+                <Label>
+                    ID Type
+                    <AsteriskIcon size={12} color="red" />
+                </Label>
+                <Select
+                    value={data.type}
+                    onValueChange={(value) => {
+                        if (value === 'new') {
+                            setData('type', value);
+                            setData('receipt', null);
+                            setData('reason', null);
+                            return;
+                        }
+
+                        setData('type', value);
+                    }}
+                    name={data.type}
+                >
+                    <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Choose an option" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectGroup>
+                            {['new', 'replacement'].map((item, key) => (
+                                <SelectItem key={key} value={item}>
+                                    {item.toUpperCase()}
+                                </SelectItem>
+                            ))}
+                        </SelectGroup>
+                    </SelectContent>
+                </Select>
+                <InputError message={errors.type} />
+            </div>
+            {data.type === 'replacement' && (
+                <>
+                    {data.receipt && (
+                        <div className="flex items-center justify-center">
+                            <img
+                                src={URL.createObjectURL(data.receipt)}
+                                alt=""
+                                className="size-64 border object-cover"
+                            />
+                        </div>
+                    )}
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="receipt">
+                            Receipt
+                            <AsteriskIcon size={12} color="red" />
+                        </Label>
+
+                        <Input
+                            id="receipt"
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.pdf"
+                            onChange={(e) => {
+                                setData('receipt', e.target.files?.[0] ?? null);
+                            }}
+                        />
+
+                        <InputError message={errors.receipt} />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <Label>Reason (optional)</Label>
+                        <Textarea
+                            value={data.reason ?? ''}
+                            onChange={(e) => {
+                                if (e.target.value === '') {
+                                    setData('reason', null);
+                                    return;
+                                }
+                                setData('reason', e.target.value);
+                            }}
+                            maxLength={250}
+                            placeholder="Enter your reason for replacement"
+                        />
+                        <InputError message={errors.reason} />
+                    </div>
+                </>
+            )}
+            <div className="flex flex-col gap-2">
                 <Label htmlFor="id_number">Student ID Number</Label>
                 <Input
                     type="text"
                     placeholder="Enter ID Number"
-                    readOnly
+                    disabled
                     value={student.id_number}
-                    maxLength={25}
                 />
                 <InputError message={errors.id_number} />
             </div>
@@ -209,8 +271,7 @@ export default function StepOne({
                         type="text"
                         id="first_name"
                         value={student.first_name}
-                        maxLength={25}
-                        readOnly
+                        disabled
                     />
                 </div>
                 <div className="col-span-auto flex w-full flex-col gap-2">
@@ -219,7 +280,7 @@ export default function StepOne({
                         type="text"
                         id="middle_init"
                         value={student.middle_init ?? ''}
-                        readOnly
+                        disabled
                     />
                 </div>
                 <div className="col-span-4 flex w-full grow flex-col gap-2">
@@ -227,13 +288,13 @@ export default function StepOne({
                     <Input
                         type="text"
                         id="last_name"
-                        readOnly
+                        disabled
                         value={student.last_name}
                     />
                 </div>
                 <div className="col-span-4 flex flex-col gap-2 md:col-span-3">
                     <Label htmlFor="suffix">Suffix</Label>
-                    <Input readOnly type="text" value={student.suffix ?? ''} />
+                    <Input disabled type="text" value={student.suffix ?? ''} />
                 </div>
             </div>
             <Heading
@@ -384,61 +445,37 @@ export default function StepOne({
                     <InputError message={errors.major} />
                 </div>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                        <Label htmlFor="zip_code">
-                            Section
-                            <AsteriskIcon size={12} color="red" />
-                        </Label>
-                        <span className="text-xs text-muted-foreground">
-                            (ex: A, B, C, D, A1, A2, etc.)
-                        </span>
-                    </div>
-                    <Input
-                        type="text"
-                        maxLength={4}
-                        disabled={data.college === ''}
-                        placeholder="Enter Section"
-                        value={data.section}
-                        onChange={(e) => {
-                            setData('section', e.target.value.toUpperCase());
-                        }}
-                    />
-                    <InputError message={errors.section} />
-                </div>
-                <div className="flex flex-col gap-2">
-                    <Label>
-                        Year Level
-                        <AsteriskIcon size={12} color="red" />
-                    </Label>
-                    <Select
-                        value={data.year}
-                        onValueChange={(value) => {
-                            setData('year', value);
-                        }}
-                    >
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Choose an option" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                                {[
-                                    '1st Year',
-                                    '2nd Year',
-                                    '3rd Year',
-                                    '4th Year',
-                                    '5th Year',
-                                ].map((item, key) => (
-                                    <SelectItem key={key} value={item}>
-                                        {item}
-                                    </SelectItem>
-                                ))}
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
-                    <InputError message={errors.year} />
-                </div>
+            <div className="flex flex-col gap-2">
+                <Label>
+                    Year Level
+                    <AsteriskIcon size={12} color="red" />
+                </Label>
+                <Select
+                    value={data.year}
+                    onValueChange={(value) => {
+                        setData('year', value);
+                    }}
+                >
+                    <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Choose an option" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectGroup>
+                            {[
+                                '1st Year',
+                                '2nd Year',
+                                '3rd Year',
+                                '4th Year',
+                                '5th Year',
+                            ].map((item, key) => (
+                                <SelectItem key={key} value={item}>
+                                    {item}
+                                </SelectItem>
+                            ))}
+                        </SelectGroup>
+                    </SelectContent>
+                </Select>
+                <InputError message={errors.year} />
             </div>
 
             <Heading
@@ -457,7 +494,6 @@ export default function StepOne({
                         id="emergency_first_name"
                         placeholder="Enter First Name"
                         value={data.emergency_first_name}
-                        maxLength={25}
                         onChange={(e) => {
                             setData(
                                 'emergency_first_name',
@@ -502,7 +538,6 @@ export default function StepOne({
                         id="emergency_last_name"
                         placeholder="Enter Last Name"
                         value={data.emergency_last_name}
-                        maxLength={25}
                         onChange={(e) => {
                             setData(
                                 'emergency_last_name',
@@ -873,29 +908,6 @@ export default function StepOne({
                     />
 
                     <InputError message={errors.zip_code} />
-                </div>
-            </div>
-
-            <div className="flex items-center justify-end">
-                <div className="space-x-3">
-                    <Button
-                        type="button"
-                        onClick={onCancel}
-                        className="ml-auto text-center"
-                        size="lg"
-                        variant="outline"
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        type="button"
-                        onClick={setModalOpen}
-                        className="ml-auto text-center"
-                        size="lg"
-                    >
-                        Next
-                        <ArrowBigRight />
-                    </Button>
                 </div>
             </div>
         </>

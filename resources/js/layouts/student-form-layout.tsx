@@ -65,9 +65,9 @@ export default function StudentFormLayout({
                             safe and organized campus environment.
                         </p>
                     </div>
-                </div>
-                <div className="mt-5 flex items-center justify-center">
-                    <AppearanceToggleTab />
+                    <div className="mt-5 flex items-center justify-center">
+                        <AppearanceToggleTab />
+                    </div>
                 </div>
 
                 <div className="relative z-10 mx-auto block max-w-5xl rounded-xl bg-white p-5 dark:bg-black dark:text-gray-100">

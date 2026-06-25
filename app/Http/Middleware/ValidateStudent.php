@@ -29,32 +29,15 @@ class ValidateStudent
         $last_name = $request->last_name;
 
         $isExisting = $this->students->isStudentExisting($id_number, $first_name, $last_name);
-        $isCompleted = $this->students->isStudentCompleted($id_number);
-        $isPrinted = PrintedStudents::where('id_number', $id_number)->exists();
-
-        if ($isPrinted) {
-            return redirect()->back()->with(
-                'error',
-                'You already have an existing student ID. Please contact our office if you require a replacement or have concerns regarding with your ID.'
-            );
-        }
 
         if (!$isExisting) {
             return redirect()->back()->with('error', 'Invalid student credentials');
         }
 
-        if ($isCompleted) {
-            return redirect()->back()->with(
-                'success',
-                'You have already submitted your information. Please wait for the release of your student ID.'
-            );
-        }
+        $student = $this->students->findStudentByIdNumber($id_number);
 
-        $request->session()->put([
-            'validated_student' => $id_number,
-            'validated_student_expires_at' => now()->addMinutes((int) config('session.lifetime', 120)),
+        return redirect()->route('student.form')->with([
+            'student' => $student
         ]);
-
-        return $next($request);
     }
 }

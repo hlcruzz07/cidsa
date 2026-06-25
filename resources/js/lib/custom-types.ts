@@ -14,7 +14,6 @@ export type StudentProps = {
     program: string;
     major: string;
     year: string;
-    section: string;
 
     emergency_first_name: string;
     emergency_middle_init: string | null;
@@ -27,7 +26,7 @@ export type StudentProps = {
     barangay: string;
     zip_code: string;
 
-    is_exported: boolean;
+    printed_exists: boolean;
     is_completed: boolean;
 
     created_at: string;
@@ -50,13 +49,16 @@ export type ExportedStudent = {
     student: StudentProps;
 };
 
-export type ExportHistory = {
+export type StudentReplacement = {
     id: number;
-    user_id: number;
-    file_name: string;
-    user: UserProps;
-    exported_students: ExportedStudent[];
+    student_id: number;
+
+    receipt: string;
+    reason?: string;
+    is_printed: boolean;
     created_at: string;
+    updated_at: string;
+    student?: StudentProps;
 };
 
 export type PaginateStudents = {
@@ -67,8 +69,8 @@ export type PaginateStudents = {
     total: number;
 };
 
-export type PaginateExportHistory = {
-    data: ExportHistory[];
+export type PaginateStudentReplacement = {
+    data: StudentReplacement[];
     links: { url: string | null; label: string; active: boolean }[];
     from: number;
     to: number;

@@ -95,7 +95,6 @@ export default function Index() {
                                     );
                                 }}
                                 maxLength={25}
-                                required
                             />
                             <InputError message={errors.id_number} />
                         </div>
@@ -107,7 +106,7 @@ export default function Index() {
                                 </Label>
                                 <Input
                                     type="text"
-                                    maxLength={25}
+                                    maxLength={50}
                                     placeholder="Enter First Name"
                                     value={data.first_name}
                                     onChange={(e) => {
@@ -116,7 +115,6 @@ export default function Index() {
                                             e.target.value.toUpperCase(),
                                         );
                                     }}
-                                    required
                                 />
 
                                 <InputError message={errors.first_name} />
@@ -137,7 +135,6 @@ export default function Index() {
                                             e.target.value.toUpperCase(),
                                         );
                                     }}
-                                    required
                                 />
 
                                 <InputError message={errors.last_name} />
