@@ -8,10 +8,6 @@ import {
     DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -24,7 +20,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import {
-    AlertCircleIcon,
     ArrowUpDownIcon,
     BookMarkedIcon,
     BookOpenCheck,
@@ -33,6 +28,7 @@ import {
     CheckIcon,
     ChevronDownIcon,
     ChevronsLeftRight,
+    ClockIcon,
     FilterXIcon,
     PrinterCheckIcon,
     Trash2Icon,
@@ -115,7 +111,7 @@ export function ReplacementFilterBar({
     sortOptions = [
         { label: '#', value: 'id' },
         { label: 'College', value: 'college' },
-        { label: 'Date Updated', value: 'updated_at' },
+        { label: 'Date', value: 'created_at' },
     ],
     collegeOptions = [],
     selectedCollege,
@@ -241,7 +237,7 @@ export function ReplacementFilterBar({
                                     variant="destructive"
                                     className="mt-3 w-full"
                                     onClick={() => {
-                                        onSortChange('updated_at');
+                                        onSortChange('created_at');
                                         onOrderChange('desc');
                                     }}
                                 >
@@ -407,7 +403,8 @@ export function ReplacementFilterBar({
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline">
-                                <ChartLineIcon /> Status
+                                <ChartLineIcon />
+                                Status
                                 <div className="space-x-1">
                                     {isPrinted === true && (
                                         <Badge variant="default">
@@ -415,45 +412,38 @@ export function ReplacementFilterBar({
                                             Printed
                                         </Badge>
                                     )}
+
                                     {isPrinted === false && (
-                                        <Badge variant="destructive">
-                                            <AlertCircleIcon className="h-3 w-3" />{' '}
-                                            Printed
+                                        <Badge variant="outline">
+                                            <ClockIcon className="h-3 w-3" />{' '}
+                                            Pending
                                         </Badge>
                                     )}
                                 </div>
                                 <ChevronDownIcon />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-max" align="start">
-                            {/* Printed */}
-                            <DropdownMenuSub>
-                                <DropdownMenuSubTrigger>
-                                    Printed
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuSubContent>
-                                    {[
-                                        { label: 'Yes', value: true },
-                                        { label: 'No', value: false },
-                                    ].map((item) => (
-                                        <DropdownMenuCheckboxItem
-                                            key={item.label}
-                                            checked={isPrinted === item.value}
-                                            onSelect={(e) => {
-                                                e.preventDefault();
-                                                onPrintedChange(
-                                                    isPrinted === item.value
-                                                        ? null
-                                                        : item.value,
-                                                );
-                                            }}
-                                        >
-                                            {item.label}
-                                        </DropdownMenuCheckboxItem>
-                                    ))}
-                                </DropdownMenuSubContent>
-                            </DropdownMenuSub>
-                            <DropdownMenuSeparator />
+
+                        <DropdownMenuContent className="w-44" align="start">
+                            {[
+                                { label: 'Printed', value: true },
+                                { label: 'Pending', value: false },
+                            ].map((item) => (
+                                <DropdownMenuCheckboxItem
+                                    key={item.label}
+                                    checked={isPrinted === item.value}
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        onPrintedChange(
+                                            isPrinted === item.value
+                                                ? null
+                                                : item.value,
+                                        );
+                                    }}
+                                >
+                                    {item.label}
+                                </DropdownMenuCheckboxItem>
+                            ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -471,7 +461,7 @@ export function ReplacementFilterBar({
                                     <CalendarIcon />
                                     {range?.from && range?.to
                                         ? `${range.from.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} – ${range.to.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
-                                        : 'Date Updated'}
+                                        : 'Date'}
                                     <ChevronDownIcon />
                                 </Button>
                             </DropdownMenuTrigger>

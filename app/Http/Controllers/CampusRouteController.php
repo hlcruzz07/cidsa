@@ -43,6 +43,9 @@ class CampusRouteController extends Controller
 
         $counts = [
             'totalUpdates' => $this->students->countStudentsHasUpdatesByCampus($campus),
+            'totalNewPendings' => $this->students->countNewPendingStudentByCampus($campus),
+            'totalNewPrinted' => $this->students->countNewPrintedStudentByCampus($campus),
+            'totalPendingReplacement' => $this->students->countReplacementPendingByCampus($campus)
         ];
 
         $studentsChart = $this->students->studentsUpdateChart($campus, '90d');

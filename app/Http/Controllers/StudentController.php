@@ -7,6 +7,7 @@ use App\Http\Requests\CompleteStudentRequest;
 use App\Http\Requests\UpdateStudentRequest;
 use App\Http\Requests\ValidateStudentRequest;
 use App\Models\PrintedStudents;
+use App\Models\Student;
 use App\Models\StudentReplacement;
 use App\Repositories\StudentRepository;
 use App\Services\GoogleDriveService;
@@ -15,6 +16,8 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Illuminate\Database\QueryException;
+use PDOException;
 
 
 class StudentController extends Controller
@@ -31,28 +34,45 @@ class StudentController extends Controller
     }
     public function index()
     {
-        if (session()->has('validated_student')) {
-            return redirect()->route('student.form');
-        }
+        session()->forget('validated_student');
+
         return Inertia::render('Student/Index');
     }
 
+
     public function validate(ValidateStudentRequest $request)
     {
-        $id_number = $request->id_number;
-        $first_name = $request->first_name;
-        $last_name = $request->last_name;
+        try {
+            $student = $this->students->getStudentById(
+                $request->id_number,
+                $request->campus
+            );
+        } catch (PDOException | QueryException $e) {
+            report($e);
 
-        $isExisting = $this->students->isStudentExisting($id_number, $first_name, $last_name);
-
-        if (!$isExisting) {
-            return redirect()->back()->with('error', 'Invalid student credentials');
+            return back()->with(
+                'error',
+                'Unable to connect to the campus database. Please try again later.'
+            );
         }
 
-        $student = $this->students->findStudentByIdNumber($id_number);
+        if (!$student) {
+            return back()->with('error', 'Student not found.');
+        }
+
+        $storeStudent = Student::updateOrCreate([
+            'id_number' => $student['student_id'],
+        ], [
+            'first_name' => $student['student_firstname'],
+            'middle_init' => $student['student_middlename'] !== '' ? mb_substr($student['student_middlename'], 0, 1) : null,
+            'last_name' => $student['student_lastname'],
+            'suffix' => $student['suffix'],
+            'created_at' => now(),
+            'updated_at' => null
+        ]);
 
         session([
-            'validated_student' => $student->id_number
+            'validated_student' => $storeStudent->id_number,
         ]);
 
         return redirect()->route('student.form');
@@ -67,10 +87,6 @@ class StudentController extends Controller
                 'data_privacy',
                 'hasMajor',
             ]);
-
-            if (!session()->has('validated_student')) {
-                return redirect()->route('home')->with('error', 'Session Expired');
-            }
 
             $studentIdNumber = session('validated_student');
             $student = $this->students->findStudentByIdNumber($studentIdNumber);
@@ -148,6 +164,18 @@ class StudentController extends Controller
         return Inertia::render('Student/Form/Index', [
             'student' => $student
         ]);
+    }
+
+    public function checkReplacement()
+    {
+        $student = $this->students->findStudentByIdNumber(
+            session('validated_student')
+        );
+
+        return $student->replacements()->with('student')
+            ->where('is_printed', true)
+            ->latest()
+            ->first() ?? null;
     }
 
 
@@ -376,4 +404,50 @@ class StudentController extends Controller
     //     return back()->with('success', 'Student picture updated');
     // }
 
+    public function updateStatusNew(string $status, string $id_number)
+    {
+
+        switch ($status) {
+            case 'pending':
+                $this->students->setPendingForNew($id_number);
+
+                return back()->with('success', 'Student status updated to ' . $status . ' successfully!');
+            case 'printed':
+                $this->students->setPrintedForNew($id_number);
+                return back()->with('success', 'Student status updated to ' . $status . ' successfully!');
+            default:
+                return back()->with('error', 'Invalid status.');
+        }
+    }
+
+    public function updateStatusRep(string $status, int $id)
+    {
+
+        switch ($status) {
+            case 'pending':
+                $this->students->setPendingForReplacement($id);
+
+                return back()->with('success', 'Student status updated to ' . $status . ' successfully!');
+            case 'printed':
+                $this->students->setPrintedForReplacement($id);
+                return back()->with('success', 'Student status updated to ' . $status . ' successfully!');
+            default:
+                return back()->with('error', 'Invalid status.');
+        }
+    }
+
+    public function storeChecklist(Request $request, GoogleDriveService $googleDriveService)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx',
+            'campus' => 'required|string',
+        ]);
+
+        $result = $googleDriveService->uploadChecklist(
+            $request->file('file'),
+            $request->input('campus'),
+        );
+
+        return response()->json($result);
+    }
 }

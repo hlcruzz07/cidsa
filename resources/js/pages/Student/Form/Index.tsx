@@ -189,7 +189,6 @@ export default function Index() {
         setIsCompleteForm(isFormComplete() === true);
     }, [data]);
 
-    console.log(data);
     return (
         <StudentFormLayout>
             <CancelModal

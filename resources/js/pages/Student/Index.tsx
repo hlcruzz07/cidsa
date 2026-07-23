@@ -4,23 +4,36 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import UserLayout from '@/layouts/user-layout';
 import { useForm, usePage } from '@inertiajs/react';
-import { AsteriskIcon, LogInIcon } from 'lucide-react';
+import { AsteriskIcon, HelpCircle, LogInIcon } from 'lucide-react';
+import { useState } from 'react';
 import { route } from 'ziggy-js';
+import { ReplacementGuide } from './Form/Modal/ReplacementGuide';
 import SuccessModal from './Form/Modal/SucessModal';
+
 type SuccessProp = {
     success: boolean;
 };
+
 export default function Index() {
     const { success } = usePage<SuccessProp>().props;
     const { data, setData, processing, errors, post } = useForm({
         id_number: '',
-        first_name: '',
-        last_name: '',
+        campus: '',
     });
+
+    const [openGuide, setOpenGuide] = useState(false);
 
     const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -38,6 +51,9 @@ export default function Index() {
     return (
         <UserLayout>
             <SuccessModal open={success ?? false} />
+
+            <ReplacementGuide open={openGuide} setOpen={setOpenGuide} />
+
             <div className="grid max-w-7xl lg:grid-cols-2">
                 <div className="space-y-5 p-10">
                     <div className="flex items-center justify-center gap-3 lg:justify-start">
@@ -60,7 +76,7 @@ export default function Index() {
                         The CHMSU CIDSA Identification Card & Security Access
                         Activation Form allows students, faculty, and staff to
                         obtain official campus identification. It ensures every
-                        member is properly registered in the university’s
+                        member is properly registered in the university's
                         system, enabling accurate records, efficient management,
                         and seamless access to services like libraries and
                         support facilities.
@@ -69,6 +85,7 @@ export default function Index() {
                         <AppearanceToggleTab />
                     </div>
                 </div>
+
                 <div className="rounded-md border bg-white p-10 text-black shadow-md dark:bg-black dark:text-gray-100">
                     <Heading
                         title="Student Information Form"
@@ -79,67 +96,64 @@ export default function Index() {
                         onSubmit={handleFormSubmit}
                         className="mt-5 space-y-5"
                     >
-                        <div className="grid gap-2">
-                            <Label>
-                                Student ID Number{' '}
-                                <AsteriskIcon size={12} color="red" />
-                            </Label>
-                            <Input
-                                type="text"
-                                placeholder="Enter ID Number"
-                                value={data.id_number}
-                                onChange={(e) => {
-                                    setData(
-                                        'id_number',
-                                        e.target.value.toUpperCase(),
-                                    );
-                                }}
-                                maxLength={25}
-                            />
-                            <InputError message={errors.id_number} />
-                        </div>
                         <div className="grid gap-3 md:grid-cols-2">
                             <div className="grid gap-2">
                                 <Label>
-                                    First Name{' '}
+                                    Student ID Number{' '}
                                     <AsteriskIcon size={12} color="red" />
                                 </Label>
                                 <Input
                                     type="text"
-                                    maxLength={50}
-                                    placeholder="Enter First Name"
-                                    value={data.first_name}
+                                    placeholder="Enter ID Number"
+                                    value={data.id_number}
                                     onChange={(e) => {
                                         setData(
-                                            'first_name',
+                                            'id_number',
                                             e.target.value.toUpperCase(),
                                         );
                                     }}
+                                    maxLength={25}
                                 />
-
-                                <InputError message={errors.first_name} />
+                                <InputError message={errors.id_number} />
                             </div>
                             <div className="grid gap-2">
                                 <Label>
-                                    Last Name{' '}
+                                    Campus
                                     <AsteriskIcon size={12} color="red" />
                                 </Label>
-                                <Input
-                                    type="text"
-                                    maxLength={25}
-                                    placeholder="Enter Last Name"
-                                    value={data.last_name}
-                                    onChange={(e) => {
-                                        setData(
-                                            'last_name',
-                                            e.target.value.toUpperCase(),
-                                        );
+                                <Select
+                                    value={data.campus}
+                                    onValueChange={(value) => {
+                                        setData('campus', value);
                                     }}
-                                />
-
-                                <InputError message={errors.last_name} />
+                                >
+                                    <SelectTrigger className="">
+                                        <SelectValue placeholder="Choose an option">
+                                            {data.campus || 'Choose an option'}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent className="w-full">
+                                        <SelectGroup>
+                                            {[
+                                                'TALISAY',
+                                                'ALIJIS',
+                                                'FORTUNE TOWNE',
+                                                'BINALBAGAN',
+                                            ].map((item, key) => (
+                                                <SelectItem
+                                                    key={key}
+                                                    value={item}
+                                                >
+                                                    {item}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.campus} />
                             </div>
                         </div>
+
                         <Button
                             type="submit"
                             className="w-full"
@@ -147,6 +161,17 @@ export default function Index() {
                         >
                             Submit {processing ? <Spinner /> : <LogInIcon />}
                         </Button>
+
+                        {/* Replacement guide link */}
+                        <button
+                            type="button"
+                            onClick={() => setOpenGuide(true)}
+                            className="flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                            <HelpCircle className="h-4 w-4 shrink-0" />
+                            Lost your ID or need to update your info?
+                        </button>
+
                         <p className="text-sm text-muted-foreground">
                             If your <strong>Information</strong> does not match
                             our records, please message us on{' '}

@@ -63,6 +63,86 @@ return [
             ]) : [],
         ],
 
+        'tal_mysql' => [
+            'driver' => 'mysql',
+            'url' => env('TAL_DB_URL'),
+            'host' => env('TAL_DB_HOST', '127.0.0.1'),
+            'port' => env('TAL_DB_PORT', '3306'),
+            'database' => env('TAL_DB_DATABASE', 'laravel'),
+            'username' => env('TAL_DB_USERNAME', 'root'),
+            'password' => env('TAL_DB_PASSWORD', ''),
+            'unix_socket' => env('TAL_DB_SOCKET', ''),
+            'charset' => env('TAL_DB_CHARSET', 'utf8mb4'),
+            'collation' => env('TAL_DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('TAL_MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
+        'ali_mysql' => [
+            'driver' => 'mysql',
+            'url' => env('ALI_DB_URL'),
+            'host' => env('ALI_DB_HOST', '127.0.0.1'),
+            'port' => env('ALI_DB_PORT', '3306'),
+            'database' => env('ALI_DB_DATABASE', 'laravel'),
+            'username' => env('ALI_DB_USERNAME', 'root'),
+            'password' => env('ALI_DB_PASSWORD', ''),
+            'unix_socket' => env('ALI_DB_SOCKET', ''),
+            'charset' => env('ALI_DB_CHARSET', 'utf8mb4'),
+            'collation' => env('ALI_DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('ALI_MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
+        'ft_mysql' => [
+            'driver' => 'mysql',
+            'url' => env('FT_DB_URL'),
+            'host' => env('FT_DB_HOST', '127.0.0.1'),
+            'port' => env('FT_DB_PORT', '3306'),
+            'database' => env('FT_DB_DATABASE', 'laravel'),
+            'username' => env('FT_DB_USERNAME', 'root'),
+            'password' => env('FT_DB_PASSWORD', ''),
+            'unix_socket' => env('FT_DB_SOCKET', ''),
+            'charset' => env('FT_DB_CHARSET', 'utf8mb4'),
+            'collation' => env('FT_DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('FT_MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
+        'bin_mysql' => [
+            'driver' => 'mysql',
+            'url' => env('BIN_DB_URL'),
+            'host' => env('BIN_DB_HOST', '127.0.0.1'),
+            'port' => env('BIN_DB_PORT', '3306'),
+            'database' => env('BIN_DB_DATABASE', 'laravel'),
+            'username' => env('BIN_DB_USERNAME', 'root'),
+            'password' => env('BIN_DB_PASSWORD', ''),
+            'unix_socket' => env('BIN_DB_SOCKET', ''),
+            'charset' => env('BIN_DB_CHARSET', 'utf8mb4'),
+            'collation' => env('BIN_DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('BIN_MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
@@ -148,7 +228,7 @@ return [
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
-            'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-database-'),
+            'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')) . '-database-'),
             'persistent' => env('REDIS_PERSISTENT', false),
         ],
 

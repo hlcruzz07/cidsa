@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Student;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 class CompleteStudentRequest extends FormRequest
 {
@@ -12,7 +13,14 @@ class CompleteStudentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return session()->has('validated_student');
+    }
+
+    protected function failedAuthorization()
+    {
+        throw new HttpResponseException(
+            redirect()->route('home')->with('error', 'Session Expired')
+        );
     }
 
     /**
@@ -51,7 +59,7 @@ class CompleteStudentRequest extends FormRequest
 
                         if ($student->is_completed) {
                             $fail(
-                                'You have already submitted an ID application. Please wait for the release of your ID.'
+                                'You have already submitted your ID application. Your ID is currently being processed for printing. Please wait for the official announcement regarding the release schedule.'
                             );
                         }
                     }
@@ -114,7 +122,7 @@ class CompleteStudentRequest extends FormRequest
             'emergency_last_name' => 'required',
             'emergency_suffix' => 'nullable',
 
-            'relationship' => 'required|in:Father,Mother,Brother,Sister,Uncle,Aunt,Cousin,Spouse',
+            'relationship' => 'required',
             'contact_number' => 'required|digits:10|starts_with:9',
 
             'province' => 'required',

@@ -4,12 +4,21 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { StudentProps } from '@/lib/custom-types';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import dayjs from 'dayjs';
-import { EllipsisIcon, EyeIcon, PencilIcon, PrinterIcon } from 'lucide-react';
+import {
+    CheckCheckIcon,
+    ClockIcon,
+    EyeIcon,
+    PencilIcon,
+    PrinterIcon,
+    SlidersHorizontalIcon,
+    UserCogIcon,
+} from 'lucide-react';
 import { route } from 'ziggy-js';
 
 interface StudentTableProps {
@@ -24,6 +33,7 @@ interface StudentTableProps {
     }>;
     onPageChange?: (page: string) => void;
     isLoading?: boolean;
+    onChangeStatus: () => void;
     onPrint?: (id: number) => void;
 }
 
@@ -36,6 +46,7 @@ export function StudentTable({
     onPageChange,
     isLoading = false,
     onPrint,
+    onChangeStatus,
 }: StudentTableProps) {
     const headers = [
         '#',
@@ -45,8 +56,9 @@ export function StudentTable({
         'College',
         'Program',
         'Year Level',
-        'Printed',
+        'Status',
         'Date Updated',
+        'Date Printed',
         'Action',
     ];
 
@@ -65,7 +77,22 @@ export function StudentTable({
         );
     }
 
-    console.log(students);
+    const handleStatus = (status: 'pending' | 'printed', id_number: string) => {
+        router.put(
+            route('update.student.new.status', {
+                status,
+                id_number,
+            }),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    onChangeStatus();
+                },
+            },
+        );
+    };
 
     return (
         <>
@@ -97,34 +124,58 @@ export function StudentTable({
                         ) : (
                             students.map((row, index) => (
                                 <tr key={index} className="hover:bg-muted/50">
-                                    <td className="p-2 whitespace-nowrap">
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="#"
+                                    >
                                         {row.id}
                                     </td>
-                                    <td className="p-2 whitespace-nowrap">
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="ID Number"
+                                    >
                                         {row.id_number}
                                     </td>
-                                    <td className="p-2 whitespace-nowrap">
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="Name"
+                                    >
                                         {`${row.first_name} ${row.middle_init ? row.middle_init + '.' : ''} ${row.last_name} ${row.suffix ? row.suffix + '.' : ''}`}
                                     </td>
-                                    <td className="p-2 whitespace-nowrap">
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="Campus"
+                                    >
                                         {row.campus}
                                     </td>
-                                    <td className="p-2 whitespace-nowrap">
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="College"
+                                    >
                                         {row.college}
                                     </td>
-                                    <td className="p-2 whitespace-nowrap">
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="Program"
+                                    >
                                         {row.program}
                                     </td>
-                                    <td className="p-2 whitespace-nowrap">
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="Year Level"
+                                    >
                                         {row.year}
                                     </td>
 
-                                    <td className="p-2 whitespace-nowrap">
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="Status"
+                                    >
                                         {row.printed_exists ? (
-                                            <Badge>Yes</Badge>
+                                            <Badge>Printed</Badge>
                                         ) : (
-                                            <Badge variant="destructive">
-                                                No
+                                            <Badge variant="outline">
+                                                Pending
                                             </Badge>
                                         )}
                                     </td>
@@ -136,6 +187,13 @@ export function StudentTable({
                                             : ''}
                                     </td>
                                     <td className="p-2 whitespace-nowrap">
+                                        {row.printed?.created_at
+                                            ? dayjs(
+                                                  row.printed?.created_at,
+                                              ).format('MMM D, YYYY - h:mm A')
+                                            : ''}
+                                    </td>
+                                    <td className="p-2 whitespace-nowrap">
                                         <div className="flex flex-wrap gap-2">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
@@ -143,7 +201,109 @@ export function StudentTable({
                                                         variant="outline"
                                                         size="icon-sm"
                                                     >
-                                                        <EllipsisIcon />
+                                                        <SlidersHorizontalIcon />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+
+                                                <DropdownMenuContent
+                                                    className="w-max"
+                                                    align="center"
+                                                >
+                                                    {onPrint && (
+                                                        <DropdownMenuItem
+                                                            disabled={
+                                                                !row.is_completed
+                                                            }
+                                                            onClick={() =>
+                                                                onPrint(row.id)
+                                                            }
+                                                        >
+                                                            <PrinterIcon className="mr-2 h-4 w-4" />
+                                                            Print
+                                                        </DropdownMenuItem>
+                                                    )}
+
+                                                    <DropdownMenuSeparator />
+
+                                                    {row.printed_exists ? (
+                                                        <DropdownMenuItem
+                                                            disabled={
+                                                                !row.is_completed
+                                                            }
+                                                            onClick={() => {
+                                                                handleStatus(
+                                                                    'pending',
+                                                                    row.id_number,
+                                                                );
+                                                            }}
+                                                        >
+                                                            <ClockIcon className="mr-2 h-4 w-4" />
+                                                            Mark as Pending
+                                                        </DropdownMenuItem>
+                                                    ) : (
+                                                        <DropdownMenuItem
+                                                            disabled={
+                                                                !row.is_completed
+                                                            }
+                                                            onClick={() => {
+                                                                handleStatus(
+                                                                    'printed',
+                                                                    row.id_number,
+                                                                );
+                                                            }}
+                                                        >
+                                                            <CheckCheckIcon className="mr-2 h-4 w-4" />
+                                                            Mark as Printed
+                                                        </DropdownMenuItem>
+                                                    )}
+
+                                                    {/* <DropdownMenuSub>
+                                                        <DropdownMenuSubTrigger>
+                                                            <CheckCheckIcon className="mr-2 h-4 w-4" />
+                                                            Status
+                                                        </DropdownMenuSubTrigger>
+
+                                                        <DropdownMenuSubContent>
+                                                            <DropdownMenuItem
+                                                                onClick={() => {
+                                                                    handleStatus(
+                                                                        'pending',
+                                                                        row.id_number,
+                                                                    );
+                                                                }}
+                                                                disabled={
+                                                                    !row.printed_exists
+                                                                }
+                                                            >
+                                                                <ClockIcon className="mr-2 h-4 w-4" />
+                                                                Pending
+                                                            </DropdownMenuItem>
+
+                                                            <DropdownMenuItem
+                                                                onClick={() => {
+                                                                    handleStatus(
+                                                                        'printed',
+                                                                        row.id_number,
+                                                                    );
+                                                                }}
+                                                                disabled={
+                                                                    row.printed_exists
+                                                                }
+                                                            >
+                                                                <CheckIcon className="mr-2 h-4 w-4" />
+                                                                Printed
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuSubContent>
+                                                    </DropdownMenuSub> */}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon-sm"
+                                                    >
+                                                        <UserCogIcon />
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent
@@ -185,20 +345,6 @@ export function StudentTable({
                                                             disabled
                                                         >
                                                             <PencilIcon /> Edit
-                                                        </DropdownMenuItem>
-                                                    )}
-
-                                                    {onPrint && (
-                                                        <DropdownMenuItem
-                                                            disabled={
-                                                                !row.is_completed
-                                                            }
-                                                            onClick={() =>
-                                                                onPrint(row.id)
-                                                            }
-                                                        >
-                                                            <PrinterIcon />{' '}
-                                                            Print
                                                         </DropdownMenuItem>
                                                     )}
                                                 </DropdownMenuContent>

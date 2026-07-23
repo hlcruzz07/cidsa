@@ -203,4 +203,35 @@ class GoogleDriveService
             return response()->json(['error' => 'Internal Server Error: ' . $e->getMessage()], 500);
         }
     }
+
+    public function uploadChecklist($file, string $campus): array
+    {
+        $campusFolderId = $this->getOrCreateSubFolder($campus);
+        $checklistFolderId = $this->getOrCreateSubFolder('Checklist', $campusFolderId);
+
+        $fileMetadata = new DriveFile([
+            'name' => $file->getClientOriginalName(),
+            'parents' => [$checklistFolderId],
+            'mimeType' => $file->getMimeType(),
+        ]);
+
+        $content = file_get_contents($file->getRealPath());
+
+        $uploaded = $this->drive()->files->create($fileMetadata, [
+            'data' => $content,
+            'mimeType' => $file->getMimeType(),
+            'uploadType' => 'multipart',
+            'fields' => 'id,name',
+            'supportsAllDrives' => true,
+        ]);
+
+        return [
+            'id' => $uploaded->id,
+            'name' => $uploaded->name,
+            'campus' => $campus,
+            'folder' => 'Checklist',
+            'path' => "$campus/Checklist/" . $uploaded->name,
+            'url' => "https://drive.google.com/file/d/{$uploaded->id}/view",
+        ];
+    }
 }

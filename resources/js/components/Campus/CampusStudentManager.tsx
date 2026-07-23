@@ -4,8 +4,8 @@ import {
 } from '@/lib/custom-types';
 import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
+import { usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 import Heading from '../heading';
 import { BatchIdPrintDialog } from './BatchIdPrintDialog';
@@ -15,6 +15,7 @@ import { ReplacementFilterBar } from './ReplacementFilterBar';
 import { ReplacementTable } from './ReplacementTable';
 import { StudentsUpdateChart } from './StudentChart';
 import { StudentTable } from './StudentTable';
+import Widget from './Widget';
 
 type DateRange = { from: Date; to?: Date };
 
@@ -27,24 +28,20 @@ export function CampusStudentManager({
     campus,
     onFilterChange,
 }: CampusStudentManagerProps) {
-    // ─── College/program lookups ──────────────────────────────────────────────
+    const { counts } = usePage<any>().props;
+
     const collegeTalArr = campusDirectoryArr.find((c) =>
         c.campus.includes(campus),
     )?.colleges;
 
-    // ─── Shared helpers ───────────────────────────────────────────────────────
     const startOfDay = (d?: Date) =>
         d ? new Date(d.setHours(0, 0, 0, 0)).toISOString() : null;
     const endOfDay = (d?: Date) =>
         d ? new Date(d.setHours(23, 59, 59, 999)).toISOString() : null;
 
-    // =========================================================================
-    // NEW STUDENTS
-    // =========================================================================
     const [students, setStudents] = useState<PaginateStudents | null>(null);
     const [studentsLoading, setStudentsLoading] = useState(false);
 
-    console.log(students);
     const [sSearch, setSSearch] = useState<string | null>(null);
     const [sType, setSType] = useState<string | null>(null);
     const [sCollege, setSCollege] = useState<string | null>(null);
@@ -111,6 +108,7 @@ export function CampusStudentManager({
                 params: { ...sFilterParams(), ...(page ? { page } : {}) },
             });
             setStudents(data);
+
             if (onFilterChange) onFilterChange({ params: sFilterParams() });
         } catch (e) {
             console.error('Error fetching students:', e);
@@ -218,7 +216,6 @@ export function CampusStudentManager({
             rMajor,
             rYear,
             rIsPrinted,
-
             rRange,
             rPerPage,
             rSort,
@@ -234,6 +231,8 @@ export function CampusStudentManager({
                 { params: { ...rFilterParams(), ...(page ? { page } : {}) } },
             );
             setReplacements(data);
+
+            console.log(data);
         } catch (e) {
             console.error('Error fetching replacements:', e);
         } finally {
@@ -272,26 +271,26 @@ export function CampusStudentManager({
         rOrder,
     ]);
 
-    const handleMarkPrinted = async (replacementId: number) => {
-        try {
-            await apiService.patch(
-                route('replacement.mark-printed', replacementId),
-            );
-            toast.success('Marked as printed');
-            fetchReplacements();
-        } catch {
-            toast.error('Failed to mark as printed');
-        }
-    };
-
-    // ─── Batch print for replacements ─────────────────────────────────────────
     const [openBatchReplacement, setOpenBatchReplacement] = useState(false);
 
-    // =========================================================================
-    // RENDER
-    // =========================================================================
     return (
         <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                <Widget type="totalUpdates" count={counts.totalUpdates} />
+
+                <Widget
+                    type="totalNewPendings"
+                    count={counts.totalNewPendings}
+                />
+
+                <Widget type="totalNewPrinted" count={counts.totalNewPrinted} />
+
+                <Widget
+                    type="totalPendingReplacement"
+                    count={counts.totalPendingReplacement}
+                />
+            </div>
+
             <StudentsUpdateChart campus={campus} />
 
             {/* Shared dialogs */}
@@ -304,11 +303,15 @@ export function CampusStudentManager({
                 open={openBatch}
                 setOpen={setOpenBatch}
                 campus={campus}
+                mode="new"
+                onClose={fetchStudents}
             />
             <BatchIdPrintDialog
                 open={openBatchReplacement}
                 setOpen={setOpenBatchReplacement}
                 campus={campus}
+                mode="replacement"
+                onClose={fetchReplacements}
             />
 
             {/* ── New Student ID Requests ── */}
@@ -362,6 +365,7 @@ export function CampusStudentManager({
                     onPageChange={(page) => fetchStudents(page)}
                     isLoading={studentsLoading}
                     onPrint={printStudent}
+                    onChangeStatus={fetchStudents}
                 />
             </div>
 
@@ -416,7 +420,7 @@ export function CampusStudentManager({
                     onPageChange={(page) => fetchReplacements(page)}
                     isLoading={replacementsLoading}
                     onPrint={printStudent}
-                    onMarkPrinted={handleMarkPrinted}
+                    onChangeStatus={fetchReplacements}
                 />
             </div>
         </div>

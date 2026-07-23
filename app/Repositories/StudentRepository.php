@@ -2,12 +2,11 @@
 
 namespace App\Repositories;
 
+use App\Models\PrintedStudents;
 use App\Models\Student;
-use App\Jobs\CreateStudentsBatchJob;
 use App\Models\StudentReplacement;
 use App\Services\GoogleDriveService;
 use Carbon\Carbon;
-use Exception;
 use Illuminate\Support\Facades\DB;
 
 class StudentRepository
@@ -34,12 +33,10 @@ class StudentRepository
             'receipt' => 'receipts'
         ],
     ];
-    protected $model;
-    protected $googleDriveService;
-    public function __construct(Student $student, GoogleDriveService $googleDriveService)
+
+    public function __construct(protected Student $model, protected GoogleDriveService $googleDriveService, protected PrintedStudents $printedStudents, protected StudentReplacement $studentReplacement)
     {
-        $this->model = $student;
-        $this->googleDriveService = $googleDriveService;
+
     }
 
     public function all()
@@ -50,6 +47,52 @@ class StudentRepository
     public function find(int $id)
     {
         return $this->model->findOrFail((int) $id);
+    }
+
+    public function getStudentById(string $id_number, string $campus): ?array
+    {
+        $connection = match (strtolower($campus)) {
+            'talisay' => 'tal_mysql',
+            'alijis' => 'ali_mysql',
+            'fortune towne' => 'ft_mysql',
+            'binalbagan' => 'bin_mysql',
+            default => null,
+        };
+
+        if (!$connection) {
+            return null;
+        }
+
+        $student = DB::connection($connection)
+            ->table('student')
+            ->select(
+                'student_id',
+                'student_firstname',
+                'student_middlename',
+                'student_lastname'
+            )
+            ->where('student_id', $id_number)
+            ->first();
+
+        if (!$student) {
+            return null;
+        }
+
+        $suffix = null;
+        $firstName = trim($student->student_firstname);
+
+        if (preg_match('/^(.*)\s+(JR\.?|SR\.?|II|III|IV|V)$/i', $firstName, $matches)) {
+            $firstName = trim($matches[1]);
+            $suffix = strtoupper(rtrim($matches[2], '.')) . '.';
+        }
+
+        return [
+            'student_id' => $student->student_id,
+            'student_firstname' => $firstName,
+            'student_middlename' => $student->student_middlename,
+            'student_lastname' => $student->student_lastname,
+            'suffix' => $suffix,
+        ];
     }
 
     public function getStudetsByIds(array $ids)
@@ -63,12 +106,25 @@ class StudentRepository
         return $this->model->findOrFail(['id_number' => $id_number]);
     }
 
-    public function isStudentExisting(string $id_number, string $first_name, string $last_name): bool
-    {
-        return $this->model
-            ->where('id_number', $id_number)
-            ->where('first_name', $first_name)
-            ->where('last_name', $last_name)
+    public function isStudentExisting(
+        string $id_number,
+        string $campus
+    ): bool {
+        $connection = match (strtolower($campus)) {
+            'talisay' => 'tal_mysql',
+            'alijis' => 'ali_mysql',
+            'fortune towne' => 'ft_mysql',
+            'binalbagan' => 'bin_mysql',
+            default => null,
+        };
+
+        if (!$connection) {
+            return false;
+        }
+
+        return DB::connection($connection)
+            ->table('student')
+            ->where('student_id', $id_number)
             ->exists();
     }
 
@@ -103,7 +159,6 @@ class StudentRepository
         // 🔍 Search
         if (!empty($filters['search'])) {
             $search = $filters['search'];
-
             $query->where(function ($q) use ($search) {
                 $q->where('id_number', 'like', "%{$search}%")
                     ->orWhere('first_name', 'like', "%{$search}%")
@@ -136,16 +191,32 @@ class StudentRepository
             $query->where('major', $filters['major']);
         }
 
-
         if (!empty($filters['year'])) {
             $query->where('year', $filters['year']);
         }
 
+        // 📋 is_completed filter — defaults to true when not explicitly set
+        $isCompleted = $filters['is_completed'] ?? null;
+        if (!is_null($isCompleted)) {
+            $query->where(
+                'is_completed',
+                filter_var($isCompleted, FILTER_VALIDATE_BOOLEAN)
+            );
+        } else {
+            // Default: only show completed students
+            $query->where('is_completed', true);
+        }
 
-        $query->where(
-            'is_completed',
-            filter_var(true, FILTER_VALIDATE_BOOLEAN)
-        );
+        // 🖨️ is_printed filter — checks existence in PrintedStudents via printed() relation
+        $isPrinted = $filters['is_printed'] ?? null;
+        if (!is_null($isPrinted)) {
+            $printed = filter_var($isPrinted, FILTER_VALIDATE_BOOLEAN);
+            if ($printed) {
+                $query->whereHas('printed');
+            } else {
+                $query->whereDoesntHave('printed');
+            }
+        }
 
         if (!empty($filters['from']) && !empty($filters['to'])) {
             if ($filters['from'] === $filters['to']) {
@@ -160,13 +231,14 @@ class StudentRepository
 
         $sort = $filters['sort'] ?? 'updated_at';
         $order = $filters['order'] ?? 'desc';
-
         $query->orderBy($sort, $order);
 
-        /* 📄 Pagination */
         $perPage = $filters['perPage'] ?? 10;
 
-        return $query->withExists('printed')->with('replacements')->paginate($perPage);
+        return $query
+            ->withExists('printed')
+            ->with(['printed', 'replacements'])
+            ->paginate($perPage);
     }
 
     public function filterPaginateReplacement(array $filters)
@@ -232,9 +304,9 @@ class StudentRepository
         // 📅 Date range — on the replacement record's updated_at
         if (!empty($filters['from']) && !empty($filters['to'])) {
             if ($filters['from'] === $filters['to']) {
-                $query->whereDate('updated_at', '=', $filters['from']);
+                $query->whereDate('created_at', '=', $filters['from']);
             } else {
-                $query->whereBetween('updated_at', [
+                $query->whereBetween('created_at', [
                     $filters['from'],
                     $filters['to'],
                 ]);
@@ -243,7 +315,7 @@ class StudentRepository
 
         // 🔃 Sort
         // Sorting on student columns requires a join; handle both cases cleanly
-        $sort = $filters['sort'] ?? 'updated_at';
+        $sort = $filters['sort'] ?? 'created_at';
         $order = $filters['order'] ?? 'desc';
 
         $studentColumns = ['id_number', 'first_name', 'last_name', 'college', 'program', 'year'];
@@ -258,8 +330,18 @@ class StudentRepository
 
         // 📄 Pagination
         $perPage = $filters['perPage'] ?? 10;
+        return $query
+            ->paginate($perPage)
+            ->through(function ($replacement) {
+                $replacement->receipt = $replacement->receipt
+                    ? route('gdrive.image', [
+                        'fileId' => $replacement->receipt,
+                    ])
+                    : null;
 
-        return $query->paginate($perPage);
+                return $replacement;
+            });
+
     }
 
     public function filterPaginateAll(array $filters)
@@ -414,14 +496,31 @@ class StudentRepository
     }
 
 
-    public function countIncompleteStudentsByCampus(string $campus): int
+    public function countNewPendingStudentByCampus(string $campus): int
     {
         return $this->model
             ->where('campus', $campus)
-            ->where('is_completed', false)
+            ->whereDoesntHave('printed')
             ->count();
     }
 
+    public function countNewPrintedStudentByCampus(string $campus): int
+    {
+        return $this->model
+            ->where('campus', $campus)
+            ->whereHas('printed')
+            ->count();
+    }
+
+    public function countReplacementPendingByCampus(string $campus): int
+    {
+        return $this->studentReplacement
+            ->where('is_printed', false)
+            ->whereHas('student', function ($query) use ($campus) {
+                $query->where('campus', $campus);
+            })
+            ->count();
+    }
 
     public function studentsUpdateChart(string $campus, string $timeRange)
     {
@@ -527,6 +626,43 @@ class StudentRepository
     {
         return $this->model->where('campus', $campus)->count() ?? 0;
     }
+
+    public function setPendingForNew(string $id_number)
+    {
+        return $this->printedStudents->where('id_number', $id_number)->delete();
+    }
+
+    public function setPrintedForNew(string $id_number)
+    {
+        return $this->printedStudents->firstOrCreate([
+            'id_number' => $id_number
+        ]);
+    }
+
+    public function setPendingForReplacement(int $id)
+    {
+        $replacement = $this->studentReplacement->findOrFail($id);
+
+        $replacement->update(['is_printed' => false, 'printed_at' => null]);
+    }
+
+    public function setPrintedForReplacement(int $id)
+    {
+        $replacement = $this->studentReplacement->findOrFail($id);
+
+        $replacement->update([
+            'is_printed' => true,
+            'printed_at' => Carbon::now()
+        ]);
+
+        $id_number = $replacement->student->id_number;
+
+        return $this->printedStudents->firstOrCreate([
+            'id_number' => $id_number,
+        ]);
+    }
+
+
 
 
 }

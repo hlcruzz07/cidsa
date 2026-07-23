@@ -27,9 +27,13 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { StudentProps } from '@/lib/custom-types';
 import { campusDirectoryArr, cn } from '@/lib/utils';
+import apiService from '@/services/apiService';
 import { usePage } from '@inertiajs/react';
 import { AsteriskIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { route } from 'ziggy-js';
+import AlertReplacement from '../Modal/AlertReplacement';
+import { ReplacementGuide } from '../Modal/ReplacementGuide';
 
 interface StepOneProps {
     data: FormDataProps;
@@ -162,11 +166,51 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
         }
     };
 
+    const [openAlertReplace, setOpenAlertReplace] = useState(false);
+    const [replaceData, setReplaceData] = useState<any>(null);
+    const [openReplaceGuide, setOpenReplaceGuide] = useState(false);
+
+    const handleCheckHasReplacement = async () => {
+        try {
+            const response = await apiService.get(
+                route('student.check.replacement'),
+            );
+
+            if (response.data) {
+                // Student already has a pending replacement — show the alert,
+                // do NOT open the guide so it doesn't render on top.
+                setReplaceData(response.data);
+
+                setOpenAlertReplace(true);
+            } else {
+                // No existing replacement — show the guide steps instead.
+                setOpenReplaceGuide(true);
+            }
+
+            console.log(response.data);
+        } catch (error) {
+            console.error('Error checking if has a replacement', error);
+        }
+    };
+
     return (
         <>
             <Heading
                 title="Personal Information"
                 description="Provide your basic personal details as they will appear on your ID."
+            />
+
+            {replaceData && (
+                <AlertReplacement
+                    open={openAlertReplace}
+                    setOpen={setOpenAlertReplace}
+                    data={replaceData}
+                />
+            )}
+
+            <ReplacementGuide
+                open={openReplaceGuide}
+                setOpen={setOpenReplaceGuide}
             />
             <div className="flex flex-col gap-2">
                 <Label>
@@ -184,6 +228,7 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                         }
 
                         setData('type', value);
+                        handleCheckHasReplacement();
                     }}
                     name={data.type}
                 >
@@ -609,6 +654,8 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                                     'Aunt',
                                     'Cousin',
                                     'Spouse',
+                                    'Grand Father',
+                                    'Grand Mother',
                                 ].map((relation, key) => (
                                     <SelectItem key={key} value={relation}>
                                         {relation}

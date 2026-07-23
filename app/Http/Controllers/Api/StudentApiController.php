@@ -23,6 +23,7 @@ class StudentApiController extends Controller
             'type',
             'college',
             'program',
+            'is_printed',
             'major',
             'year',
             'from',
@@ -59,7 +60,10 @@ class StudentApiController extends Controller
 
 
 
-        return $this->studentRepository->filterPaginateReplacement($filters);
+        $data = $this->studentRepository->filterPaginateReplacement($filters);
+
+
+        return $data;
     }
 
     public function filterPaginateAll(Request $request)

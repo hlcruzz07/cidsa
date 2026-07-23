@@ -262,7 +262,7 @@ export default function StepTwo({ data, setData, errors }: StepTwoProps) {
         } catch (err) {
             console.error('Background removal failed:', err);
 
-            toast.error('Failed to process image. Check console logs.');
+            toast.error('Failed to process image. Please try again.');
 
             setData('picture', null);
         } finally {

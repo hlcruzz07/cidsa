@@ -28,9 +28,13 @@ export type StudentProps = {
 
     printed_exists: boolean;
     is_completed: boolean;
-
     created_at: string;
     updated_at: string;
+
+    printed?: {
+        id: number;
+        created_at: string;
+    };
 };
 
 export type UserProps = {
@@ -59,6 +63,7 @@ export type StudentReplacement = {
     created_at: string;
     updated_at: string;
     student?: StudentProps;
+    printed_at?: string;
 };
 
 export type PaginateStudents = {

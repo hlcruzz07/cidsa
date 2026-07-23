@@ -9,37 +9,37 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { campusShow, dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import { Building2, Landmark, LayoutGrid, School, Trees } from 'lucide-react';
+import { route } from 'ziggy-js';
 import AppLogo from './app-logo';
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
-        href: dashboard(),
+        href: '/dashboard',
         icon: LayoutGrid,
     },
 ];
 const campusesNavItems: NavItem[] = [
     {
         title: 'Talisay',
-        href: campusShow('Talisay'),
+        href: '/campus/Talisay',
         icon: School,
     },
     {
         title: 'Alijis',
-        href: campusShow('Alijis'),
+        href: '/campus/Alijis',
         icon: Building2,
     },
     {
         title: 'Fortune Towne',
-        href: campusShow('Fortune Towne'),
+        href: '/campus/Fortune Towne',
         icon: Landmark,
     },
     {
         title: 'Binalbagan',
-        href: campusShow('Binalbagan'),
+        href: '/campus/Binalbagan',
         icon: Trees,
     },
 ];
@@ -77,7 +77,7 @@ export function AppSidebar() {
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton size="lg" asChild>
-                                <Link href={dashboard()} prefetch>
+                                <Link href={route('dashboard')} prefetch>
                                     <AppLogo />
                                 </Link>
                             </SidebarMenuButton>
@@ -88,7 +88,7 @@ export function AppSidebar() {
                 <SidebarContent>
                     <NavMain title="Main" items={mainNavItems} />
                     <NavMain title="Campus" items={campusesNavItems} />
-                    <NavMain title="Management" items={manageNavItems} />
+                    {/* <NavMain title="Management" items={manageNavItems} /> */}
                 </SidebarContent>
 
                 <SidebarFooter>

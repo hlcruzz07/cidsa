@@ -9,8 +9,24 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { StudentReplacement } from '@/lib/custom-types';
-import { ChevronLeft, ChevronRight, Loader2, Printer } from 'lucide-react';
-
+import { router } from '@inertiajs/react';
+import dayjs from 'dayjs';
+import {
+    CheckCheckIcon,
+    ChevronLeft,
+    ChevronRight,
+    ClockIcon,
+    Loader2,
+    Printer,
+    SlidersHorizontalIcon,
+} from 'lucide-react';
+import { route } from 'ziggy-js';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 interface PaginationLink {
     url: string | null;
     label: string;
@@ -26,7 +42,7 @@ interface ReplacementTableProps {
     onPageChange: (page: string) => void;
     isLoading?: boolean;
     onPrint?: (studentId: number) => void;
-    onMarkPrinted?: (replacementId: number) => void;
+    onChangeStatus: () => void;
 }
 
 export function ReplacementTable({
@@ -38,7 +54,7 @@ export function ReplacementTable({
     onPageChange,
     isLoading = false,
     onPrint,
-    onMarkPrinted,
+    onChangeStatus,
 }: ReplacementTableProps) {
     const extractPage = (url: string | null) => {
         if (!url) return null;
@@ -52,6 +68,23 @@ export function ReplacementTable({
         (l) => !l.label.includes('Previous') && !l.label.includes('Next'),
     );
 
+    const handleStatus = (status: 'pending' | 'printed', id: number) => {
+        router.put(
+            route('update.student.rep.status', {
+                status,
+                id,
+            }),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    onChangeStatus();
+                },
+            },
+        );
+    };
+
     return (
         <div className="flex flex-col gap-3">
             <div className="overflow-hidden rounded-md border">
@@ -63,9 +96,10 @@ export function ReplacementTable({
                             <TableHead>ID Number</TableHead>
                             <TableHead>Program</TableHead>
                             <TableHead>Reason</TableHead>
-                            <TableHead>Receipt</TableHead>
+
                             <TableHead>Status</TableHead>
-                            <TableHead>Updated</TableHead>
+                            <TableHead>Date Created</TableHead>
+                            <TableHead>Date Printed</TableHead>
                             <TableHead className="text-right">
                                 Actions
                             </TableHead>
@@ -94,7 +128,7 @@ export function ReplacementTable({
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            replacements.map((r, i) => {
+                            replacements?.map((r, i) => {
                                 const fullName = [
                                     r.student?.first_name,
                                     r.student?.middle_init
@@ -123,9 +157,7 @@ export function ReplacementTable({
                                         <TableCell className="max-w-[180px] truncate text-xs">
                                             {r.reason ?? '—'}
                                         </TableCell>
-                                        <TableCell className="font-mono text-xs">
-                                            {r.receipt ?? '—'}
-                                        </TableCell>
+
                                         <TableCell>
                                             {r.is_printed ? (
                                                 <Badge
@@ -144,51 +176,78 @@ export function ReplacementTable({
                                             )}
                                         </TableCell>
                                         <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
-                                            {r.updated_at
-                                                ? new Date(
-                                                      r.updated_at,
-                                                  ).toLocaleDateString(
-                                                      'en-US',
-                                                      {
-                                                          year: 'numeric',
-                                                          month: 'short',
-                                                          day: 'numeric',
-                                                      },
+                                            {r.created_at
+                                                ? dayjs(r.created_at).format(
+                                                      'MMM D, YYYY - h:mm A',
                                                   )
-                                                : '—'}
+                                                : ''}
+                                        </TableCell>
+                                        <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                                            {r.printed_at
+                                                ? dayjs(r.printed_at).format(
+                                                      'MMM D, YYYY - h:mm A',
+                                                  )
+                                                : ''}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-1.5">
-                                                {onPrint && r.student?.id && (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        onClick={() =>
-                                                            onPrint(
-                                                                r.student!.id,
-                                                            )
-                                                        }
-                                                        title="Preview & Print ID"
                                                     >
-                                                        <Printer className="h-3.5 w-3.5" />
+                                                        <SlidersHorizontalIcon className="h-4 w-4" />
                                                     </Button>
-                                                )}
-                                                {onMarkPrinted &&
-                                                    !r.is_printed && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="default"
-                                                            onClick={() =>
-                                                                onMarkPrinted(
+                                                </DropdownMenuTrigger>
+
+                                                <DropdownMenuContent
+                                                    align="end"
+                                                    className="w-48"
+                                                >
+                                                    {onPrint &&
+                                                        r.student?.id && (
+                                                            <DropdownMenuItem
+                                                                onClick={() =>
+                                                                    onPrint(
+                                                                        r
+                                                                            .student!
+                                                                            .id,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Printer className="mr-2 h-4 w-4" />
+                                                                Preview & Print
+                                                                ID
+                                                            </DropdownMenuItem>
+                                                        )}
+
+                                                    {r.is_printed ? (
+                                                        <DropdownMenuItem
+                                                            onClick={() => {
+                                                                handleStatus(
+                                                                    'pending',
                                                                     r.id,
-                                                                )
-                                                            }
-                                                            title="Mark as printed"
+                                                                );
+                                                            }}
                                                         >
-                                                            Mark Printed
-                                                        </Button>
+                                                            <ClockIcon className="mr-2 h-4 w-4" />
+                                                            Mark as Pending
+                                                        </DropdownMenuItem>
+                                                    ) : (
+                                                        <DropdownMenuItem
+                                                            onClick={() => {
+                                                                handleStatus(
+                                                                    'printed',
+                                                                    r.id,
+                                                                );
+                                                            }}
+                                                        >
+                                                            <CheckCheckIcon className="mr-2 h-4 w-4" />
+                                                            Mark as Printed
+                                                        </DropdownMenuItem>
                                                     )}
-                                            </div>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
                                 );

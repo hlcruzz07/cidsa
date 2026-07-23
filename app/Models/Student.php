@@ -40,6 +40,7 @@ class Student extends Model
         'year',
 
         'is_completed',
+
     ];
 
     public function printed()

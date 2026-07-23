@@ -13,42 +13,42 @@ type WidgetProps = {
     count: number;
     type:
         | 'totalUpdates'
-        | 'readyStudents'
-        | 'incompleteStudents'
-        | 'exportedStudents';
+        | 'totalNewPendings'
+        | 'totalNewPrinted'
+        | 'totalPendingReplacement';
 };
 
 const widgetConfig = {
     totalUpdates: {
         title: 'Total Student Updates',
-        description: 'Number of student records updated',
+        description: 'Number of student records updated.',
         color: {
             text: 'text-emerald-500',
             bg: 'bg-emerald-500',
         },
     },
-    readyStudents: {
-        title: 'Ready For Export',
-        description: 'Number of students ready for export',
+    totalNewPendings: {
+        title: 'New Pending IDs',
+        description: 'Students waiting for their first ID to be printed.',
         color: {
-            text: 'text-purple-500',
-            bg: 'bg-purple-500',
+            text: 'text-amber-500',
+            bg: 'bg-amber-500',
         },
     },
-    incompleteStudents: {
-        title: 'Incomplete Students',
-        description: 'Number of students with incomplete records',
-        color: {
-            text: 'text-red-500',
-            bg: 'bg-red-500',
-        },
-    },
-    exportedStudents: {
-        title: 'Exported Students',
-        description: 'Number of students exported from the system',
+    totalNewPrinted: {
+        title: 'New Printed IDs',
+        description: 'Students whose first ID has been printed.',
         color: {
             text: 'text-blue-500',
             bg: 'bg-blue-500',
+        },
+    },
+    totalPendingReplacement: {
+        title: 'Pending Replacements',
+        description: 'Replacement ID requests awaiting printing.',
+        color: {
+            text: 'text-violet-500',
+            bg: 'bg-violet-500',
         },
     },
 } as const;
@@ -58,7 +58,6 @@ export default function Widget({ count, type }: WidgetProps) {
 
     return (
         <Card className="relative w-full overflow-hidden rounded-xl bg-background">
-            {/* Top accent bar */}
             <div
                 className={`absolute inset-x-0 top-0 h-1 ${config.color.bg}`}
             />
@@ -70,14 +69,13 @@ export default function Widget({ count, type }: WidgetProps) {
                         {config.title}
                     </CardTitle>
                 </div>
-                <CardDescription className="text-sm">
-                    {config.description}
-                </CardDescription>
+
+                <CardDescription>{config.description}</CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-2">
                 <div
-                    className={`tabular-lining-nums flex items-center gap-5 text-4xl font-extrabold ${config.color.text}`}
+                    className={`flex items-center gap-5 text-4xl font-extrabold tabular-nums ${config.color.text}`}
                 >
                     {formatCount(count)}
                     <TrendingUp size={55} />

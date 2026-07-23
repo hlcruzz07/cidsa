@@ -10,7 +10,8 @@ class StudentReplacement extends Model
         'student_id',
         'receipt',
         'reason',
-        'is_printed'
+        'is_printed',
+        'printed_at'
     ];
 
 
