@@ -142,7 +142,7 @@ jobs:
 
             echo "🔐 Fix Laravel writable directories"
             mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
-            chmod -R u+rwX,g+rwX storage bootstrap/cache
+            find storage bootstrap/cache -type d -exec chmod 777 {} + 2>/dev/null || true
 
             echo "⚙️ Laravel setup"
             $PHP artisan migrate --force

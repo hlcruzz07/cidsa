@@ -32,7 +32,7 @@
             }
         </style>
 
-        <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        <title inertia>{{ config('app.name', 'CIDSA') }}</title>
 
         <link rel="icon" href="/logo.webp" sizes="any">
         <link rel="icon" href="/logo.webp" type="image/svg+xml">
