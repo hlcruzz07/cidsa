@@ -1,10 +1,13 @@
 import StudentFormLayout from '@/layouts/student-form-layout';
 import { useForm } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { CheckCheckIcon, XIcon } from 'lucide-react';
 import { CancelModal } from './Modal/CancelModal';
 import { ConfirmModal } from './Modal/Confirm';
@@ -155,40 +158,6 @@ export default function Index() {
         }
     };
 
-    const [isCompleteForm, setIsCompleteForm] = useState(false);
-    const isFormComplete = () => {
-        const requiredFields = [
-            'type',
-            'emergency_first_name',
-            'emergency_last_name',
-            'relationship',
-            'contact_number',
-            'province',
-            'city',
-            'barangay',
-            'zip_code',
-            'campus',
-            'college',
-            'college_name',
-            'program',
-            'year',
-            'picture',
-            'e_signature',
-        ] as const;
-
-        const missingFields = requiredFields.filter((field) => {
-            const value = data[field];
-
-            return value === null || value === undefined || value === '';
-        });
-
-        return missingFields.length ? missingFields.join(', ') : true;
-    };
-
-    useEffect(() => {
-        setIsCompleteForm(isFormComplete() === true);
-    }, [data]);
-
     return (
         <StudentFormLayout>
             <CancelModal
@@ -225,9 +194,66 @@ export default function Index() {
 
                 <StepTwo data={data} setData={setData} errors={errors} />
 
-                {isCompleteForm && (
-                    <StepThree data={data} setData={setData} errors={errors} />
-                )}
+                <StepThree data={data} setData={setData} errors={errors} />
+
+                <div className="mt-6 space-y-4 rounded-lg border p-4">
+                    <h2 className="text-lg font-semibold">
+                        Final Confirmation
+                    </h2>
+                    <div className="mt-4 flex items-start gap-2">
+                        <Checkbox
+                            id="confirm_info"
+                            checked={data.confirm_info || false}
+                            onCheckedChange={(checked) => {
+                                const value = checked === true;
+                                setData('confirm_info', value);
+                            }}
+                            className="mt-1 accent-green-600"
+                        />
+                        <Label
+                            htmlFor="confirm_info"
+                            className="inline-block text-sm leading-normal"
+                        >
+                            I hereby confirm that all the information I have
+                            provided is
+                            <span className="font-semibold">
+                                true, correct, and complete
+                            </span>
+                            to the best of my knowledge.
+                        </Label>
+                    </div>
+                    <InputError message={errors.confirm_info} />
+
+                    <div className="mt-4 flex items-start gap-2">
+                        <Checkbox
+                            id="data_privacy"
+                            checked={data.data_privacy || false}
+                            onCheckedChange={(checked) => {
+                                const value = checked === true;
+                                setData('data_privacy', value);
+                            }}
+                            className="mt-1 accent-green-600"
+                        />
+                        <Label
+                            htmlFor="data_privacy"
+                            className="inline-block text-sm leading-normal"
+                        >
+                            I agree to the processing of my personal information
+                            in accordance with{' '}
+                            <a
+                                href="https://privacy.gov.ph/data-privacy-act/"
+                                className="font-semibold underline"
+                                target="_blank"
+                            >
+                                Data Privacy Act of 2012 (RA 10173)
+                            </a>{' '}
+                            and authorize CHMSU to store and use my data for ID
+                            issuance and security access purposes.
+                        </Label>
+                    </div>
+
+                    <InputError message={errors.data_privacy} />
+                </div>
 
                 <div className="flex items-center justify-end">
                     <div className="flex w-full flex-col gap-3 md:w-max md:flex-row">
@@ -242,7 +268,7 @@ export default function Index() {
                         </Button>
                         <Button
                             type="submit"
-                            disabled={processing || !isCompleteForm}
+                            disabled={processing}
                             className="grow"
                         >
                             Submit <CheckCheckIcon />

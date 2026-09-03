@@ -463,15 +463,17 @@ export function BatchIdPrintDialog({
             }));
 
             const worksheet = XLSX.utils.json_to_sheet(rows);
+
+            // Column widths for readability
             worksheet['!cols'] = [
-                { wch: 14 },
-                { wch: 32 },
-                { wch: 12 },
-                { wch: 28 },
-                { wch: 24 },
-                { wch: 16 },
-                { wch: 14 },
-                { wch: 20 },
+                { wch: 14 }, // ID NUMBER
+                { wch: 32 }, // FULL NAME
+                { wch: 12 }, // CAMPUS
+                { wch: 28 }, // COLLEGE
+                { wch: 24 }, // PROGRAM
+                { wch: 16 }, // DATE SUBMITTED
+                { wch: 14 }, // DATE
+                { wch: 20 }, // SIGNATURE
             ];
 
             const workbook = XLSX.utils.book_new();
@@ -480,10 +482,7 @@ export function BatchIdPrintDialog({
             const today = new Date().toISOString().slice(0, 10);
             const filename = `ID_Checklist_${mode === 'replacement' ? 'Replacement' : 'New'}_${today}.xlsx`;
 
-            // Local download for the user
-            XLSX.writeFile(workbook, filename);
-
-            // Also upload to Google Drive, filed under Checklist/<campus>
+            // Build the file once — reused for both the Drive upload and the local download
             const wbArrayBuffer = XLSX.write(workbook, {
                 bookType: 'xlsx',
                 type: 'array',
@@ -496,9 +495,14 @@ export function BatchIdPrintDialog({
             formData.append('file', blob, filename);
             formData.append('campus', campus);
 
+            // Upload to Google Drive first, filed under Checklist/<campus>.
+            // If this fails, the local download is skipped and the error surfaces below.
             await apiService.post(route('checklist.store'), formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
+
+            // Only download locally once the Drive upload has succeeded
+            XLSX.writeFile(workbook, filename);
         } catch (err) {
             console.error('Failed to upload checklist to Google Drive:', err);
             // optional: surface a toast/error state here
@@ -506,6 +510,7 @@ export function BatchIdPrintDialog({
             setIsGeneratingChecklist(false);
         }
     };
+
     // ─── Print ────────────────────────────────────────────────────────────────
     const handleBatchPrint = async () => {
         if (selectedCount === 0) return;
@@ -569,7 +574,19 @@ export function BatchIdPrintDialog({
                     ))}
                 </>,
             );
-            setTimeout(resolve, 300);
+            // Wait for fonts to be ready, then give AutoFitText's
+            // rAF/ResizeObserver measurement chain a couple of extra
+            // frames to settle before we snapshot outerHTML — otherwise
+            // we risk baking in a stale/unscaled transform.
+            document.fonts?.ready
+                ?.then(() => {
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            setTimeout(resolve, 150);
+                        });
+                    });
+                })
+                .catch(() => setTimeout(resolve, 300));
         });
 
         await openPrintWindow(cardDataList, tempContainer);
@@ -629,7 +646,7 @@ export function BatchIdPrintDialog({
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     ${stylesHtml}
     <style>
-      body { margin: 0; font-family: 'Inter', sans-serif !important; }
+      body { margin: 0; }
       .print-page {
         width: ${scaledW}px; height: ${scaledH}px;
         overflow: hidden; page-break-after: always; break-after: page; position: relative;
@@ -638,7 +655,7 @@ export function BatchIdPrintDialog({
         width: ${CARD_W}px !important; height: ${CARD_H}px !important;
         max-width: ${CARD_W}px !important; min-width: ${CARD_W}px !important;
         border-radius: 0 !important; transform: scale(${SCALE}) !important;
-        transform-origin: top left !important; font-family: 'Inter', sans-serif !important;
+        transform-origin: top left !important;
         box-shadow: none !important; border: none !important;
         position: relative !important; left: 0 !important; top: 0 !important;
       }
@@ -727,7 +744,7 @@ export function BatchIdPrintDialog({
                 onInteractOutside={(e) => {
                     if (isPrinting) e.preventDefault();
                 }}
-                className="batch-id-print-dialog flex max-h-[90vh] w-full max-w-3xl! flex-col gap-0 p-0"
+                className="batch-id-print-dialog flex max-h-[90vh] w-full max-w-4xl! flex-col gap-0 p-0"
             >
                 <DialogHeader className="px-6 pt-6 pb-4">
                     <DialogTitle className="flex items-center gap-2">

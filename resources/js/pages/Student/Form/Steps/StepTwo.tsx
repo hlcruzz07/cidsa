@@ -461,7 +461,7 @@ export default function StepTwo({ data, setData, errors }: StepTwoProps) {
                             </Label>
                         </Button>
 
-                        <InputError message={errors.picture} />
+                        <InputError message={errors.picture} className="mt-3" />
                     </div>
                 </div>
 
@@ -528,7 +528,7 @@ export default function StepTwo({ data, setData, errors }: StepTwoProps) {
                         )}
                     </div>
 
-                    <InputError message={errors.e_signature} />
+                    <InputError message={errors.e_signature} className="mt-3" />
                 </div>
             </div>
         </>

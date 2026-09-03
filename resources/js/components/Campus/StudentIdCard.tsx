@@ -90,42 +90,45 @@ function AutoFitText({
         const textEl = textRef.current;
         if (!container || !textEl) return;
 
-        const updateScale = () => {
-            let containerWidth = container.clientWidth;
-            let textWidth = textEl.scrollWidth;
+        let rafId: number;
+        let cancelled = false;
 
-            // Fallback calculation for when elements are not in the layout viewport (e.g. print area, off-screen portal, display: none)
-            // Standard ID card content area is roughly 250px wide.
-            if (containerWidth === 0) {
-                containerWidth = 250;
-            }
-            if (textWidth === 0 || textWidth === containerWidth) {
-                // Estimate text width: average character is ~10px wide for text-lg font, ~6px for text-[10.5px]
-                const isName =
-                    className?.includes('text-lg') ||
-                    className?.includes('text-center');
-                const charWidth = isName ? 10.5 : 6.2;
-                textWidth = text.length * charWidth;
+        const measure = () => {
+            if (cancelled) return;
+
+            const containerWidth = container.getBoundingClientRect().width;
+            // scrollWidth reflects the element's natural (pre-transform) width —
+            // transform: scale() never affects this, so it's always accurate.
+            const textWidth = textEl.scrollWidth;
+
+            if (!containerWidth || !textWidth) {
+                // Layout not ready yet (e.g. still mounting, off-screen render) — retry.
+                rafId = requestAnimationFrame(measure);
+                return;
             }
 
-            if (textWidth > containerWidth && containerWidth > 0) {
-                setScale(containerWidth / textWidth);
-            } else {
-                setScale(1);
-            }
+            const nextScale =
+                textWidth > containerWidth ? containerWidth / textWidth : 1;
+            setScale(nextScale);
         };
 
-        updateScale();
+        rafId = requestAnimationFrame(measure);
 
-        const observer = new ResizeObserver(() => {
-            updateScale();
-        });
+        const observer = new ResizeObserver(() => measure());
         observer.observe(container);
 
-        const timer1 = setTimeout(updateScale, 50);
-        const timer2 = setTimeout(updateScale, 200);
+        document.fonts?.ready
+            ?.then(() => {
+                if (!cancelled) measure();
+            })
+            .catch(() => {});
+
+        const timer1 = setTimeout(measure, 100);
+        const timer2 = setTimeout(measure, 400);
 
         return () => {
+            cancelled = true;
+            cancelAnimationFrame(rafId);
             observer.disconnect();
             clearTimeout(timer1);
             clearTimeout(timer2);
@@ -143,6 +146,8 @@ function AutoFitText({
                     transform: `scale(${scale})`,
                     transformOrigin: 'center center',
                     whiteSpace: 'nowrap',
+                    display: 'inline-block',
+                    fontWeight: 'bold',
                 }}
                 className={className}
             >
