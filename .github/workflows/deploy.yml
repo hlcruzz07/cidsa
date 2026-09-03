@@ -78,7 +78,7 @@ jobs:
             LOG_DEPRECATIONS_CHANNEL=${{ secrets.LOG_DEPRECATIONS_CHANNEL }}
             LOG_LEVEL=${{ secrets.LOG_LEVEL }}
 
-            DB_CONNECTION=${{ secrets.DB_CONNECTION }}
+            DB_CONNECTION=${{ secrets.DB_CONNECTION }} 
             DB_HOST=${{ secrets.DB_HOST }}
             DB_PORT=${{ secrets.DB_PORT }}
             DB_DATABASE=${{ secrets.DB_DATABASE }}
