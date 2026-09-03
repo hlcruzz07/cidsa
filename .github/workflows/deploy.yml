@@ -140,11 +140,16 @@ jobs:
             echo "🔗 Storage link"
             $PHP artisan storage:link || true
 
+            echo "🔐 Fix Laravel writable directories"
+            mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+            chmod -R u+rwX,g+rwX storage bootstrap/cache
+
             echo "⚙️ Laravel setup"
             $PHP artisan migrate --force
 
             echo "🧹 Optimize"
             $PHP artisan optimize:clear
             $PHP artisan config:cache
+            $PHP artisan view:cache
 
             echo "✅ Deployment completed!"
