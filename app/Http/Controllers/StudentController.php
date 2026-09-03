@@ -34,7 +34,7 @@ class StudentController extends Controller
     }
     public function index()
     {
-        session()->forget('validated_student');
+        session()->forget('validated_student_id');
 
         return Inertia::render('Student/Index');
     }
@@ -72,7 +72,7 @@ class StudentController extends Controller
         ]);
 
         session([
-            'validated_student' => $storeStudent->id_number,
+            'validated_student_id' => $storeStudent->id_number,
         ]);
 
         return redirect()->route('student.form');
@@ -88,8 +88,7 @@ class StudentController extends Controller
                 'hasMajor',
             ]);
 
-            $studentIdNumber = session('validated_student');
-            $student = $this->students->findStudentByIdNumber($studentIdNumber);
+            $student = $request->student();
 
             if ($request->hasFile('picture')) {
                 $uploaded = $this->students->storeFile(
@@ -113,7 +112,7 @@ class StudentController extends Controller
             $data['is_completed'] = true;
             DB::transaction(function () use ($request, &$student, $data) {
 
-                $student = $this->students->update($data, $student->id_number);
+                $student = $this->students->updateLoadedStudent($student, $data);
 
                 if ($request->type === 'replacement') {
 
@@ -136,7 +135,7 @@ class StudentController extends Controller
                 }
             });
 
-            session()->forget('validated_student');
+            session()->forget('validated_student_id');
 
             return Inertia::render('Student/Index', ['success' => true]);
 
@@ -147,18 +146,18 @@ class StudentController extends Controller
 
     public function cancel()
     {
-        session()->forget('validated_student');
+        session()->forget('validated_student_id');
         return redirect()->route('home');
     }
 
     public function studentForm()
     {
-        if (!session()->has('validated_student')) {
+        if (!session()->has('validated_student_id')) {
             return redirect()->route('home')->with('error', 'Session Expired');
         }
 
         $student = $this->students->findStudentByIdNumber(
-            session('validated_student')
+            session('validated_student_id')
         );
 
         return Inertia::render('Student/Form/Index', [
@@ -169,7 +168,7 @@ class StudentController extends Controller
     public function checkReplacement()
     {
         $student = $this->students->findStudentByIdNumber(
-            session('validated_student')
+            session('validated_student_id')
         );
 
         return $student->replacements()->with('student')

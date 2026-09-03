@@ -13,7 +13,6 @@ import * as hf from '@huggingface/transformers';
 import { usePage } from '@inertiajs/react';
 import * as imageConversion from 'image-conversion';
 import {
-    AlertTriangle,
     AsteriskIcon,
     Ban,
     Camera,
@@ -24,14 +23,11 @@ import {
     Smile,
     Square,
 } from 'lucide-react';
-import { ChangeEvent, useEffect, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import SignatureModal from '../Modal/SignatureModal';
 interface StepTwoProps {
-    data: {
-        picture: File | null;
-        e_signature: File | null;
-    };
+    data: FormDataProps;
     setData: (key: string, value: any) => void;
     errors: Record<string, string>;
 }
@@ -45,11 +41,65 @@ type StudentProps = {
     last_name: string;
 };
 
+const MODEL_ID = 'briaai/RMBG-1.4';
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
+
+type LoadedModel = {
+    model: any;
+    processor: any;
+};
+
 export default function StepTwo({ data, setData, errors }: StepTwoProps) {
     const { student } = usePage<PageProps>().props;
     const [previewUrl, setPreviewUrl] = useState('/placeholder.jpg');
     const [isBgRemoving, setIsBgRemoving] = useState<boolean>(false);
     const [progress, setProgress] = useState<number>(0);
+
+    // Holds the loaded model/processor once ready, so we don't re-download
+    // or re-initialize them every time the user picks a file.
+    const modelRef = useRef<LoadedModel | null>(null);
+    // Holds the in-flight loading promise so multiple callers (preload +
+    // an eager file pick) don't trigger duplicate downloads.
+    const modelLoadingRef = useRef<Promise<LoadedModel> | null>(null);
+
+    const getModel = (): Promise<LoadedModel> => {
+        if (modelRef.current) {
+            return Promise.resolve(modelRef.current);
+        }
+
+        if (!modelLoadingRef.current) {
+            modelLoadingRef.current = (async () => {
+                hf.env.allowRemoteModels = false;
+                hf.env.allowLocalModels = true;
+                hf.env.localModelPath = `${window.location.origin}/models/`;
+
+                const [model, processor] = await Promise.all([
+                    hf.AutoModel.from_pretrained(MODEL_ID, {
+                        dtype: 'q8', // or 'fp16' / 'uint8' — test which stays accurate enough
+                    }),
+                    hf.AutoProcessor.from_pretrained(MODEL_ID),
+                ]);
+
+                const loaded = { model, processor };
+                modelRef.current = loaded;
+                return loaded;
+            })();
+        }
+
+        return modelLoadingRef.current;
+    };
+
+    // Kick off the model download as soon as the step mounts, instead of
+    // waiting for the user to pick a file. This overlaps the ~download
+    // time with the time they spend reading guidelines / filling fields.
+    useEffect(() => {
+        getModel().catch((err) => {
+            // Don't surface an error here — if preloading fails, we'll
+            // just retry (and show the real error) inside handleFileChange.
+            console.error('Model preload failed:', err);
+        });
+    }, []);
 
     useEffect(() => {
         if (!data.picture) {
@@ -75,16 +125,21 @@ export default function StepTwo({ data, setData, errors }: StepTwoProps) {
         return () => document.body.classList.remove('overflow-hidden');
     }, [isBgRemoving]);
 
-    // --- CONFIGURATION FOR LOCAL-ONLY EXECUTION ---
-    hf.env.allowRemoteModels = false;
-    hf.env.allowLocalModels = true;
-    hf.env.localModelPath = `${window.location.origin}/models/`;
-
-    // (Keep your React component wrapper shell layout here)
-
     const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+            toast.error('Invalid file type. Please upload a JPG or PNG image.');
+            e.target.value = '';
+            return;
+        }
+
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            toast.error('Image is too large. Please upload a photo under 2MB.');
+            e.target.value = ''; // reset so re-picking the same file still fires onChange
+            return;
+        }
 
         setIsBgRemoving(true);
         setProgress(0);
@@ -94,19 +149,11 @@ export default function StepTwo({ data, setData, errors }: StepTwoProps) {
         let imageSrc = '';
 
         try {
-            hf.env.allowRemoteModels = false;
-            hf.env.allowLocalModels = true;
-            hf.env.localModelPath = `${window.location.origin}/models/`;
-
+            // If preloading already finished, this resolves instantly.
+            // If not, we wait here instead of downloading a second time.
             setProgress(10);
 
-            const modelId = 'briaai/RMBG-1.4';
-
-            const model = await hf.AutoModel.from_pretrained(modelId);
-
-            setProgress(30);
-
-            const processor = await hf.AutoProcessor.from_pretrained(modelId);
+            const { model, processor } = await getModel();
 
             setProgress(45);
 
@@ -243,7 +290,7 @@ export default function StepTwo({ data, setData, errors }: StepTwoProps) {
                 centeredBlob,
                 {
                     type: 'image/jpeg',
-                    quality: centeredBlob.size > 2 * 1024 * 1024 ? 0.7 : 0.95,
+                    quality: 0.7,
                 },
             );
 
@@ -443,7 +490,7 @@ export default function StepTwo({ data, setData, errors }: StepTwoProps) {
                             type="file"
                             name="picture"
                             id="picture"
-                            accept=".jpg, .jpeg, .png"
+                            accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                             onChange={handleFileChange}
                             className="hidden"
                         />
@@ -461,32 +508,11 @@ export default function StepTwo({ data, setData, errors }: StepTwoProps) {
                             </Label>
                         </Button>
 
-                        <InputError message={errors.picture} className="mt-3" />
-                    </div>
-                </div>
+                        <p className="mt-2 text-center text-xs text-gray-400">
+                            JPG or PNG, max 2MB.
+                        </p>
 
-                <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/30">
-                    <div className="flex gap-3">
-                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-                        <div>
-                            <h3 className="font-semibold text-amber-800 dark:text-amber-300">
-                                Important Notice
-                            </h3>
-                            <p className="mt-1 text-sm leading-relaxed text-amber-700 dark:text-amber-200">
-                                Uploaded photos are automatically processed to
-                                remove the background, apply a white background,
-                                center the subject, and resize the image for ID
-                                printing. Because of this process, image
-                                quality, cropping, alignment, and facial
-                                proportions may be affected depending on the
-                                original photo.
-                            </p>
-                            <p className="mt-2 text-sm font-medium text-amber-800 dark:text-amber-300">
-                                If the preview does not look clear, properly
-                                centered, or suitable for an ID picture, please
-                                upload a different photo before proceeding.
-                            </p>
-                        </div>
+                        <InputError message={errors.picture} className="mt-3" />
                     </div>
                 </div>
 

@@ -1,33 +1,45 @@
 import Heading from '@/components/heading';
+import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { StudentProps } from '@/lib/custom-types';
+import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
-import { AlertCircleIcon, RotateCw } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import {
+    AlertCircleIcon,
+    AsteriskIcon,
+    Check,
+    ChevronsUpDown,
+    RotateCw,
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
-interface StepTwoProps {
-    data: {
-        emergency_first_name: string;
-        emergency_middle_init: string | null;
-        emergency_last_name: string;
-        emergency_suffix: string | null;
-        relationship: string;
-        contact_number: number | null;
-        province: string;
-        city: string;
-        barangay: string;
-        zip_code: string;
-        college: string;
-        college_name: string;
-        program: string;
-        hasMajor: boolean;
-        major: string | null;
-        picture: File | null;
-        e_signature: File | null;
-        data_privacy: boolean;
-        confirm_info: boolean;
-    };
-    setData: (key: string, value: any) => void;
+interface StepThreeProps {
+    data: FormDataProps;
+    setData: (key: string, value: unknown) => void;
     errors: Record<string, string>;
 }
 
@@ -35,7 +47,471 @@ type PageProps = {
     student: StudentProps;
 };
 
-export default function StepThree({ data, setData, errors }: StepTwoProps) {
+export default function StepThree({ data, setData, errors }: StepThreeProps) {
+    const [openProvince, setOpenProvince] = useState(false);
+    const [openCities, setOpenCities] = useState(false);
+    const [openBrgys, setOpenBrgys] = useState(false);
+    const [provinces, setProvinces] = useState<ProvinceProp>([]);
+    const [selectedProvinceId, setSelectedProvinceId] = useState<number | null>(
+        null,
+    );
+    const [selectedProvinceName, setSelectedProvinceName] = useState<
+        string | null
+    >(null);
+    const [cities, setCities] = useState<CitiesProp>([]);
+    const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
+    const [selectedCityName, setSelectedCityName] = useState<string | null>(
+        null,
+    );
+    const [brgys, setBrgys] = useState<BrgysProp>([]);
+
+    useEffect(() => {
+        fetch('/table_province.json')
+            .then((response) => response.json())
+            .then(setProvinces);
+    }, []);
+
+    const fetchCities = (id: number) => {
+        fetch('/table_municipality.json')
+            .then((response) => response.json())
+            .then((items) =>
+                setCities(
+                    items.filter(
+                        (city: CitiesApiProp) => city.province_id === id,
+                    ),
+                ),
+            );
+    };
+
+    const fetchBrgys = (id: number) => {
+        fetch('/table_barangay.json')
+            .then((response) => response.json())
+            .then((items) =>
+                setBrgys(
+                    items.filter(
+                        (barangay: BrgyApiProp) =>
+                            barangay.municipality_id === id,
+                    ),
+                ),
+            );
+    };
+
+    const resetForProvinceChange = () => {
+        setData('city', '');
+        setData('barangay', '');
+        setSelectedCityId(null);
+        setSelectedCityName(null);
+        setCities([]);
+        setBrgys([]);
+    };
+
+    const resetForCityChange = () => setData('barangay', '');
+
+    return (
+        <>
+            <Heading
+                title="In-Case of Emergency Contact Information"
+                description="Enter the details of a person we can contact during emergencies."
+            />
+            <div className="grid gap-3 md:grid-cols-12">
+                <div className="col-span-4 flex w-full grow flex-col gap-2">
+                    <Label htmlFor="emergency_first_name">
+                        Emergency First Name{' '}
+                        <AsteriskIcon size={12} color="red" />
+                    </Label>
+                    <Input
+                        type="text"
+                        name="emergency_first_name"
+                        id="emergency_first_name"
+                        placeholder="Enter First Name"
+                        value={data.emergency_first_name}
+                        onChange={(e) =>
+                            setData(
+                                'emergency_first_name',
+                                e.target.value.toUpperCase(),
+                            )
+                        }
+                    />
+                    <InputError message={errors.emergency_first_name} />
+                </div>
+                <div className="col-span-auto flex w-full flex-col gap-2">
+                    <Label htmlFor="emergency_middle_init">M.I.</Label>
+                    <Input
+                        type="text"
+                        name="emergency_middle_init"
+                        id="emergency_middle_init"
+                        placeholder="Enter Middle Initial"
+                        value={data.emergency_middle_init ?? ''}
+                        onInput={(e) => {
+                            e.currentTarget.value = e.currentTarget.value
+                                .toUpperCase()
+                                .slice(0, 1);
+                        }}
+                        onChange={(e) =>
+                            setData(
+                                'emergency_middle_init',
+                                e.currentTarget.value === ''
+                                    ? null
+                                    : e.currentTarget.value.toUpperCase(),
+                            )
+                        }
+                    />
+                    <InputError message={errors.emergency_middle_init} />
+                </div>
+                <div className="col-span-4 flex w-full grow flex-col gap-2">
+                    <Label htmlFor="emergency_last_name">
+                        Emergency Last Name{' '}
+                        <AsteriskIcon size={12} color="red" />
+                    </Label>
+                    <Input
+                        type="text"
+                        name="emergency_last_name"
+                        id="emergency_last_name"
+                        placeholder="Enter Last Name"
+                        value={data.emergency_last_name}
+                        onChange={(e) =>
+                            setData(
+                                'emergency_last_name',
+                                e.target.value.toUpperCase(),
+                            )
+                        }
+                    />
+                    <InputError message={errors.emergency_last_name} />
+                </div>
+                <div className="col-span-4 flex flex-col gap-2 md:col-span-3">
+                    <Label htmlFor="emergency_suffix">Suffix</Label>
+                    <Select
+                        value={data.emergency_suffix ?? ''}
+                        onValueChange={(value) =>
+                            setData(
+                                'emergency_suffix',
+                                value === 'None' ? null : value,
+                            )
+                        }
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Choose an option" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                                {[
+                                    'JR',
+                                    'SR',
+                                    'II',
+                                    'III',
+                                    'IV',
+                                    'V',
+                                    'None',
+                                ].map((item) => (
+                                    <SelectItem key={item} value={item}>
+                                        {item}
+                                    </SelectItem>
+                                ))}
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    <InputError message={errors.emergency_suffix} />
+                </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                    <Label>
+                        Relationship <AsteriskIcon size={12} color="red" />
+                    </Label>
+                    <Select
+                        value={data.relationship}
+                        onValueChange={(value) =>
+                            setData('relationship', value)
+                        }
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Choose an option" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup>
+                                {[
+                                    'Father',
+                                    'Mother',
+                                    'Brother',
+                                    'Sister',
+                                    'Uncle',
+                                    'Aunt',
+                                    'Cousin',
+                                    'Spouse',
+                                    'Grand Father',
+                                    'Grand Mother',
+                                ].map((relation) => (
+                                    <SelectItem key={relation} value={relation}>
+                                        {relation}
+                                    </SelectItem>
+                                ))}
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
+                    <InputError message={errors.relationship} />
+                </div>
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="contact_number">
+                        Contact Number <AsteriskIcon size={12} color="red" />
+                    </Label>
+                    <div className="relative">
+                        <span className="absolute left-2 flex h-full items-center justify-center text-sm">
+                            +63
+                        </span>
+                        <Input
+                            type="number"
+                            name="contact_number"
+                            id="contact_number"
+                            placeholder="Enter Contact Number"
+                            className="ps-9"
+                            value={data.contact_number?.toString() ?? ''}
+                            onInput={(e) => {
+                                e.currentTarget.value =
+                                    e.currentTarget.value.slice(0, 10);
+                                setData(
+                                    'contact_number',
+                                    e.currentTarget.value
+                                        ? Number(e.currentTarget.value)
+                                        : null,
+                                );
+                            }}
+                        />
+                    </div>
+                    <InputError message={errors.contact_number} />
+                </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                    <Label>
+                        Province <AsteriskIcon size={12} color="red" />
+                    </Label>
+                    <Popover open={openProvince} onOpenChange={setOpenProvince}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openProvince}
+                                className="justify-between"
+                                disabled={provinces.length === 0}
+                            >
+                                {selectedProvinceName || 'Choose an option'}
+                                <ChevronsUpDown className="opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0" align="start">
+                            <Command>
+                                <CommandInput
+                                    placeholder="Search province..."
+                                    className="h-9"
+                                />
+                                <CommandList>
+                                    <CommandEmpty>
+                                        No province found.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                        {provinces.map((province) => (
+                                            <CommandItem
+                                                key={province.province_id}
+                                                value={province.province_name}
+                                                onSelect={() => {
+                                                    setData(
+                                                        'province',
+                                                        province.province_name,
+                                                    );
+                                                    setOpenProvince(false);
+                                                    setSelectedProvinceId(
+                                                        province.province_id,
+                                                    );
+                                                    setSelectedProvinceName(
+                                                        province.province_name,
+                                                    );
+                                                    resetForProvinceChange();
+                                                    fetchCities(
+                                                        province.province_id,
+                                                    );
+                                                }}
+                                            >
+                                                {province.province_name}
+                                                <Check
+                                                    className={cn(
+                                                        'ml-auto',
+                                                        province.province_id ===
+                                                            selectedProvinceId
+                                                            ? 'opacity-100'
+                                                            : 'opacity-0',
+                                                    )}
+                                                />
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                    <InputError message={errors.province} />
+                </div>
+                <div className="flex flex-col gap-2">
+                    <Label>
+                        City / Municipality{' '}
+                        <AsteriskIcon size={12} color="red" />
+                    </Label>
+                    <Popover open={openCities} onOpenChange={setOpenCities}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openCities}
+                                className="justify-between"
+                                disabled={
+                                    selectedProvinceId === null ||
+                                    cities.length === 0
+                                }
+                            >
+                                {selectedCityName || 'Choose an option'}
+                                <ChevronsUpDown className="opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0" align="start">
+                            <Command>
+                                <CommandInput
+                                    placeholder="Search cities/municipalities..."
+                                    className="h-9"
+                                />
+                                <CommandList>
+                                    <CommandEmpty>
+                                        No city/municipality found.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                        {cities.map((city) => (
+                                            <CommandItem
+                                                key={city.municipality_id}
+                                                value={city.municipality_name}
+                                                onSelect={() => {
+                                                    setData(
+                                                        'city',
+                                                        city.municipality_name,
+                                                    );
+                                                    setSelectedCityId(
+                                                        city.municipality_id,
+                                                    );
+                                                    setSelectedCityName(
+                                                        city.municipality_name,
+                                                    );
+                                                    fetchBrgys(
+                                                        city.municipality_id,
+                                                    );
+                                                    setOpenCities(false);
+                                                    resetForCityChange();
+                                                }}
+                                            >
+                                                {city.municipality_name}
+                                                <Check
+                                                    className={cn(
+                                                        'ml-auto',
+                                                        city.municipality_id ===
+                                                            selectedCityId
+                                                            ? 'opacity-100'
+                                                            : 'opacity-0',
+                                                    )}
+                                                />
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                    <InputError message={errors.cities} />
+                </div>
+                <div className="flex flex-col gap-2">
+                    <Label>
+                        Barangay <AsteriskIcon size={12} color="red" />
+                    </Label>
+                    <Popover open={openBrgys} onOpenChange={setOpenBrgys}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={openBrgys}
+                                className="justify-between"
+                                disabled={
+                                    selectedCityId === null ||
+                                    brgys.length === 0
+                                }
+                            >
+                                {data.barangay || 'Choose an option'}
+                                <ChevronsUpDown className="opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0" align="start">
+                            <Command>
+                                <CommandInput
+                                    placeholder="Search barangays..."
+                                    className="h-9"
+                                />
+                                <CommandList>
+                                    <CommandEmpty>
+                                        No barangays found.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                        {brgys.map((barangay) => (
+                                            <CommandItem
+                                                key={barangay.barangay_name}
+                                                value={barangay.barangay_name}
+                                                onSelect={() => {
+                                                    setData(
+                                                        'barangay',
+                                                        barangay.barangay_name,
+                                                    );
+                                                    setOpenBrgys(false);
+                                                }}
+                                            >
+                                                {barangay.barangay_name}
+                                                <Check
+                                                    className={cn(
+                                                        'ml-auto',
+                                                        barangay.barangay_name ===
+                                                            data.barangay
+                                                            ? 'opacity-100'
+                                                            : 'opacity-0',
+                                                    )}
+                                                />
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                    <InputError message={errors.barangay} />
+                </div>
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="zip_code">
+                        Zip Code <AsteriskIcon size={12} color="red" />
+                    </Label>
+                    <Input
+                        type="number"
+                        name="zip_code"
+                        id="zip_code"
+                        value={data.zip_code}
+                        min={0}
+                        placeholder="Enter Zip Code"
+                        onInput={(e) => {
+                            e.currentTarget.value = e.currentTarget.value.slice(
+                                0,
+                                4,
+                            );
+                        }}
+                        onChange={(e) => setData('zip_code', e.target.value)}
+                    />
+                    <InputError message={errors.zip_code} />
+                </div>
+            </div>
+        </>
+    );
+}
+
+export function StepThreePreview({ data }: { data: FormDataProps }) {
     const { student } = usePage<PageProps>().props;
     const [isFlipped, setIsFlipped] = useState(false);
 
@@ -48,27 +524,29 @@ export default function StepThree({ data, setData, errors }: StepTwoProps) {
         if (!data.e_signature) return;
         return URL.createObjectURL(data.e_signature);
     }, [data.e_signature]);
-
     const isComplete = useMemo(() => {
-        return (
-            (data.picture && data.e_signature && data.college_name) ||
-            data.program ||
-            (data.emergency_first_name &&
-                data.emergency_last_name &&
-                data.relationship &&
-                data.contact_number &&
-                data.province &&
-                data.city &&
-                data.barangay &&
-                data.zip_code &&
-                data.confirm_info &&
-                data.data_privacy)
+        return !!(
+            data.picture &&
+            data.e_signature &&
+            data.college_name &&
+            data.program &&
+            (!data.hasMajor || data.major) && // only require major if hasMajor is true
+            data.emergency_first_name &&
+            data.emergency_last_name &&
+            data.relationship &&
+            data.contact_number &&
+            data.province &&
+            data.city &&
+            data.barangay &&
+            data.zip_code
         );
     }, [
         data.picture,
         data.e_signature,
         data.college_name,
         data.program,
+        data.hasMajor,
+        data.major,
         data.emergency_first_name,
         data.emergency_last_name,
         data.relationship,
@@ -77,8 +555,6 @@ export default function StepThree({ data, setData, errors }: StepTwoProps) {
         data.city,
         data.barangay,
         data.zip_code,
-        data.confirm_info,
-        data.data_privacy,
     ]);
 
     return (

@@ -8,12 +8,14 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 
 class CompleteStudentRequest extends FormRequest
 {
+    private ?Student $validatedStudent = null;
+
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        return session()->has('validated_student');
+        return session()->has('validated_student_id');
     }
 
     protected function failedAuthorization()
@@ -21,6 +23,14 @@ class CompleteStudentRequest extends FormRequest
         throw new HttpResponseException(
             redirect()->route('home')->with('error', 'Session Expired')
         );
+    }
+
+    public function student(): Student
+    {
+        return $this->validatedStudent ??= Student::where(
+            'id_number',
+            session('validated_student_id')
+        )->firstOrFail();
     }
 
     /**
@@ -37,10 +47,7 @@ class CompleteStudentRequest extends FormRequest
                 'required',
                 'in:new,replacement',
                 function ($attribute, $value, $fail) {
-                    $student = Student::where(
-                        'id_number',
-                        session('validated_student')
-                    )->first();
+                    $student = $this->student();
 
                     if (!$student) {
                         return;
@@ -92,11 +99,7 @@ class CompleteStudentRequest extends FormRequest
             'emergency_first_name' => [
                 'required',
                 function ($attribute, $value, $fail) {
-                    $student = Student::where(
-                        'id_number',
-                        '=',
-                        session('validated_student')
-                    )->firstOrFail();
+                    $student = $this->student();
 
                     $studentFirst = strtoupper(trim($student->first_name));
                     $studentLast = strtoupper(trim($student->last_name));

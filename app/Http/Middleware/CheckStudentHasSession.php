@@ -19,7 +19,7 @@ class CheckStudentHasSession
 
         // ✅ Has valid, non-expired session → go to form
         if (
-            session()->has('validated_student') &&
+            session()->has('validated_student_id') &&
             $expiresAt &&
             now()->lessThanOrEqualTo($expiresAt)
         ) {

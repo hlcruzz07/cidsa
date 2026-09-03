@@ -18,12 +18,12 @@ class CheckValidatedStudent
         $expiresAt = session('validated_student_expires_at');
 
         if (
-            !session()->has('validated_student') ||
+            !session()->has('validated_student_id') ||
             !$expiresAt ||
             now()->greaterThan($expiresAt)
         ) {
             session()->forget([
-                'validated_student',
+                'validated_student_id',
                 'validated_student_expires_at',
             ]);
 

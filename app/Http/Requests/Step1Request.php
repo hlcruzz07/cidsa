@@ -24,7 +24,7 @@ class Step1Request extends FormRequest
                     $student = Student::where(
                         'id_number',
                         '=',
-                        session('validated_student')
+                        session('validated_student_id')
                     )->firstOrFail();
 
                     $studentFirst = strtoupper(trim($student->first_name));

@@ -103,7 +103,7 @@ class StudentRepository
 
     public function findByStudentId(string $id_number)
     {
-        return $this->model->findOrFail(['id_number' => $id_number]);
+        return $this->model->where('id_number', $id_number)->firstOrFail();
     }
 
     public function isStudentExisting(
@@ -450,6 +450,13 @@ class StudentRepository
         $result->update($data);
 
         return $result;
+    }
+
+    public function updateLoadedStudent(Student $student, array $data): Student
+    {
+        $student->update($data);
+
+        return $student;
     }
 
 
