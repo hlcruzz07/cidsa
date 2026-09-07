@@ -80,6 +80,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('TAL_MYSQL_ATTR_SSL_CA'),
+                PDO::ATTR_TIMEOUT => 3,
             ]) : [],
         ],
 
@@ -100,6 +101,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('ALI_MYSQL_ATTR_SSL_CA'),
+                PDO::ATTR_TIMEOUT => 3,
             ]) : [],
         ],
 
@@ -120,6 +122,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('FT_MYSQL_ATTR_SSL_CA'),
+                PDO::ATTR_TIMEOUT => 3,
             ]) : [],
         ],
 
@@ -140,6 +143,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('BIN_MYSQL_ATTR_SSL_CA'),
+                PDO::ATTR_TIMEOUT => 3,
             ]) : [],
         ],
 
