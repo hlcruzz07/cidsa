@@ -13,11 +13,12 @@ use App\Repositories\StudentRepository;
 use App\Services\GoogleDriveService;
 use Carbon\Carbon;
 use Exception;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Illuminate\Database\QueryException;
 use PDOException;
+
 
 class StudentController extends Controller
 {
@@ -41,9 +42,6 @@ class StudentController extends Controller
 
     public function validate(ValidateStudentRequest $request)
     {
-        $student = null;
-
-        // Try campus database first
         try {
             $student = $this->students->getStudentById(
                 $request->id_number,
@@ -51,42 +49,27 @@ class StudentController extends Controller
             );
         } catch (PDOException | QueryException $e) {
             report($e);
+
+            return back()->with(
+                'error',
+                'Unable to connect to the campus database. Please try again later.'
+            );
         }
 
-        // Fallback to local students table
         if (!$student) {
-            $localStudent = Student::where(
-                'id_number',
-                $request->id_number
-            )->first();
-
-            if ($localStudent) {
-                session([
-                    'validated_student_id' => $localStudent->id_number,
-                ]);
-
-                return redirect()->route('student.form');
-            }
-
             return back()->with('error', 'Student not found.');
         }
 
-        // Store/update student from campus database
-        $storeStudent = Student::updateOrCreate(
-            [
-                'id_number' => $student['student_id'],
-            ],
-            [
-                'first_name' => $student['student_firstname'],
-                'middle_init' => $student['student_middlename'] !== ''
-                    ? mb_substr($student['student_middlename'], 0, 1)
-                    : null,
-                'last_name' => $student['student_lastname'],
-                'suffix' => $student['suffix'],
-                'updated_at' => null,
-                'created_at' => Carbon::now(),
-            ]
-        );
+        $storeStudent = Student::updateOrCreate([
+            'id_number' => $student['student_id'],
+        ], [
+            'first_name' => $student['student_firstname'],
+            'middle_init' => $student['student_middlename'] !== '' ? mb_substr($student['student_middlename'], 0, 1) : null,
+            'last_name' => $student['student_lastname'],
+            'suffix' => $student['suffix'],
+            'created_at' => now(),
+            'updated_at' => null
+        ]);
 
         session([
             'validated_student_id' => $storeStudent->id_number,
