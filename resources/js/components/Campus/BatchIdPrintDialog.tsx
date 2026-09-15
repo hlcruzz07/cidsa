@@ -237,7 +237,6 @@ export function BatchIdPrintDialog({
         return {
             ...base,
             is_printed: filters.isPrinted,
-            // is_completed only sent for new student mode
             ...(mode === 'new' ? { is_completed: filters.isCompleted } : {}),
         };
     };
@@ -820,7 +819,7 @@ export function BatchIdPrintDialog({
     );
 
     const modeLabel =
-        mode === 'replacement' ? 'Replacement IDs' : 'New Student IDs';
+        mode === 'replacement' ? 'Replacement IDs' : 'New Student List';
 
     // ─── Render ───────────────────────────────────────────────────────────────
     return (
