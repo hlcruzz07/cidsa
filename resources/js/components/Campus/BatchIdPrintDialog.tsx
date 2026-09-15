@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { StudentProps, StudentReplacement } from '@/lib/custom-types';
 import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
+import dayjs from 'dayjs';
 import {
     AlertCircleIcon,
     BookMarkedIcon,
@@ -392,7 +393,6 @@ export function BatchIdPrintDialog({
         return [last, first].filter(Boolean).join(', ');
     };
 
-    // ─── Mark selected as Printed ────────────────────────────────────────────
     const [isMarkingPrinted, setIsMarkingPrinted] = useState(false);
 
     const markSelectedAsPrinted = async () => {
@@ -457,8 +457,10 @@ export function BatchIdPrintDialog({
                 CAMPUS: campus,
                 COLLEGE: getCollegeName(item.college),
                 PROGRAM: item.program,
-                'DATE SUBMITTED': formatDateSubmitted(item.created_at),
-                STATUS: item.isPrinted ? 'PRINTED' : 'PENDING',
+                'DATE SUBMITTED': dayjs(item.created_at).format(
+                    'MMM D, YYYY h:mm A',
+                ),
+                STATUS: item.isPrinted ? 'Printed' : 'Pending',
                 DATE: '',
                 SIGNATURE: '',
             }));
@@ -472,9 +474,9 @@ export function BatchIdPrintDialog({
                 { wch: 12 }, // CAMPUS
                 { wch: 28 }, // COLLEGE
                 { wch: 24 }, // PROGRAM
-                { wch: 16 }, // DATE SUBMITTED
+                { wch: 20 }, // DATE SUBMITTED
                 { wch: 14 }, // STATUS
-                { wch: 14 }, // DATE
+                { wch: 20 }, // DATE
                 { wch: 20 }, // SIGNATURE
             ];
 
