@@ -510,7 +510,7 @@ export function BatchIdPrintDialog({
             worksheet.mergeCells('A1:E1');
             const titleCell = worksheet.getCell('A1');
             titleCell.value =
-                `${campus.toUpperCase()} - ${modeLabel.toUpperCase()}`.trim();
+                `${campus.toUpperCase()} CAMPUS - ${modeLabel.toUpperCase()}`.trim();
             titleCell.font = { name: 'Calibri', size: 30, bold: true };
             titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
             worksheet.getRow(1).height = 24.95;
