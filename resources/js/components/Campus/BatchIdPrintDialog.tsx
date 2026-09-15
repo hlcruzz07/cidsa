@@ -95,22 +95,21 @@ const YEAR_OPTIONS = [
 
 // A unified "list item" that works for both modes
 interface ListItem {
-    id: number; // student.id for new, replacement.id for replacement
+    id: number;
     student_id?: number;
     id_number: string;
     fullName: string;
-    // Raw name parts, kept separately so the checklist export can format
-    // "Last Suffix, First M.I." independently of the on-screen fullName.
     firstName: string;
     middleInit: string;
     lastName: string;
     suffix: string;
-    college: string; // college code, e.g. "CCS" — resolved to a name via collegeOptions
+    college: string;
     program: string;
     year: string;
     isPrinted: boolean;
-    receiptOrExtra?: string; // receipt for replacements
-    created_at: string | null; // raw created_at timestamp, used as "Date Submitted"
+    printedAt: string | null; // from the `printed` relation's created_at, when it exists
+    receiptOrExtra?: string;
+    created_at: string | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -130,7 +129,6 @@ function buildFullName(s: {
         .filter(Boolean)
         .join(' ');
 }
-
 function toListItem(
     raw: StudentProps | StudentReplacement,
     mode: PrintMode,
@@ -151,6 +149,8 @@ function toListItem(
             program: s.program ?? '',
             year: s.year ?? '',
             isPrinted: r.is_printed,
+            // Adjust this if replacements expose printed info under a different shape
+            printedAt: (r as any).printed?.created_at ?? null,
             receiptOrExtra: r.receipt ?? undefined,
             created_at: (r as any).created_at ?? null,
         };
@@ -167,8 +167,8 @@ function toListItem(
             college: (s as any).college ?? '',
             program: s.program ?? '',
             year: s.year ?? '',
-            // printed = has a PrintedStudents record (backend sends printed_exists or withExists)
             isPrinted: !!(s as any).printed_exists || !!(s as any).printed,
+            printedAt: (s as any).printed?.created_at ?? null,
             created_at: (s as any).created_at ?? null,
         };
     }
@@ -191,6 +191,8 @@ export function BatchIdPrintDialog({
     const [currentPage, setCurrentPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
     const [totalCount, setTotalCount] = useState(0);
+
+    console.log(items);
 
     // ─── Filters ──────────────────────────────────────────────────────────────
     const defaultFilters = (): ListFilters => ({
@@ -482,6 +484,7 @@ export function BatchIdPrintDialog({
                 'PROGRAM',
                 'DATE SUBMITTED',
                 'STATUS',
+                'DATE PRINTED',
             ] as const;
 
             // Build plain row values up front — reused for width calc and writing rows
@@ -493,8 +496,10 @@ export function BatchIdPrintDialog({
                 item.program,
                 dayjs(item.created_at).format('MMM D, YYYY h:mm A'),
                 item.isPrinted ? 'Printed' : 'Pending',
+                item.printedAt
+                    ? dayjs(item.printedAt).format('MMM D, YYYY h:mm A')
+                    : '',
             ]);
-
             const workbook = new ExcelJS.Workbook();
             const worksheet = workbook.addWorksheet('Checklist');
 
