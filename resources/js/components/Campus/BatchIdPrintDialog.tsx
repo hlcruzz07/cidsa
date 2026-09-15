@@ -515,15 +515,18 @@ export function BatchIdPrintDialog({
             titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
             worksheet.getRow(1).height = 24.95;
 
-            // ── Row 2: Total count ──
             const totalCell = worksheet.getCell('A2');
             totalCell.value = `Total: ${sortedItems.length}`;
             totalCell.font = { name: 'Calibri', size: 15, bold: true };
             worksheet.getRow(2).height = 19.5;
 
-            // ── Row 2 (right side): "As of {date}" — merged F2:G2 ──
-            worksheet.mergeCells('F2:G2');
-            const asOfCell = worksheet.getCell('F2');
+            // ── Row 2 (right side): "As of {date}" — merged over the last two columns ──
+            const lastColLetter = worksheet.getColumn(COLS.length).letter;
+            const secondToLastColLetter = worksheet.getColumn(
+                COLS.length - 1,
+            ).letter;
+            worksheet.mergeCells(`${secondToLastColLetter}2:${lastColLetter}2`);
+            const asOfCell = worksheet.getCell(`${secondToLastColLetter}2`);
             asOfCell.value = `As of ${dayjs().format('MMMM D, YYYY')}`;
             asOfCell.font = { name: 'Calibri', size: 15, bold: true };
             asOfCell.alignment = { horizontal: 'left' };
