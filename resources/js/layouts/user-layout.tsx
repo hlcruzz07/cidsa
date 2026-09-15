@@ -25,7 +25,7 @@ export default function UserLayout({ children }: AppLayoutProps) {
 
     return (
         <>
-            <div className="flex h-screen justify-center bg-[var(--main-color)] text-white lg:items-center dark:bg-green-900 dark:text-gray-100">
+            <div className="flex h-screen justify-center bg-primary text-white lg:items-center dark:bg-green-900 dark:text-gray-100">
                 {children}
             </div>
         </>

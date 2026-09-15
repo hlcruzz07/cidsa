@@ -312,7 +312,7 @@ export const campusDirectoryArr: CampusData[] = [
                     },
                     { name: 'Master in Technology Management', majors: [] },
                     {
-                        name: 'Doctor in Philosophy in Technology Management',
+                        name: 'Doctor of Philosophy in Technology Management',
                         majors: [],
                     },
                 ],
@@ -412,10 +412,10 @@ export const campusDirectoryArr: CampusData[] = [
                         majors: [],
                     },
                     {
-                        name: 'Master of Business Administration',
+                        name: 'Master in Business Administration',
                         majors: [],
                     },
-                    { name: 'Master of Public Administration', majors: [] },
+                    { name: 'Master in Public Administration', majors: [] },
                 ],
             },
             {

@@ -1,32 +1,25 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useInitials } from '@/hooks/use-initials';
 import { StudentReplacement } from '@/lib/custom-types';
 import { router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import {
     CheckCheckIcon,
-    ChevronLeft,
-    ChevronRight,
     ClockIcon,
-    Loader2,
-    Printer,
-    SlidersHorizontalIcon,
+    EllipsisIcon,
+    PrinterIcon,
 } from 'lucide-react';
 import { route } from 'ziggy-js';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+
 interface PaginationLink {
     url: string | null;
     label: string;
@@ -47,26 +40,43 @@ interface ReplacementTableProps {
 
 export function ReplacementTable({
     replacements,
-    total,
-    from,
-    to,
-    links,
+    total = 0,
+    from = 0,
+    to = 0,
+    links = [],
     onPageChange,
     isLoading = false,
     onPrint,
     onChangeStatus,
 }: ReplacementTableProps) {
-    const extractPage = (url: string | null) => {
-        if (!url) return null;
-        const match = url.match(/page=(\d+)/);
-        return match ? match[1] : null;
-    };
+    const headers = [
+        '#',
+        'Name',
+        'Campus / Department',
+        'Program / Major',
+        'Year Level',
+        'Reason',
+        'Status',
+        'Date',
+        'Action',
+    ];
 
-    const prevLink = links?.find((l) => l.label.includes('Previous'));
-    const nextLink = links?.find((l) => l.label.includes('Next'));
-    const pageLinks = links?.filter(
-        (l) => !l.label.includes('Previous') && !l.label.includes('Next'),
-    );
+    if (isLoading) {
+        return (
+            <div className="relative mt-3 overflow-x-auto md:shadow-md lg:border">
+                <div className="flex h-64 items-center justify-center">
+                    <div className="text-center">
+                        <div className="mb-4 text-4xl">⏳</div>
+                        <p className="text-muted-foreground">
+                            Loading replacement requests...
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const getInitials = useInitials();
 
     const handleStatus = (status: 'pending' | 'printed', id: number) => {
         router.put(
@@ -86,240 +96,325 @@ export function ReplacementTable({
     };
 
     return (
-        <div className="flex flex-col gap-3">
-            <div className="overflow-hidden rounded-md border">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[50px]">#</TableHead>
-                            <TableHead>Student</TableHead>
-                            <TableHead>ID Number</TableHead>
-                            <TableHead>Program</TableHead>
-                            <TableHead>Reason</TableHead>
+        <div className="relative mt-3 overflow-x-auto md:shadow-md lg:border">
+            <table className="table w-full text-left text-xs text-foreground">
+                <thead className="lg:border-b">
+                    <tr>
+                        {headers.map((header) => (
+                            <th
+                                key={header}
+                                scope="col"
+                                className="p-2 whitespace-nowrap"
+                            >
+                                {header}
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody className="lg:border-b">
+                    {replacements.length === 0 ? (
+                        <tr>
+                            <td
+                                colSpan={headers.length}
+                                className="border p-3 text-center"
+                            >
+                                No replacement requests found.
+                            </td>
+                        </tr>
+                    ) : (
+                        replacements.map((r, index) => {
+                            const fullName = [
+                                r.student?.first_name,
+                                r.student?.middle_init
+                                    ? `${r.student.middle_init}.`
+                                    : '',
+                                r.student?.last_name,
+                                r.student?.suffix ? `${r.student.suffix}.` : '',
+                            ]
+                                .filter(Boolean)
+                                .join(' ');
 
-                            <TableHead>Status</TableHead>
-                            <TableHead>Date Created</TableHead>
-                            <TableHead>Date Printed</TableHead>
-                            <TableHead className="text-right">
-                                Actions
-                            </TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={9}
-                                    className="py-12 text-center text-muted-foreground"
-                                >
-                                    <div className="flex items-center justify-center gap-2">
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Loading…
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ) : replacements.length === 0 ? (
-                            <TableRow>
-                                <TableCell
-                                    colSpan={9}
-                                    className="py-12 text-center text-muted-foreground"
-                                >
-                                    No replacement requests found.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            replacements?.map((r, i) => {
-                                const fullName = [
-                                    r.student?.first_name,
-                                    r.student?.middle_init
-                                        ? `${r.student.middle_init}.`
-                                        : null,
-                                    r.student?.last_name,
-                                    r.student?.suffix,
-                                ]
-                                    .filter(Boolean)
-                                    .join(' ');
-
-                                return (
-                                    <TableRow key={r.id}>
-                                        <TableCell className="text-xs text-muted-foreground">
-                                            {(from ?? 1) + i - 1}
-                                        </TableCell>
-                                        <TableCell className="font-medium uppercase">
-                                            {fullName || '—'}
-                                        </TableCell>
-                                        <TableCell className="font-mono text-xs">
-                                            {r.student?.id_number ?? '—'}
-                                        </TableCell>
-                                        <TableCell className="text-xs text-muted-foreground">
-                                            {r.student?.program ?? '—'}
-                                        </TableCell>
-                                        <TableCell className="max-w-[180px] truncate text-xs">
-                                            {r.reason ?? '—'}
-                                        </TableCell>
-
-                                        <TableCell>
-                                            {r.is_printed ? (
-                                                <Badge
-                                                    variant="default"
-                                                    className="text-xs"
-                                                >
-                                                    Printed
-                                                </Badge>
-                                            ) : (
-                                                <Badge
-                                                    variant="secondary"
-                                                    className="text-xs"
-                                                >
-                                                    Pending
-                                                </Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
-                                            {r.created_at
-                                                ? dayjs(r.created_at).format(
-                                                      'MMM D, YYYY - h:mm A',
-                                                  )
-                                                : ''}
-                                        </TableCell>
-                                        <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
-                                            {r.printed_at
-                                                ? dayjs(r.printed_at).format(
-                                                      'MMM D, YYYY - h:mm A',
-                                                  )
-                                                : ''}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                    >
-                                                        <SlidersHorizontalIcon className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-
-                                                <DropdownMenuContent
-                                                    align="end"
-                                                    className="w-48"
-                                                >
-                                                    {onPrint &&
-                                                        r.student?.id && (
-                                                            <DropdownMenuItem
-                                                                onClick={() =>
-                                                                    onPrint(
-                                                                        r
-                                                                            .student!
-                                                                            .id,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Printer className="mr-2 h-4 w-4" />
-                                                                Preview & Print
-                                                                ID
-                                                            </DropdownMenuItem>
-                                                        )}
-
-                                                    {r.is_printed ? (
-                                                        <DropdownMenuItem
-                                                            onClick={() => {
-                                                                handleStatus(
-                                                                    'pending',
-                                                                    r.id,
-                                                                );
-                                                            }}
-                                                        >
-                                                            <ClockIcon className="mr-2 h-4 w-4" />
-                                                            Mark as Pending
-                                                        </DropdownMenuItem>
-                                                    ) : (
-                                                        <DropdownMenuItem
-                                                            onClick={() => {
-                                                                handleStatus(
-                                                                    'printed',
-                                                                    r.id,
-                                                                );
-                                                            }}
-                                                        >
-                                                            <CheckCheckIcon className="mr-2 h-4 w-4" />
-                                                            Mark as Printed
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-
-            {/* Pagination */}
-            {links && links.length > 3 && (
-                <div className="flex items-center justify-between text-sm">
-                    <p className="text-muted-foreground">
-                        {from && to && total
-                            ? `Showing ${from}–${to} of ${total.toLocaleString()} entries`
-                            : ''}
-                    </p>
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={!prevLink?.url}
-                            onClick={() => {
-                                const p = extractPage(prevLink?.url ?? null);
-                                if (p) onPageChange(p);
-                            }}
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-
-                        {pageLinks?.map((link) => {
-                            const page = extractPage(link.url);
-                            if (link.label === '...') {
-                                return (
-                                    <span
-                                        key={link.label}
-                                        className="px-1 text-muted-foreground"
-                                    >
-                                        …
-                                    </span>
-                                );
-                            }
                             return (
-                                <Button
-                                    key={link.label}
-                                    variant={
-                                        link.active ? 'default' : 'outline'
-                                    }
-                                    size="sm"
-                                    className="w-8"
-                                    disabled={!page}
-                                    onClick={() => page && onPageChange(page)}
-                                >
-                                    {link.label}
-                                </Button>
-                            );
-                        })}
+                                <tr key={r.id} className="hover:bg-muted/50">
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="#"
+                                    >
+                                        {r.id}
+                                    </td>
 
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={!nextLink?.url}
-                            onClick={() => {
-                                const p = extractPage(nextLink?.url ?? null);
-                                if (p) onPageChange(p);
-                            }}
-                        >
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-            )}
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="Name"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="size-8 overflow-hidden rounded-full">
+                                                <AvatarImage
+                                                    src={
+                                                        r.student?.picture
+                                                            ? route(
+                                                                  'gdrive.image',
+                                                                  r.student
+                                                                      .picture,
+                                                              )
+                                                            : undefined
+                                                    }
+                                                    className="object-cover"
+                                                    alt={fullName}
+                                                />
+                                                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                    {getInitials(fullName)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <h4 className="font-medium uppercase">
+                                                    {fullName || '—'}
+                                                </h4>
+                                                <small className="text-muted-foreground">
+                                                    {r.student?.id_number ??
+                                                        '—'}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="Campus"
+                                    >
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-foreground">
+                                                {r.student?.campus ?? '—'}
+                                            </span>
+                                            {r.student?.college_name && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {r.student.college_name}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="Program"
+                                    >
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-foreground">
+                                                {r.student?.program ?? '—'}
+                                            </span>
+                                            {r.student?.major ? (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {r.student.major}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">
+                                                    --
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="Year Level"
+                                    >
+                                        {r.student?.year ?? '—'}
+                                    </td>
+
+                                    <td
+                                        className="max-w-[180px] truncate p-2"
+                                        data-label="Reason"
+                                    >
+                                        {r.reason ?? '—'}
+                                    </td>
+
+                                    <td
+                                        className="p-2 whitespace-nowrap"
+                                        data-label="Status"
+                                    >
+                                        {r.is_printed ? (
+                                            <Badge>
+                                                <CheckCheckIcon /> Printed
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="outline">
+                                                <ClockIcon /> Pending
+                                            </Badge>
+                                        )}
+                                    </td>
+
+                                    <td className="p-2 text-[10px]! whitespace-nowrap">
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="w-14 shrink-0 font-medium text-muted-foreground">
+                                                    Created
+                                                </span>
+                                                <span className="text-foreground">
+                                                    {r.created_at
+                                                        ? dayjs(
+                                                              r.created_at,
+                                                          ).format(
+                                                              'MMM D, YYYY · h:mm A',
+                                                          )
+                                                        : '—'}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="w-14 shrink-0 font-medium text-muted-foreground">
+                                                    Printed
+                                                </span>
+                                                {r.printed_at ? (
+                                                    <span className="font-medium text-green-600 dark:text-green-500">
+                                                        {dayjs(
+                                                            r.printed_at,
+                                                        ).format(
+                                                            'MMM D, YYYY · h:mm A',
+                                                        )}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted-foreground italic">
+                                                        Not yet printed
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td className="p-2 whitespace-nowrap">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon-sm"
+                                                    aria-label="Actions"
+                                                >
+                                                    <EllipsisIcon />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+
+                                            <DropdownMenuContent
+                                                className="w-48"
+                                                align="end"
+                                            >
+                                                <DropdownMenuLabel>
+                                                    Actions
+                                                </DropdownMenuLabel>
+
+                                                {onPrint && r.student?.id && (
+                                                    <DropdownMenuItem
+                                                        onClick={() =>
+                                                            onPrint(
+                                                                r.student!.id,
+                                                            )
+                                                        }
+                                                    >
+                                                        <PrinterIcon />
+                                                        Preview & Print ID
+                                                    </DropdownMenuItem>
+                                                )}
+
+                                                {r.is_printed ? (
+                                                    <DropdownMenuItem
+                                                        onClick={() =>
+                                                            handleStatus(
+                                                                'pending',
+                                                                r.id,
+                                                            )
+                                                        }
+                                                    >
+                                                        <ClockIcon />
+                                                        Mark as Pending
+                                                    </DropdownMenuItem>
+                                                ) : (
+                                                    <DropdownMenuItem
+                                                        onClick={() =>
+                                                            handleStatus(
+                                                                'printed',
+                                                                r.id,
+                                                            )
+                                                        }
+                                                    >
+                                                        <CheckCheckIcon />
+                                                        Mark as Printed
+                                                    </DropdownMenuItem>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </td>
+                                </tr>
+                            );
+                        })
+                    )}
+                </tbody>
+
+                {links.length > 0 && (
+                    <tfoot>
+                        <tr>
+                            <td colSpan={headers.length} className="px-6 py-4">
+                                <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+                                    <p className="text-sm text-muted-foreground">
+                                        Showing{' '}
+                                        <span className="font-medium">
+                                            {from}
+                                        </span>
+                                        –
+                                        <span className="font-medium">
+                                            {to}
+                                        </span>{' '}
+                                        of{' '}
+                                        <span className="font-medium">
+                                            {total}
+                                        </span>
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {links.map((link, idx) => {
+                                            let page: string | null = null;
+                                            if (link.url) {
+                                                const url = new URL(link.url);
+                                                page =
+                                                    url.searchParams.get(
+                                                        'page',
+                                                    );
+                                            }
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    disabled={
+                                                        !link.url ||
+                                                        !onPageChange
+                                                    }
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        if (
+                                                            page &&
+                                                            onPageChange
+                                                        ) {
+                                                            onPageChange(page);
+                                                        }
+                                                    }}
+                                                    className={`rounded px-3 py-1 ${
+                                                        link.active
+                                                            ? 'bg-primary text-white dark:text-black'
+                                                            : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                                                    }`}
+                                                    type="button"
+                                                >
+                                                    <span
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: link.label,
+                                                        }}
+                                                    />
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tfoot>
+                )}
+            </table>
         </div>
     );
 }

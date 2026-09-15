@@ -1,0 +1,1199 @@
+import Heading from '@/components/heading';
+import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import { StudentProps } from '@/lib/custom-types';
+import { campusDirectoryArr, cn } from '@/lib/utils';
+import { useForm } from '@inertiajs/react';
+import { AsteriskIcon, Check, ChevronsUpDown } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { route } from 'ziggy-js';
+
+type ProvinceProp = Array<{ province_id: number; province_name: string }>;
+type CitiesProp = Array<{
+    municipality_id: number;
+    municipality_name: string;
+    province_id: number;
+}>;
+type BrgysProp = Array<{
+    barangay_id: number;
+    barangay_name: string;
+    municipality_id: number;
+}>;
+type CitiesApiProp = {
+    municipality_id: number;
+    municipality_name: string;
+    province_id: number;
+};
+type BrgyApiProp = {
+    barangay_id: number;
+    barangay_name: string;
+    municipality_id: number;
+};
+
+interface StudentEditDialogProps {
+    student: StudentProps | null;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSuccess?: () => void;
+}
+
+export function StudentEditModal({
+    student,
+    open,
+    onOpenChange,
+    onSuccess,
+}: StudentEditDialogProps) {
+    const { data, setData, processing, errors, put, clearErrors } = useForm({
+        first_name: '',
+        middle_init: null as string | null,
+        last_name: '',
+        suffix: null as string | null,
+        emergency_first_name: '',
+        emergency_middle_init: null as string | null,
+        emergency_last_name: '',
+        emergency_suffix: null as string | null,
+        relationship: '',
+        contact_number: null as number | null,
+        province: '',
+        city: '',
+        barangay: '',
+        zip_code: '',
+        campus: '',
+        college: '',
+        college_name: '',
+        program: '',
+        hasMajor: false,
+        major: null as string | null,
+        year: '',
+    });
+
+    const [openProvince, setOpenProvince] = useState(false);
+    const [openCities, setOpenCities] = useState(false);
+    const [openBrgys, setOpenBrgys] = useState(false);
+
+    const [isProgramDisabled, setIsProgramDisabled] = useState(true);
+    const [isMajorDisabled, setIsMajorDisabled] = useState(true);
+
+    const [provinces, setProvinces] = useState<ProvinceProp>([]);
+    const [selectedProvinceId, setSelectedProvinceId] = useState(
+        null as number | null,
+    );
+    const [cities, setCities] = useState<CitiesProp>([]);
+    const [selectedCityId, setSelectedCityId] = useState(null as number | null);
+
+    const [brgys, setBrgys] = useState<BrgysProp>([]);
+    const [isInitializing, setIsInitializing] = useState(true);
+
+    const collegeArrFiltered = campusDirectoryArr.find((collegeItem) =>
+        collegeItem.campus.includes(data.campus || student?.campus || ''),
+    )?.colleges;
+
+    const programArrFiltered = collegeArrFiltered?.find(
+        (programItem) =>
+            programItem.value === (data.college || student?.college),
+    )?.programs;
+
+    const majorArrFiltered = programArrFiltered?.find(
+        (majorItem) => majorItem.name === (data.program || student?.program),
+    )?.majors;
+
+    const fetchProvinces = () => {
+        fetch('/table_province.json')
+            .then((res) => res.json())
+            .then((json) => setProvinces(json))
+            .catch((error) => {
+                console.error('Error fetching provinces:', error);
+                toast.error('Failed to load provinces data');
+            });
+    };
+
+    const fetchCities = (id: number) => {
+        fetch('/table_municipality.json')
+            .then((res) => res.json())
+            .then((json) =>
+                setCities(
+                    json.filter((c: CitiesApiProp) => c.province_id === id),
+                ),
+            )
+            .catch((error) => {
+                console.error('Error fetching cities:', error);
+                toast.error('Failed to load cities data');
+            });
+    };
+
+    const fetchBrgys = (id: number) => {
+        fetch('/table_barangay.json')
+            .then((res) => res.json())
+            .then((json) =>
+                setBrgys(
+                    json.filter((b: BrgyApiProp) => b.municipality_id === id),
+                ),
+            )
+            .catch((error) => {
+                console.error('Error fetching barangays:', error);
+                toast.error('Failed to load barangays data');
+            });
+    };
+
+    // Load provinces the first time the dialog opens
+    useEffect(() => {
+        if (open && provinces.length === 0) fetchProvinces();
+    }, [open]);
+
+    // Re-seed the form whenever a new student is opened
+    useEffect(() => {
+        if (!student || !open) return;
+
+        setIsInitializing(true);
+        clearErrors();
+
+        setData({
+            first_name: student.first_name ?? '',
+            middle_init: student.middle_init ?? null,
+            last_name: student.last_name ?? '',
+            suffix: student.suffix ?? null,
+            emergency_first_name: student.emergency_first_name ?? '',
+            emergency_middle_init: student.emergency_middle_init ?? null,
+            emergency_last_name: student.emergency_last_name ?? '',
+            emergency_suffix: student.emergency_suffix ?? null,
+            relationship: student.relationship ?? '',
+            contact_number: student.contact_number,
+            province: student.province ?? '',
+            city: student.city ?? '',
+            barangay: student.barangay ?? '',
+            zip_code: student.zip_code ?? '',
+            campus: student.campus ?? '',
+            college: student.college ?? '',
+            college_name: student.college_name ?? '',
+            program: student.program ?? '',
+            hasMajor: Boolean(student.major),
+            major: student.major ?? null,
+            year: student.year ?? '',
+        });
+
+        setIsProgramDisabled(!student.college);
+        setIsMajorDisabled(!(student.program && student.major));
+        setSelectedProvinceId(null);
+        setSelectedCityId(null);
+        setCities([]);
+        setBrgys([]);
+    }, [student, open]);
+
+    useEffect(() => {
+        if (!student?.province || provinces.length === 0 || !open) return;
+        const found = provinces.find(
+            (p) => p.province_name === student.province,
+        );
+        if (found) {
+            setSelectedProvinceId(found.province_id);
+            fetchCities(found.province_id);
+        }
+        setIsInitializing(false);
+    }, [provinces, student, open]);
+
+    useEffect(() => {
+        if (!student?.city || cities.length === 0 || !open) return;
+        const found = cities.find((c) => c.municipality_name === student.city);
+        if (found) {
+            setSelectedCityId(found.municipality_id);
+            fetchBrgys(found.municipality_id);
+        }
+    }, [cities, student, open]);
+
+    const resetForCampusChange = () => {
+        setData('college', '');
+        setData('college_name', '');
+        setData('program', '');
+        setIsProgramDisabled(true);
+        setData('major', null);
+        setIsMajorDisabled(true);
+    };
+
+    const resetForCollegeChange = () => {
+        setData('program', '');
+        setIsProgramDisabled(false);
+        setData('major', null);
+        setIsMajorDisabled(true);
+    };
+
+    const resetForProgramChange = () => {
+        setData('major', null);
+        setIsMajorDisabled(false);
+    };
+
+    const resetForProvinceChange = () => {
+        setData('city', '');
+        setData('barangay', '');
+        setSelectedCityId(null);
+        setCities([]);
+        setBrgys([]);
+    };
+
+    const resetForCityChange = () => {
+        setData('barangay', '');
+        setBrgys([]);
+    };
+
+    const handleProgramChange = (program: string) => {
+        const programItem = programArrFiltered?.find(
+            (item) => item.name === program,
+        );
+        setData(
+            'hasMajor',
+            Boolean(programItem?.majors && programItem.majors.length > 0),
+        );
+    };
+
+    const handleStudentUpdate = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (processing || !student) return;
+
+        const routeName = student.is_completed
+            ? 'update.student'
+            : 'update.student.inc';
+
+        put(route(routeName, student.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                clearErrors();
+                toast.success('Student updated successfully.');
+                onOpenChange(false);
+                onSuccess?.();
+            },
+            onError: (errors) => {
+                Object.values(errors).forEach((messages) => {
+                    if (Array.isArray(messages)) {
+                        messages.forEach((m) => toast.error(m));
+                    } else {
+                        toast.error(messages as string);
+                    }
+                });
+            },
+        });
+    };
+
+    if (!student) return null;
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-4xl!">
+                <DialogHeader>
+                    <DialogTitle>Edit Student</DialogTitle>
+                    <DialogDescription>
+                        Review and update the student's personal, academic, and
+                        contact information.
+                    </DialogDescription>
+                </DialogHeader>
+
+                {(student.picture || student.e_signature) && (
+                    <div className="flex gap-4">
+                        {student.picture && (
+                            <div className="flex flex-col gap-1">
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Picture
+                                </span>
+                                <img
+                                    src={route('gdrive.image', student.picture)}
+                                    alt="Student Picture"
+                                    className="h-32 w-28 rounded-md object-cover shadow-md"
+                                    loading="lazy"
+                                />
+                            </div>
+                        )}
+                        {student.e_signature && (
+                            <div className="flex flex-col gap-1">
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    E-Signature
+                                </span>
+                                <img
+                                    src={route(
+                                        'gdrive.image',
+                                        student.e_signature,
+                                    )}
+                                    alt="Student Signature"
+                                    className="h-32 w-48 rounded-md object-contain shadow-md"
+                                    loading="lazy"
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {isInitializing && student.province ? (
+                    <div className="flex h-64 items-center justify-center">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                            <p>Loading student data...</p>
+                        </div>
+                    </div>
+                ) : (
+                    <form
+                        className="no-scrollbar -mx-4 max-h-[50vh] space-y-5 overflow-y-auto px-4"
+                        onSubmit={handleStudentUpdate}
+                    >
+                        <Heading
+                            title="In-Case of Emergency Contact Information"
+                            description="Enter the details of a person we can contact during emergencies."
+                        />
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="id_number">Student ID Number</Label>
+                            <Input
+                                type="text"
+                                value={student.id_number}
+                                disabled
+                            />
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-12">
+                            <div className="col-span-4 flex w-full grow flex-col gap-2">
+                                <Label htmlFor="first_name">
+                                    First Name{' '}
+                                    <AsteriskIcon size={12} color="red" />
+                                </Label>
+                                <Input
+                                    type="text"
+                                    id="first_name"
+                                    value={data.first_name}
+                                    maxLength={25}
+                                    onChange={(e) =>
+                                        setData(
+                                            'first_name',
+                                            e.target.value.toUpperCase(),
+                                        )
+                                    }
+                                />
+                                <InputError message={errors.first_name} />
+                            </div>
+                            <div className="col-span-auto flex w-full flex-col gap-2">
+                                <Label htmlFor="middle_init">M.I.</Label>
+                                <Input
+                                    type="text"
+                                    id="middle_init"
+                                    placeholder="Enter Middle Initial"
+                                    value={data.middle_init ?? ''}
+                                    onInput={(e) => {
+                                        const v =
+                                            e.currentTarget.value.toUpperCase();
+                                        e.currentTarget.value = v.slice(0, 1);
+                                    }}
+                                    onChange={(e) =>
+                                        setData(
+                                            'middle_init',
+                                            e.currentTarget.value === ''
+                                                ? null
+                                                : e.currentTarget.value.toUpperCase(),
+                                        )
+                                    }
+                                />
+                                <InputError message={errors.middle_init} />
+                            </div>
+                            <div className="col-span-4 flex w-full grow flex-col gap-2">
+                                <Label htmlFor="last_name">
+                                    Last Name{' '}
+                                    <AsteriskIcon size={12} color="red" />
+                                </Label>
+                                <Input
+                                    type="text"
+                                    id="last_name"
+                                    value={data.last_name}
+                                    maxLength={25}
+                                    onChange={(e) =>
+                                        setData(
+                                            'last_name',
+                                            e.target.value.toUpperCase(),
+                                        )
+                                    }
+                                />
+                                <InputError message={errors.last_name} />
+                            </div>
+                            <div className="col-span-4 flex flex-col gap-2 md:col-span-3">
+                                <Label htmlFor="suffix">Suffix</Label>
+                                <Select
+                                    value={data.suffix ?? ''}
+                                    onValueChange={(value) =>
+                                        setData(
+                                            'suffix',
+                                            value === 'None' ? null : value,
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Choose an option">
+                                            {data.suffix ?? 'Choose an option'}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent className="w-full md:w-10">
+                                        <SelectGroup>
+                                            {[
+                                                'JR',
+                                                'SR',
+                                                'II',
+                                                'III',
+                                                'IV',
+                                                'V',
+                                                'None',
+                                            ].map((item, key) => (
+                                                <SelectItem
+                                                    key={key}
+                                                    value={item}
+                                                >
+                                                    {item}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2">
+                            <div className="flex flex-col gap-2">
+                                <Label>
+                                    Campus{' '}
+                                    <AsteriskIcon size={12} color="red" />
+                                </Label>
+                                <Select
+                                    value={data.campus}
+                                    onValueChange={(value) => {
+                                        setData('campus', value);
+                                        resetForCampusChange();
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Choose an option">
+                                            {data.campus || 'Choose an option'}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent className="w-full">
+                                        <SelectGroup>
+                                            {[
+                                                'Talisay',
+                                                'Alijis',
+                                                'Fortune Towne',
+                                                'Binalbagan',
+                                            ].map((item, key) => (
+                                                <SelectItem
+                                                    key={key}
+                                                    value={item}
+                                                >
+                                                    {item}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <Label>
+                                    College{' '}
+                                    <AsteriskIcon size={12} color="red" />
+                                </Label>
+                                <Select
+                                    value={
+                                        data.college && data.college_name
+                                            ? JSON.stringify({
+                                                  value: data.college,
+                                                  name: data.college_name,
+                                              })
+                                            : undefined
+                                    }
+                                    onValueChange={(val) => {
+                                        if (!val) return;
+                                        try {
+                                            const parsed = JSON.parse(val);
+                                            setData('college', parsed.value);
+                                            setData(
+                                                'college_name',
+                                                parsed.name,
+                                            );
+                                            resetForCollegeChange();
+                                        } catch (err) {
+                                            console.error(
+                                                'Failed to parse college value:',
+                                                val,
+                                                err,
+                                            );
+                                        }
+                                    }}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Choose an option">
+                                            {data.college
+                                                ? `${data.college} - ${data.college_name}`
+                                                : 'Choose an option'}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            {collegeArrFiltered?.map(
+                                                (item, key) => (
+                                                    <SelectItem
+                                                        key={key}
+                                                        value={JSON.stringify({
+                                                            value: item.value,
+                                                            name: item.name,
+                                                        })}
+                                                    >
+                                                        {item.value} -{' '}
+                                                        {item.name}
+                                                    </SelectItem>
+                                                ),
+                                            )}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.college} />
+                            </div>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2">
+                            <div className="flex flex-col gap-2">
+                                <Label>
+                                    Program{' '}
+                                    <AsteriskIcon size={12} color="red" />
+                                </Label>
+                                <Select
+                                    value={data.program}
+                                    onValueChange={(value) => {
+                                        setData('program', value);
+                                        resetForProgramChange();
+                                        handleProgramChange(value);
+                                    }}
+                                    disabled={isProgramDisabled}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Choose an option">
+                                            {data.program || 'Choose an option'}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            {programArrFiltered?.map(
+                                                (item, key) => (
+                                                    <SelectItem
+                                                        key={key}
+                                                        value={item.name}
+                                                    >
+                                                        {item.name}
+                                                    </SelectItem>
+                                                ),
+                                            )}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.program} />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <Label>
+                                    Major{' '}
+                                    {data.hasMajor && (
+                                        <AsteriskIcon size={12} color="red" />
+                                    )}
+                                </Label>
+                                <Select
+                                    value={data.major ?? ''}
+                                    onValueChange={(value) =>
+                                        setData('major', value ?? null)
+                                    }
+                                    disabled={
+                                        isMajorDisabled ||
+                                        !data.hasMajor ||
+                                        majorArrFiltered?.length === 0
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Choose an option">
+                                            {data.major || 'Choose an option'}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            {majorArrFiltered?.map(
+                                                (item, key) => (
+                                                    <SelectItem
+                                                        key={key}
+                                                        value={item}
+                                                    >
+                                                        {item}
+                                                    </SelectItem>
+                                                ),
+                                            )}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.major} />
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <Label>
+                                Year Level{' '}
+                                <AsteriskIcon size={12} color="red" />
+                            </Label>
+                            <Select
+                                value={data.year}
+                                onValueChange={(value) =>
+                                    setData('year', value)
+                                }
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Choose an option">
+                                        {data.year || 'Choose an option'}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        {[
+                                            '1st Year',
+                                            '2nd Year',
+                                            '3rd Year',
+                                            '4th Year',
+                                            '5th Year',
+                                        ].map((item, key) => (
+                                            <SelectItem key={key} value={item}>
+                                                {item}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
+                            <InputError message={errors.year} />
+                        </div>
+
+                        <Heading
+                            title="In-Case of Emergency Contact Information"
+                            description="Enter the details of a person we can contact during emergencies."
+                        />
+                        <div className="grid gap-3 md:grid-cols-12">
+                            <div className="col-span-4 flex w-full grow flex-col gap-2">
+                                <Label htmlFor="emergency_first_name">
+                                    Emergency First Name{' '}
+                                    <AsteriskIcon size={12} color="red" />
+                                </Label>
+                                <Input
+                                    type="text"
+                                    id="emergency_first_name"
+                                    placeholder="Enter First Name"
+                                    value={data.emergency_first_name}
+                                    maxLength={25}
+                                    onChange={(e) =>
+                                        setData(
+                                            'emergency_first_name',
+                                            e.target.value.toUpperCase(),
+                                        )
+                                    }
+                                />
+                                <InputError
+                                    message={errors.emergency_first_name}
+                                />
+                            </div>
+                            <div className="col-span-auto flex w-full flex-col gap-2">
+                                <Label htmlFor="emergency_middle_init">
+                                    M.I.
+                                </Label>
+                                <Input
+                                    type="text"
+                                    id="emergency_middle_init"
+                                    placeholder="Enter Middle Initial"
+                                    value={data.emergency_middle_init ?? ''}
+                                    onInput={(e) => {
+                                        const v =
+                                            e.currentTarget.value.toUpperCase();
+                                        e.currentTarget.value = v.slice(0, 1);
+                                    }}
+                                    onChange={(e) =>
+                                        setData(
+                                            'emergency_middle_init',
+                                            e.currentTarget.value === ''
+                                                ? null
+                                                : e.currentTarget.value.toUpperCase(),
+                                        )
+                                    }
+                                />
+                                <InputError
+                                    message={errors.emergency_middle_init}
+                                />
+                            </div>
+                            <div className="col-span-4 flex w-full grow flex-col gap-2">
+                                <Label htmlFor="emergency_last_name">
+                                    Emergency Last Name{' '}
+                                    <AsteriskIcon size={12} color="red" />
+                                </Label>
+                                <Input
+                                    type="text"
+                                    id="emergency_last_name"
+                                    placeholder="Enter Last Name"
+                                    value={data.emergency_last_name}
+                                    maxLength={25}
+                                    onChange={(e) =>
+                                        setData(
+                                            'emergency_last_name',
+                                            e.target.value.toUpperCase(),
+                                        )
+                                    }
+                                />
+                                <InputError
+                                    message={errors.emergency_last_name}
+                                />
+                            </div>
+                            <div className="col-span-4 flex flex-col gap-2 md:col-span-3">
+                                <Label htmlFor="emergency_suffix">Suffix</Label>
+                                <Select
+                                    value={data.emergency_suffix ?? ''}
+                                    onValueChange={(value) =>
+                                        setData(
+                                            'emergency_suffix',
+                                            value === 'None' ? null : value,
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Choose an option">
+                                            {data.emergency_suffix ||
+                                                'Choose an option'}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent className="w-full md:w-10">
+                                        <SelectGroup>
+                                            {[
+                                                'JR',
+                                                'SR',
+                                                'II',
+                                                'III',
+                                                'IV',
+                                                'V',
+                                                'None',
+                                            ].map((item, key) => (
+                                                <SelectItem
+                                                    key={key}
+                                                    value={item}
+                                                >
+                                                    {item}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.emergency_suffix} />
+                            </div>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2">
+                            <div className="flex flex-col gap-2">
+                                <Label>
+                                    Relationship{' '}
+                                    <AsteriskIcon size={12} color="red" />
+                                </Label>
+                                <Select
+                                    value={data.relationship}
+                                    onValueChange={(value) =>
+                                        setData('relationship', value)
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Choose an option">
+                                            {data.relationship ||
+                                                'Choose an option'}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            {[
+                                                'Father',
+                                                'Mother',
+                                                'Brother',
+                                                'Sister',
+                                                'Uncle',
+                                                'Aunt',
+                                                'Cousin',
+                                                'Spouse',
+                                                'Grand Father',
+                                                'Grand Mother',
+                                                'Friend',
+                                            ].map((relation, key) => (
+                                                <SelectItem
+                                                    key={key}
+                                                    value={relation}
+                                                >
+                                                    {relation}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.relationship} />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="contact_number">
+                                        Contact Number{' '}
+                                        <AsteriskIcon size={12} color="red" />
+                                    </Label>
+                                    <span className="text-xs text-muted-foreground">
+                                        (ex: 9123456789)
+                                    </span>
+                                </div>
+                                <div className="relative">
+                                    <span className="absolute left-2 flex h-full items-center justify-center text-sm">
+                                        +63
+                                    </span>
+                                    <Input
+                                        type="number"
+                                        id="contact_number"
+                                        placeholder="Enter Contact Number"
+                                        className="ps-9"
+                                        value={
+                                            data.contact_number?.toString() ??
+                                            ''
+                                        }
+                                        onInput={(e) => {
+                                            if (
+                                                e.currentTarget.value.length >
+                                                10
+                                            ) {
+                                                e.currentTarget.value =
+                                                    e.currentTarget.value.slice(
+                                                        0,
+                                                        10,
+                                                    );
+                                            }
+                                            setData(
+                                                'contact_number',
+                                                e.currentTarget.value
+                                                    ? Number(
+                                                          e.currentTarget.value,
+                                                      )
+                                                    : null,
+                                            );
+                                        }}
+                                    />
+                                </div>
+                                <InputError message={errors.contact_number} />
+                            </div>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2">
+                            <div className="flex flex-col gap-2">
+                                <Label>
+                                    Province{' '}
+                                    <AsteriskIcon size={12} color="red" />
+                                </Label>
+                                <Popover
+                                    open={openProvince}
+                                    onOpenChange={setOpenProvince}
+                                >
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={openProvince}
+                                            className="justify-between"
+                                        >
+                                            {data.province ||
+                                                'Choose an option'}
+                                            <ChevronsUpDown className="opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                        className="p-0"
+                                        align="start"
+                                    >
+                                        <Command>
+                                            <CommandInput
+                                                placeholder="Search province..."
+                                                className="h-9"
+                                            />
+                                            <CommandList>
+                                                <CommandEmpty>
+                                                    No province found.
+                                                </CommandEmpty>
+                                                <CommandGroup>
+                                                    {provinces.map(
+                                                        (p, index) => (
+                                                            <CommandItem
+                                                                key={index}
+                                                                value={
+                                                                    p.province_name
+                                                                }
+                                                                onSelect={() => {
+                                                                    setData(
+                                                                        'province',
+                                                                        p.province_name,
+                                                                    );
+                                                                    setOpenProvince(
+                                                                        false,
+                                                                    );
+                                                                    setSelectedProvinceId(
+                                                                        p.province_id,
+                                                                    );
+                                                                    resetForProvinceChange();
+                                                                    fetchCities(
+                                                                        p.province_id,
+                                                                    );
+                                                                }}
+                                                            >
+                                                                {
+                                                                    p.province_name
+                                                                }
+                                                                <Check
+                                                                    className={cn(
+                                                                        'ml-auto',
+                                                                        p.province_id ===
+                                                                            selectedProvinceId
+                                                                            ? 'opacity-100'
+                                                                            : 'opacity-0',
+                                                                    )}
+                                                                />
+                                                            </CommandItem>
+                                                        ),
+                                                    )}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <InputError message={errors.province} />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <Label>
+                                    City / Municipality{' '}
+                                    <AsteriskIcon size={12} color="red" />
+                                </Label>
+                                <Popover
+                                    open={openCities}
+                                    onOpenChange={setOpenCities}
+                                >
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={openCities}
+                                            className="justify-between"
+                                            disabled={
+                                                selectedProvinceId === null
+                                            }
+                                        >
+                                            {data.city || 'Choose an option'}
+                                            <ChevronsUpDown className="opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                        className="p-0"
+                                        align="start"
+                                    >
+                                        <Command>
+                                            <CommandInput
+                                                placeholder="Search cities/municipalities..."
+                                                className="h-9"
+                                            />
+                                            <CommandList>
+                                                <CommandEmpty>
+                                                    No city/municipality found.
+                                                </CommandEmpty>
+                                                <CommandGroup>
+                                                    {cities.map((c, index) => (
+                                                        <CommandItem
+                                                            key={index}
+                                                            value={
+                                                                c.municipality_name
+                                                            }
+                                                            onSelect={() => {
+                                                                setData(
+                                                                    'city',
+                                                                    c.municipality_name,
+                                                                );
+                                                                setSelectedCityId(
+                                                                    c.municipality_id,
+                                                                );
+                                                                fetchBrgys(
+                                                                    c.municipality_id,
+                                                                );
+                                                                setOpenCities(
+                                                                    false,
+                                                                );
+                                                                resetForCityChange();
+                                                            }}
+                                                        >
+                                                            {
+                                                                c.municipality_name
+                                                            }
+                                                            <Check
+                                                                className={cn(
+                                                                    'ml-auto',
+                                                                    c.municipality_id ===
+                                                                        selectedCityId
+                                                                        ? 'opacity-100'
+                                                                        : 'opacity-0',
+                                                                )}
+                                                            />
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <InputError message={errors.city} />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <Label>
+                                    Barangay{' '}
+                                    <AsteriskIcon size={12} color="red" />
+                                </Label>
+                                <Popover
+                                    open={openBrgys}
+                                    onOpenChange={setOpenBrgys}
+                                >
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={openBrgys}
+                                            className="justify-between"
+                                            disabled={selectedCityId === null}
+                                        >
+                                            {data.barangay ||
+                                                'Choose an option'}
+                                            <ChevronsUpDown className="opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                        className="p-0"
+                                        align="start"
+                                    >
+                                        <Command>
+                                            <CommandInput
+                                                placeholder="Search barangays..."
+                                                className="h-9"
+                                            />
+                                            <CommandList>
+                                                <CommandEmpty>
+                                                    No barangays found.
+                                                </CommandEmpty>
+                                                <CommandGroup>
+                                                    {brgys.map((b, index) => (
+                                                        <CommandItem
+                                                            key={index}
+                                                            value={
+                                                                b.barangay_name
+                                                            }
+                                                            onSelect={() => {
+                                                                setData(
+                                                                    'barangay',
+                                                                    b.barangay_name,
+                                                                );
+                                                                setOpenBrgys(
+                                                                    false,
+                                                                );
+                                                            }}
+                                                        >
+                                                            {b.barangay_name}
+                                                            <Check
+                                                                className={cn(
+                                                                    'ml-auto',
+                                                                    b.barangay_name ===
+                                                                        data.barangay
+                                                                        ? 'opacity-100'
+                                                                        : 'opacity-0',
+                                                                )}
+                                                            />
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <InputError message={errors.barangay} />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="zip_code">
+                                        Zip Code{' '}
+                                        <AsteriskIcon size={12} color="red" />
+                                    </Label>
+                                    <span className="text-xs text-muted-foreground">
+                                        (ex: 6115)
+                                    </span>
+                                </div>
+                                <Input
+                                    type="number"
+                                    id="zip_code"
+                                    value={data.zip_code}
+                                    min={0}
+                                    placeholder="Enter Zip Code"
+                                    onInput={(e) => {
+                                        if (e.currentTarget.value.length > 4) {
+                                            e.currentTarget.value =
+                                                e.currentTarget.value.slice(
+                                                    0,
+                                                    4,
+                                                );
+                                        }
+                                    }}
+                                    onChange={(e) =>
+                                        setData('zip_code', e.target.value)
+                                    }
+                                />
+                                <InputError message={errors.zip_code} />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => onOpenChange(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={processing}>
+                                {processing ? (
+                                    <>
+                                        <Spinner /> Saving...
+                                    </>
+                                ) : (
+                                    'Save Changes'
+                                )}
+                            </Button>
+                        </div>
+                    </form>
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}

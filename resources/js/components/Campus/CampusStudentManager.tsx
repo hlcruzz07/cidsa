@@ -172,7 +172,7 @@ export function CampusStudentManager({
     const [rIsPrinted, setRIsPrinted] = useState<boolean | null>(null);
     const [rRange, setRRange] = useState<DateRange | undefined>();
     const [rPerPage, setRPerPage] = useState(10);
-    const [rSort, setRSort] = useState('updated_at');
+    const [rSort, setRSort] = useState('created_at');
     const [rOrder, setROrder] = useState<'asc' | 'desc'>('desc');
 
     const rProgramsArr =

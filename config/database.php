@@ -147,6 +147,27 @@ return [
             ]) : [],
         ],
 
+        'armvs' => [
+            'driver' => 'mysql',
+            'url' => env('ARMVS_DB_URL'),
+            'host' => env('ARMVS_DB_HOST', '127.0.0.1'),
+            'port' => env('ARMVS_DB_PORT', '3306'),
+            'database' => env('ARMVS_DB_DATABASE', 'laravel'),
+            'username' => env('ARMVS_DB_USERNAME', 'root'),
+            'password' => env('ARMVS_DB_PASSWORD', ''),
+            'unix_socket' => env('ARMVS_DB_SOCKET', ''),
+            'charset' => env('ARMVS_DB_CHARSET', 'utf8mb4'),
+            'collation' => env('ARMVS_DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('ARMVS_MYSQL_ATTR_SSL_CA'),
+                PDO::ATTR_TIMEOUT => 3,
+            ]) : [],
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

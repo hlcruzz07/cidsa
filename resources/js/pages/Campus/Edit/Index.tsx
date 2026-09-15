@@ -311,30 +311,7 @@ export default function Index() {
         e.preventDefault();
 
         if (processing) return;
-
-        if (student.is_completed) {
-            put(route('update.student', student.id), {
-                preserveScroll: true,
-                onSuccess: () => {
-                    clearErrors();
-                },
-                onError: (errors) => {
-                    Object.values(errors).forEach((messages) => {
-                        if (Array.isArray(messages)) {
-                            messages.forEach((message) => {
-                                toast.error(message);
-                            });
-                        } else {
-                            toast.error(messages);
-                        }
-                    });
-                },
-            });
-
-            return;
-        }
-
-        put(route('update.student.inc', student.id), {
+        put(route('update.student', student.id), {
             preserveScroll: true,
             onSuccess: () => {
                 clearErrors();
@@ -351,6 +328,8 @@ export default function Index() {
                 });
             },
         });
+
+        return;
     };
 
     //IMAGE UPLOADING
@@ -1117,6 +1096,9 @@ export default function Index() {
                                                         'Aunt',
                                                         'Cousin',
                                                         'Spouse',
+                                                        'Grand Father',
+                                                        'Grand Mother',
+                                                        'Friend',
                                                     ].map((relation, key) => (
                                                         <SelectItem
                                                             key={key}

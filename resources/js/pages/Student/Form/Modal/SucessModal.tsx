@@ -7,49 +7,52 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { CircleCheck } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
-interface SuccessModalProps {
+type SuccessModalProps = {
     open: boolean;
-    onClose?: () => void;
-}
+    idNumber?: string | null;
+};
 
-export default function SuccessModal({ open }: SuccessModalProps) {
+export function SuccessModal({ open, idNumber }: SuccessModalProps) {
     return (
         <Dialog open={open}>
-            <DialogContent className="max-w-xl">
-                <DialogHeader className="flex flex-col items-center gap-4">
-                    <CircleCheck
-                        className="text-[var(--main-color)] dark:text-green-500"
-                        size={60}
-                    />
-                    <DialogTitle className="text-center text-2xl font-medium text-[var(--main-color)] dark:text-green-500">
-                        Student Info Submitted
+            <DialogContent className="sm:max-w-md" showCloseButton={false}>
+                <DialogHeader className="items-center text-center">
+                    <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950">
+                        <CheckCircle2 className="h-9 w-9 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <DialogTitle className="text-xl">
+                        Request Submitted!
                     </DialogTitle>
+                    <DialogDescription className="text-sm">
+                        Your student ID request has been received and is now
+                        being processed.
+                    </DialogDescription>
                 </DialogHeader>
 
-                <DialogDescription className="text-center text-[var(--text-color)] dark:text-[var(--text-color-dark)]">
-                    The updates to your <b>Student ID</b> information have been
-                    successfully saved in our system. Please retain this
-                    confirmation for your records.
-                </DialogDescription>
+                {idNumber && (
+                    <div className="rounded-xl border border-dashed border-border bg-muted/40 p-3 text-center">
+                        <p className="text-xs text-muted-foreground">
+                            ID Number
+                        </p>
+                        <p className="font-mono text-base font-semibold text-foreground">
+                            {idNumber}
+                        </p>
+                    </div>
+                )}
 
-                <p className="text-center text-sm text-[var(--text-color)] dark:text-[var(--text-color-dark)]">
-                    If you have any questions or concerns, feel free to contact
-                    our office through our official Facebook page{' '}
-                    <a
-                        href="https://www.facebook.com/people/CHMSU-ICT-MIS-Support/61561132092022/"
-                        target="_blank"
-                        className="text-[var(--main-color)] underline dark:text-green-500"
-                    >
-                        CHMSU ICT MIS Support
-                    </a>{' '}
-                    or visit us directly during office hours.
+                <p className="text-center text-xs text-muted-foreground">
+                    You&apos;ll be notified once your ID is ready for pickup or
+                    printing. Keep your ID number handy for reference.
                 </p>
 
-                <DialogFooter>
-                    <Button asChild className="mx-auto">
-                        <a href="/">Confirm</a>
+                <DialogFooter className="sm:justify-center">
+                    <Button
+                        onClick={() => (window.location.href = '/')}
+                        className="w-full sm:w-auto"
+                    >
+                        Done
                     </Button>
                 </DialogFooter>
             </DialogContent>

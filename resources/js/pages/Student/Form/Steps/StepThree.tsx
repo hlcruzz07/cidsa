@@ -26,6 +26,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { StudentProps } from '@/lib/custom-types';
+import { FormDataProps } from '@/lib/form-type';
 import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import {
@@ -96,6 +97,48 @@ export default function StepThree({ data, setData, errors }: StepThreeProps) {
             );
     };
 
+    // Once the province list has loaded, if `data.province` already has a
+    // value (e.g. prefilled from an existing submission via
+    // handleUpdateExisting), resolve it against the loaded list so the
+    // combobox button actually displays the name instead of staying on
+    // "Choose an option", and kick off fetching that province's cities.
+    // Guarded by `selectedProvinceId === null` so this only ever runs
+    // once for the prefill — subsequent manual selections go through the
+    // normal onSelect handler below instead.
+    useEffect(() => {
+        if (!data.province || provinces.length === 0) return;
+        if (selectedProvinceId !== null) return;
+
+        const match = provinces.find((p) => p.province_name === data.province);
+
+        if (match) {
+            setSelectedProvinceId(match.province_id);
+            setSelectedProvinceName(match.province_name);
+            fetchCities(match.province_id);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [provinces, data.province]);
+
+    // Same idea for city, once cities have loaded for the resolved
+    // province: resolve `data.city` against the list, display it, and
+    // fetch that city's barangays. `data.barangay` itself needs no
+    // separate resolution step since the barangay button already reads
+    // straight from `data.barangay` — it just needed `selectedCityId` to
+    // become non-null so the popover isn't disabled.
+    useEffect(() => {
+        if (!data.city || cities.length === 0) return;
+        if (selectedCityId !== null) return;
+
+        const match = cities.find((c) => c.municipality_name === data.city);
+
+        if (match) {
+            setSelectedCityId(match.municipality_id);
+            setSelectedCityName(match.municipality_name);
+            fetchBrgys(match.municipality_id);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cities, data.city]);
+
     const resetForProvinceChange = () => {
         setData('city', '');
         setData('barangay', '');
@@ -108,7 +151,7 @@ export default function StepThree({ data, setData, errors }: StepThreeProps) {
     const resetForCityChange = () => setData('barangay', '');
 
     return (
-        <>
+        <div className="space-y-5">
             <Heading
                 title="In-Case of Emergency Contact Information"
                 description="Enter the details of a person we can contact during emergencies."
@@ -421,7 +464,7 @@ export default function StepThree({ data, setData, errors }: StepThreeProps) {
                             </Command>
                         </PopoverContent>
                     </Popover>
-                    <InputError message={errors.cities} />
+                    <InputError message={errors.city} />
                 </div>
                 <div className="flex flex-col gap-2">
                     <Label>
@@ -507,7 +550,7 @@ export default function StepThree({ data, setData, errors }: StepThreeProps) {
                     <InputError message={errors.zip_code} />
                 </div>
             </div>
-        </>
+        </div>
     );
 }
 
@@ -591,7 +634,7 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
                         >
                             {/* Front */}
                             <div
-                                className="col-start-1 row-start-1 overflow-hidden rounded-md border-4 border-[var(--main-color)] bg-white"
+                                className="col-start-1 row-start-1 overflow-hidden rounded-md border-4 border-primary bg-white"
                                 style={{ backfaceVisibility: 'hidden' }}
                             >
                                 <div className="mb-3 flex items-center gap-2 border-b border-gray-300 p-3">
@@ -647,7 +690,7 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
 
                             {/* Back */}
                             <div
-                                className="col-start-1 row-start-1 overflow-hidden rounded-md border-4 border-[var(--main-color)] bg-white"
+                                className="col-start-1 row-start-1 overflow-hidden rounded-md border-4 border-primary bg-white"
                                 style={{
                                     backfaceVisibility: 'hidden',
                                     transform: 'rotateY(180deg)',
@@ -717,7 +760,7 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
                     <button
                         type="button"
                         onClick={() => setIsFlipped((prev) => !prev)}
-                        className="flex w-full items-center justify-center gap-2 rounded-md border border-[var(--main-color)] px-4 py-2 text-sm font-medium text-[var(--main-color)] transition-colors hover:bg-[var(--main-color)]/10"
+                        className="flex w-full items-center justify-center gap-2 rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
                     >
                         <RotateCw className="h-4 w-4" />
                         {isFlipped ? 'View Front' : 'View Back'}

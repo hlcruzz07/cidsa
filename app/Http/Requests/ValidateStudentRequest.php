@@ -23,7 +23,9 @@ class ValidateStudentRequest extends FormRequest
     {
         return [
             'id_number' => 'required|string|max:25',
-            'campus' => 'required|string|max:25|uppercase'
+            'campus' => 'required|string|max:25|uppercase',
+            'lname' => 'required|string|max:25|uppercase',
+            'birthdate' => 'required|date'
         ];
     }
 }

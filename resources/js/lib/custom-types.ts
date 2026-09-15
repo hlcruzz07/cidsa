@@ -35,6 +35,7 @@ export type StudentProps = {
         id: number;
         created_at: string;
     };
+    change_logs?: StudentChangeLog[];
 };
 
 export type UserProps = {
@@ -86,3 +87,12 @@ export type DateRange = {
     from: Date;
     to?: Date;
 };
+export interface StudentChangeLog {
+    id: number;
+    student_id: number;
+    changed_fields: string[];
+    previous_values: Record<string, unknown>;
+    new_values: Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
+}

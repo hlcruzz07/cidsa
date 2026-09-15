@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Student;
 use App\Repositories\StudentRepository;
 use App\Services\GoogleDriveService;
 use Illuminate\Http\Request;
@@ -66,25 +67,6 @@ class StudentApiController extends Controller
         return $data;
     }
 
-    public function filterPaginateAll(Request $request)
-    {
-
-        $filters = $request->only([
-            'search',
-            'from',
-            'to',
-            'sort',
-            'order',
-            'perPage',
-
-        ]);
-
-
-
-        return $this->studentRepository->filterPaginateAll($filters);
-    }
-
-
 
     public function studentsChart(Request $request)
     {
@@ -146,5 +128,29 @@ class StudentApiController extends Controller
     public function image(string $fileId)
     {
         return $this->googleDriveService->getGDriveImage($fileId);
+    }
+
+    public function checkStatus(string $id_number)
+    {
+        $student = Student::where('id_number', $id_number)->first();
+
+        if (!$student) {
+            return response()->json([
+                'status' => 'none',
+            ]);
+        }
+
+
+        if ($student->printed()->exists()) {
+            return response()->json([
+                'status' => 'printed',
+                'student' => $student,
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'unprinted',
+            'student' => $student,
+        ]);
     }
 }

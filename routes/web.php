@@ -1,12 +1,9 @@
 <?php
-
-use App\Http\Controllers\Api\StudentApiController;
 use App\Http\Controllers\CampusRouteController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StudentController;
-use App\Models\Student;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 
 Route::get('/test-databases', function () {
@@ -16,6 +13,7 @@ Route::get('/test-databases', function () {
         'ali_mysql',
         'ft_mysql',
         'bin_mysql',
+        'armvs'
     ];
 
     $results = [];
@@ -39,12 +37,15 @@ Route::get('/test-databases', function () {
     return response()->json($results);
 });
 Route::get('/', [StudentController::class, 'index'])->name('home');
-Route::post('/validate', [StudentController::class, 'validate'])->name('validate.student');
-
+Route::post('/validate/student', [StudentController::class, 'validate'])->name('validate.student');
 Route::get('/form', [StudentController::class, 'studentForm'])->name('student.form');
-Route::post('/student/update', [StudentController::class, 'updateStudent'])->name('student.update');
+Route::post('/student/create', [StudentController::class, 'create'])->name('student.create');
 Route::post('/student/cancel', [StudentController::class, 'cancel'])->name('student.cancel');
 Route::get('/student/checkReplacement', [StudentController::class, 'checkReplacement'])->name('student.check.replacement');
+
+Route::post('/validate/staff', [StaffController::class, 'validate'])->name('validate.staff');
+Route::get('/form/staff', [StaffController::class, 'form'])->name('form.staff');
+Route::post('/staff/store', [StaffController::class, 'store'])->name('store.staff');
 
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('google.callback');
@@ -78,18 +79,14 @@ Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(f
     });
 
 
-
-
     // STUDENT UPDATE ROUTES
     Route::put('/student/update/{id}', [StudentController::class, 'update'])->name('update.student');
-    Route::put('/student/inc/update/{id}', [StudentController::class, 'updateIncompleteStudent'])->name('update.student.inc');
     Route::post('/student/picture/update/{id}', [StudentController::class, 'updateStudentPicture'])->name('update.student.picture');
     Route::put('/student/status/{status}/new/{id_number}/update', [StudentController::class, 'updateStatusNew'])->name('update.student.new.status');
     Route::put('/student/status/{status}/rep/{id}/update', [StudentController::class, 'updateStatusRep'])->name('update.student.rep.status');
 
 
     // IMPORT/EXPORT ROUTES
-    Route::post('/import', [StudentController::class, 'importStudents'])->name('import.students');
     Route::post('/import-printed', [StudentController::class, 'importPrintedStudents'])->name('import.printed.students');
     Route::get('/export/student/{id}', [StudentController::class, 'exportSingleStudent'])->name('export.student');
     Route::post('/export/students', [StudentController::class, 'exportStudents'])->name('export.students');

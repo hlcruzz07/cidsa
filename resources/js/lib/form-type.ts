@@ -1,4 +1,9 @@
-type FormDataProps = {
+export type FormDataProps = {
+    id_number: string;
+    first_name: string;
+    middle_init: string | null;
+    last_name: string;
+    suffix: string | null;
     type: 'new' | 'replacement';
     receipt?: File | null;
     reason?: string | null;

@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useForm } from '@inertiajs/react';
+import { Cloud } from 'lucide-react';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 type ImportPrintedStudentsProps = {
@@ -105,7 +106,9 @@ export function ImportPrintedStudents({
                                     Loading... <Spinner />
                                 </>
                             ) : (
-                                <>Submit</>
+                                <>
+                                    <Cloud /> Import Printed
+                                </>
                             )}
                         </Button>
                     </DialogFooter>

@@ -18,8 +18,8 @@ import {
     resizeWithFaceCentering,
 } from '@/lib/image-remover';
 import { cleanMask } from '@/lib/mask-utils';
+import SignatureModal from '@/pages/Student/Form/Modal/SignatureModal';
 import * as hf from '@huggingface/transformers';
-import { usePage } from '@inertiajs/react';
 import * as imageConversion from 'image-conversion';
 import {
     AsteriskIcon,
@@ -34,33 +34,13 @@ import {
 } from 'lucide-react';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import SignatureModal from '../Modal/SignatureModal';
-
-interface StepTwoProps {
-    data: FormDataProps;
-    setData: (key: string, value: any) => void;
-    setError: (key: string, value: any) => void;
-    errors: Record<string, string>;
-}
-type PageProps = {
-    student: StudentProps;
-};
-type StudentProps = {
-    id_number: string;
-    first_name: string;
-    middle_init: string | null;
-    last_name: string;
-};
+import { PageProps, StaffFormData } from '../types';
 
 const MODEL_ID = 'briaai/RMBG-1.4';
-const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
-const GUIDELINES_DISMISSED_KEY = 'student-photo-guidelines-dismissed';
-
-type LoadedModel = {
-    model: any;
-    processor: any;
-};
+const GUIDELINES_DISMISSED_KEY = 'staff-photo-guidelines-dismissed';
+type LoadedModel = { model: any; processor: any };
 
 const GUIDELINES = [
     {
@@ -85,62 +65,48 @@ const GUIDELINES = [
     },
 ];
 
+interface StepTwoProps {
+    data: StaffFormData;
+    setData: (k: keyof StaffFormData, v: any) => void;
+    errors: Record<string, string>;
+    staff: PageProps['staff'];
+}
+
 export default function StepTwo({
     data,
     setData,
     errors,
-    setError,
+    staff,
 }: StepTwoProps) {
-    const { student } = usePage<PageProps>().props;
     const [previewUrl, setPreviewUrl] = useState('/placeholder.jpg');
-    const [isBgRemoving, setIsBgRemoving] = useState<boolean>(false);
-    const [progress, setProgress] = useState<number>(0);
+    const [isBgRemoving, setIsBgRemoving] = useState(false);
+    const [progress, setProgress] = useState(0);
     const [guidelinesOpen, setGuidelinesOpen] = useState(false);
     const [dontShowAgain, setDontShowAgain] = useState(false);
-
-    // Holds the loaded model/processor once ready, so we don't re-download
-    // or re-initialize them every time the user picks a file.
     const modelRef = useRef<LoadedModel | null>(null);
-    // Holds the in-flight loading promise so multiple callers (preload +
-    // an eager file pick) don't trigger duplicate downloads.
     const modelLoadingRef = useRef<Promise<LoadedModel> | null>(null);
 
     const getModel = (): Promise<LoadedModel> => {
-        if (modelRef.current) {
-            return Promise.resolve(modelRef.current);
-        }
-
+        if (modelRef.current) return Promise.resolve(modelRef.current);
         if (!modelLoadingRef.current) {
             modelLoadingRef.current = (async () => {
                 hf.env.allowRemoteModels = false;
                 hf.env.allowLocalModels = true;
                 hf.env.localModelPath = `${window.location.origin}/models/`;
-
                 const [model, processor] = await Promise.all([
-                    hf.AutoModel.from_pretrained(MODEL_ID, {
-                        dtype: 'q8', // or 'fp16' / 'uint8' — test which stays accurate enough
-                    }),
+                    hf.AutoModel.from_pretrained(MODEL_ID, { dtype: 'q8' }),
                     hf.AutoProcessor.from_pretrained(MODEL_ID),
                 ]);
-
                 const loaded = { model, processor };
                 modelRef.current = loaded;
                 return loaded;
             })();
         }
-
         return modelLoadingRef.current;
     };
 
-    // Kick off the model download as soon as the step mounts, instead of
-    // waiting for the user to pick a file. This overlaps the ~download
-    // time with the time they spend reading guidelines / filling fields.
     useEffect(() => {
-        getModel().catch((err) => {
-            // Don't surface an error here — if preloading fails, we'll
-            // just retry (and show the real error) inside handleFileChange.
-            console.error('Model preload failed:', err);
-        });
+        getModel().catch((err) => console.error('Model preload failed:', err));
     }, []);
 
     // Show guidelines automatically on entering this step,
@@ -153,26 +119,18 @@ export default function StepTwo({
     }, []);
 
     useEffect(() => {
-        if (!data.picture) {
+        if (!data.picture || typeof data.picture === 'string') {
             setPreviewUrl('/placeholder.jpg');
             return;
         }
-
         const url = URL.createObjectURL(data.picture);
         setPreviewUrl(url);
-
-        return () => {
-            URL.revokeObjectURL(url);
-        };
+        return () => URL.revokeObjectURL(url);
     }, [data.picture]);
 
     useEffect(() => {
-        if (isBgRemoving) {
-            document.body.classList.add('overflow-hidden');
-        } else {
-            document.body.classList.remove('overflow-hidden');
-        }
-
+        if (isBgRemoving) document.body.classList.add('overflow-hidden');
+        else document.body.classList.remove('overflow-hidden');
         return () => document.body.classList.remove('overflow-hidden');
     }, [isBgRemoving]);
 
@@ -186,98 +144,53 @@ export default function StepTwo({
     const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         if (!ALLOWED_MIME_TYPES.includes(file.type)) {
             toast.error('Invalid file type. Please upload a JPG or PNG image.');
-            setError(
-                'picture',
-                'Invalid file type. Please upload a JPG or PNG image.',
-            );
             e.target.value = '';
             return;
         }
-
         if (file.size > MAX_FILE_SIZE_BYTES) {
             toast.error('Image is too large. Please upload a photo under 2MB.');
-            setError(
-                'picture',
-                'Image is too large. Please upload a photo under 2MB.',
-            );
-            e.target.value = ''; // reset so re-picking the same file still fires onChange
+            e.target.value = '';
             return;
         }
-
         setIsBgRemoving(true);
         setProgress(0);
-        setError('picture', null);
-
         await new Promise((resolve) => setTimeout(resolve, 0));
-
         let imageSrc = '';
-
         try {
-            // If preloading already finished, this resolves instantly.
-            // If not, we wait here instead of downloading a second time.
             setProgress(10);
-
             const { model, processor } = await getModel();
-
             setProgress(45);
-
             imageSrc = URL.createObjectURL(file);
-
             const image = await hf.RawImage.fromURL(imageSrc);
-
             const inputs = await processor(image);
-
             setProgress(60);
-
-            const outputs = await model({
-                input: inputs.pixel_values,
-            });
-
+            const outputs = await model({ input: inputs.pixel_values });
             const outputTensor =
                 (outputs as any).output ??
                 (outputs as any).logits ??
                 (outputs as any).pred_masks ??
                 Object.values(outputs)[0];
-
-            if (!outputTensor) {
-                throw new Error('No output tensor found');
-            }
-
+            if (!outputTensor) throw new Error('No output tensor found');
             const dims = outputTensor.dims;
-
-            if (!dims || dims.length !== 4) {
+            if (!dims || dims.length !== 4)
                 throw new Error(
                     `Unexpected tensor shape: ${JSON.stringify(dims)}`,
                 );
-            }
-
             const [, , height, width] = dims;
-
             const tensorData = Array.from(outputTensor.data as Float32Array);
-
-            let min = Infinity;
-            let max = -Infinity;
-
-            for (const value of tensorData) {
-                if (value < min) min = value;
-                if (value > max) max = value;
+            let min = Infinity,
+                max = -Infinity;
+            for (const v of tensorData) {
+                if (v < min) min = v;
+                if (v > max) max = v;
             }
-
             const maskCanvas = document.createElement('canvas');
             maskCanvas.width = width;
             maskCanvas.height = height;
-
-            const maskCtx = maskCanvas.getContext('2d');
-
-            if (!maskCtx) {
-                throw new Error('Failed to create mask canvas');
-            }
-
+            const maskCtx = maskCanvas.getContext('2d')!;
             const rawMaskData = maskCtx.createImageData(width, height);
-
             for (let i = 0; i < tensorData.length; i++) {
                 const normalized = ((tensorData[i] - min) / (max - min)) * 255;
                 const alpha = Math.max(
@@ -289,32 +202,20 @@ export default function StepTwo({
                 rawMaskData.data[i * 4 + 2] = 255;
                 rawMaskData.data[i * 4 + 3] = alpha;
             }
-
-            // ✅ Clean the mask: threshold speckles, erode fringe, feather edges
             const cleanedMask = cleanMask(rawMaskData, width, height, {
                 threshold: 100,
-                closeRadius: 4, // ← new param, fills interior dots
+                closeRadius: 4,
                 erodeRadius: 1,
                 blurRadius: 2,
             });
             maskCtx.putImageData(cleanedMask, 0, 0);
-
             setProgress(70);
-
             const canvas = document.createElement('canvas');
             canvas.width = image.width;
             canvas.height = image.height;
-
-            const ctx = canvas.getContext('2d');
-
-            if (!ctx) {
-                throw new Error('Failed to create output canvas');
-            }
-
+            const ctx = canvas.getContext('2d')!;
             ctx.drawImage(image.toCanvas(), 0, 0);
-
             ctx.globalCompositeOperation = 'destination-in';
-
             ctx.drawImage(
                 maskCanvas,
                 0,
@@ -326,33 +227,22 @@ export default function StepTwo({
                 image.width,
                 image.height,
             );
-
             setProgress(80);
-
             const removedBlob: Blob = await new Promise((resolve, reject) => {
                 canvas.toBlob((blob) => {
-                    if (blob) {
-                        resolve(blob);
-                    } else {
-                        reject(new Error('Failed to export transparent image'));
-                    }
+                    if (blob) resolve(blob);
+                    else reject(new Error('Failed to export'));
                 }, 'image/png');
             });
-
             setProgress(85);
-
             const whiteBgBlob = await applyWhiteBackground(removedBlob);
-
             setProgress(90);
-
             const centeredBlob = await resizeWithFaceCentering(
                 whiteBgBlob,
                 320,
                 378,
             );
-
             setProgress(95);
-
             const finalBlob: Blob = await (imageConversion.compress as any)(
                 centeredBlob,
                 {
@@ -360,61 +250,43 @@ export default function StepTwo({
                     quality: 0.7,
                 },
             );
-
-            const filename = `${student.id_number}.jpg`;
-
             setData(
                 'picture',
-                new File([finalBlob], filename, {
+                new File([finalBlob], `${staff.digital_id}.jpg`, {
                     type: 'image/jpeg',
                 }),
             );
-
             setProgress(100);
-
             toast.success('Image processed successfully');
         } catch (err) {
             console.error('Background removal failed:', err);
-
             toast.error('Failed to process image. Please try again.');
-
-            setData('picture', null);
+            setData('picture', '');
         } finally {
-            if (imageSrc) {
-                URL.revokeObjectURL(imageSrc);
-            }
-
+            if (imageSrc) URL.revokeObjectURL(imageSrc);
             setIsBgRemoving(false);
             setProgress(0);
         }
     };
-    const handleSaveSignature = (file: File) => {
-        setData('e_signature', file);
-    };
 
     return (
-        <div className="space-y-5">
+        <>
             {isBgRemoving && (
                 <div className="fixed inset-0 z-100 flex h-screen w-screen items-center justify-center bg-black/70 backdrop-blur-sm">
                     <div className="relative flex flex-col items-center rounded-3xl border border-white/10 bg-white/5 px-10 py-8 shadow-2xl backdrop-blur-md">
                         <div className="relative flex h-32 w-32 items-center justify-center">
-                            {/* Animated Ring */}
                             <div className="absolute inset-0">
                                 <div className="h-full w-full animate-spin rounded-full border-4 border-white/20 border-t-green-500" />
                             </div>
-
-                            {/* Logo */}
                             <img
                                 src="/logo.webp"
                                 alt="CHMSU Logo"
-                                className="animate-float relative z-10 h-20 w-20"
+                                className="relative z-10 h-20 w-20"
                                 loading="eager"
                             />
                         </div>
-
-                        {/* Text */}
                         <div className="mt-6 text-center">
-                            <h1 className="text-lg font-semibold text-white">
+                            <h2 className="text-lg font-semibold text-white">
                                 Processing Picture
                                 <span className="ms-2 inline-flex">
                                     <span className="animate-bounce">.</span>
@@ -431,17 +303,13 @@ export default function StepTwo({
                                         .
                                     </span>
                                 </span>
-                            </h1>
-
+                            </h2>
                             <p className="mt-2 text-sm text-gray-300">
                                 Please wait while we prepare your image
                             </p>
                         </div>
-
-                        {/* Progress */}
                         <div className="mt-6 w-72">
                             <Progress value={progress} className="h-3" />
-
                             <div className="mt-2 flex justify-between text-sm text-white">
                                 <span>Uploading</span>
                                 <span>{progress}%</span>
@@ -524,13 +392,11 @@ export default function StepTwo({
             </Dialog>
 
             <div className="space-y-8">
-                {/* Upload Section */}
                 <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                     <div className="mb-4 flex items-center gap-2">
                         <ImageIcon className="h-5 w-5 text-primary" />
                         <h2 className="text-lg font-semibold">Photo Preview</h2>
                     </div>
-
                     <div className="overflow-hidden rounded-2xl border border-dashed border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-900">
                         <img
                             src={previewUrl}
@@ -538,37 +404,32 @@ export default function StepTwo({
                             className="h-auto max-h-[500px] w-full object-contain"
                         />
                     </div>
-
                     <Input
                         type="file"
                         name="picture"
-                        id="picture"
+                        id="staff-picture"
                         accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                         onChange={handleFileChange}
                         className="hidden"
                     />
-
                     <Button
                         type="button"
                         className="mt-5 h-12 w-full rounded-xl text-base font-medium"
                     >
                         <Label
-                            htmlFor="picture"
+                            htmlFor="staff-picture"
                             className="flex h-full w-full cursor-pointer items-center justify-center gap-2"
                         >
                             <ImageUpIcon className="h-5 w-5" />
                             Upload ID Picture
                         </Label>
                     </Button>
-
                     <p className="mt-2 text-center text-xs text-gray-400">
                         JPG or PNG, max 2MB.
                     </p>
-
                     <InputError message={errors.picture} className="mt-3" />
                 </div>
 
-                {/* Signature Section */}
                 <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                     <div className="flex items-center justify-between">
                         <div>
@@ -580,15 +441,14 @@ export default function StepTwo({
                                 Draw or upload your signature.
                             </p>
                         </div>
-
                         <SignatureModal
-                            idNumber={student.id_number}
-                            onSave={handleSaveSignature}
+                            idNumber={staff.digital_id}
+                            onSave={(file) => setData('e_signature', file)}
                         />
                     </div>
-
                     <div className="mt-5 flex h-64 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-white">
-                        {data.e_signature ? (
+                        {data.e_signature &&
+                        typeof data.e_signature !== 'string' ? (
                             <img
                                 src={URL.createObjectURL(data.e_signature)}
                                 alt="Signature Preview"
@@ -596,19 +456,18 @@ export default function StepTwo({
                             />
                         ) : (
                             <div className="text-center">
-                                <h1 className="text-xl font-semibold tracking-widest text-gray-400 italic">
+                                <h2 className="text-xl font-semibold tracking-widest text-gray-400 italic">
                                     Signature Preview
-                                </h1>
+                                </h2>
                                 <p className="mt-2 text-sm text-gray-400">
                                     No signature uploaded yet
                                 </p>
                             </div>
                         )}
                     </div>
-
                     <InputError message={errors.e_signature} className="mt-3" />
                 </div>
             </div>
-        </div>
+        </>
     );
 }

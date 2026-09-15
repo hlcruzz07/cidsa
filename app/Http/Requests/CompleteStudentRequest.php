@@ -8,29 +8,9 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 
 class CompleteStudentRequest extends FormRequest
 {
-    private ?Student $validatedStudent = null;
-
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return session()->has('validated_student_id');
-    }
-
-    protected function failedAuthorization()
-    {
-        throw new HttpResponseException(
-            redirect()->route('home')->with('error', 'Session Expired')
-        );
-    }
-
-    public function student(): Student
-    {
-        return $this->validatedStudent ??= Student::where(
-            'id_number',
-            session('validated_student_id')
-        )->firstOrFail();
+        return true;
     }
 
     /**
@@ -42,18 +22,21 @@ class CompleteStudentRequest extends FormRequest
     {
 
         return [
-
+            'id_number' => 'required|string|max:25',
+            'first_name' => 'required|string|max:25',
+            'middle_init' => 'nullable|string',
+            'last_name' => 'required|string|max:25',
+            'suffix' => 'nullable|string',
             'type' => [
                 'required',
                 'in:new,replacement',
                 function ($attribute, $value, $fail) {
-                    $student = $this->student();
+                    $student = Student::where('id_number', request('id_number'))->first();
 
                     if (!$student) {
                         return;
                     }
 
-                    // NEW application
                     if ($value === 'new') {
 
                         if ($student->printed()->exists()) {
@@ -64,11 +47,6 @@ class CompleteStudentRequest extends FormRequest
                             return;
                         }
 
-                        if ($student->is_completed) {
-                            $fail(
-                                'You have already submitted your ID application. Your ID is currently being processed for printing. Please wait for the official announcement regarding the release schedule.'
-                            );
-                        }
                     }
 
                     // REPLACEMENT application
@@ -99,7 +77,11 @@ class CompleteStudentRequest extends FormRequest
             'emergency_first_name' => [
                 'required',
                 function ($attribute, $value, $fail) {
-                    $student = $this->student();
+                    $student = Student::where('id_number', request('id_number'))->first();
+
+                    if (!$student) {
+                        return;
+                    }
 
                     $studentFirst = strtoupper(trim($student->first_name));
                     $studentLast = strtoupper(trim($student->last_name));
@@ -109,20 +91,19 @@ class CompleteStudentRequest extends FormRequest
                     $emergencyLast = strtoupper(trim($this->emergency_last_name));
                     $emergencySuffix = strtoupper(trim($this->emergency_suffix ?? ''));
 
-                    // Same first + last name?
                     if (
                         $emergencyFirst === $studentFirst &&
                         $emergencyLast === $studentLast
                     ) {
-                        // Allow only JR (student) ↔ SR (emergency)
                         if (!($studentSuffix === 'JR' && $emergencySuffix === 'SR')) {
                             $fail('Emergency contact name cannot be the same as the student.');
                         }
                     }
                 },
+                'string'
             ],
             'emergency_middle_init' => 'nullable|alpha|size:1',
-            'emergency_last_name' => 'required',
+            'emergency_last_name' => 'required|string',
             'emergency_suffix' => 'nullable',
 
             'relationship' => 'required',
@@ -151,9 +132,11 @@ class CompleteStudentRequest extends FormRequest
     {
         return [
             'emergency_first_name.required' => 'Emergency contact first name is required.',
+            'emergency_first_name.string' => 'Emergency contact first name must contain letters only.',
             'emergency_middle_init.alpha' => 'Emergency middle initial must contain letters only.',
             'emergency_middle_init.size' => 'Emergency middle initial must be exactly 1 letter.',
             'emergency_last_name.required' => 'Emergency contact last name is required.',
+            'emergency_last_name.string' => 'Emergency contact last name must contain letters only.',
 
             'relationship.required' => 'Please enter the relationship of the emergency contact.',
 

@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\PrintedStudents;
 use App\Models\Student;
+use App\Models\StudentChangeLog;
 use App\Models\StudentReplacement;
 use App\Services\GoogleDriveService;
 use Carbon\Carbon;
@@ -49,7 +50,7 @@ class StudentRepository
         return $this->model->findOrFail((int) $id);
     }
 
-    public function getStudentById(string $id_number, string $campus): ?array
+    public function getStudentById(string $id_number, string $campus, string $lname, string $birthdate): ?array
     {
         $connection = match (strtolower($campus)) {
             'talisay' => 'tal_mysql',
@@ -65,14 +66,28 @@ class StudentRepository
 
         $student = DB::connection($connection)
             ->table('student')
+            ->join('student_load', 'student.student_id', '=', 'student_load.student_id')
+            ->join('student_user', 'student_user.student_id', '=', 'student.student_id')
+            ->join('class', 'student_load.class_code', '=', 'class.class_code')
+            ->join('section', 'class.section_id', '=', 'section.section_id')
+            ->join('program', 'section.program_code', '=', 'program.program_code')
+            ->leftJoin('curriculum_major', 'student.curriculum_major_id', '=', 'curriculum_major.curriculum_major_id')
+            ->where('class.school_year', now()->year)
+            ->where('student.student_id', $id_number)
+            ->where('student.student_lastname', $lname)
+            ->where('student.birthdate', $birthdate)
             ->select(
-                'student_id',
-                'student_firstname',
-                'student_middlename',
-                'student_lastname'
+                'student.student_id',
+                'student.student_lastname',
+                'student.student_middlename',
+                'student.student_firstname',
+                'section.yearlevel',
+                'section.program_code',
+                'program.program_title',
             )
-            ->where('student_id', $id_number)
+            ->orderByDesc('section.yearlevel')
             ->first();
+
 
         if (!$student) {
             return null;
@@ -87,12 +102,35 @@ class StudentRepository
         }
 
         return [
-            'student_id' => $student->student_id,
-            'student_firstname' => $firstName,
-            'student_middlename' => $student->student_middlename,
-            'student_lastname' => $student->student_lastname,
+            'id_number' => $student->student_id,
+            'first_name' => $firstName,
+            'middle_init' => $student->student_middlename
+                ? strtoupper(substr($student->student_middlename, 0, 1))
+                : null,
+            'last_name' => $student->student_lastname,
             'suffix' => $suffix,
+            'year' => $this->formatYearLevel($student->yearlevel),
+            'campus' => ucwords(strtolower($campus)),
+            'program' => $student->program_title,
         ];
+    }
+
+    protected function formatYearLevel(string $yearLevel): string
+    {
+        switch ($yearLevel) {
+            case '1':
+                return '1st Year';
+            case '2':
+                return '2nd Year';
+            case '3':
+                return '3rd Year';
+            case '4':
+                return '4th Year';
+            case '5':
+                return '5th Year';
+            default:
+                return 'Unknown';
+        }
     }
 
     public function getStudetsByIds(array $ids)
@@ -237,7 +275,7 @@ class StudentRepository
 
         return $query
             ->withExists('printed')
-            ->with(['printed', 'replacements'])
+            ->with(['printed', 'replacements', 'changeLogs'])
             ->paginate($perPage);
     }
 
@@ -452,13 +490,23 @@ class StudentRepository
         return $result;
     }
 
-    public function updateLoadedStudent(Student $student, array $data): Student
+    public function updateOrCreate(array $data, string $id_number): Student
     {
-        $student->update($data);
+        $student = $this->model->firstOrNew(['id_number' => $id_number]);
+        $existed = $student->exists;
+
+        $originalBeforeSave = $existed ? $student->getOriginal() : [];
+
+        $student->fill($data);
+        $student->save();
+
+        if ($existed) {
+            $log = StudentChangeLog::fromChangedStudent($student, $originalBeforeSave);
+            $log?->save();
+        }
 
         return $student;
     }
-
 
 
 
@@ -558,7 +606,6 @@ class StudentRepository
     {
         $student = $this->model->findOrFail($id);
 
-        // Disable timestamps so updated_at won't be modified
         $student->timestamps = false;
 
         $student->update($data);
@@ -566,26 +613,7 @@ class StudentRepository
         return $student;
     }
 
-    public function updateIncompleteStudent(array $data, int $id)
-    {
-        $student = $this->model->findOrFail($id);
-
-        // Disable automatic timestamps for this operation
-        $student->timestamps = false;
-
-        $student->update([
-            'first_name' => $data['first_name'],
-            'middle_init' => $data['middle_init'],
-            'last_name' => $data['last_name'],
-            'suffix' => $data['suffix'],
-            'updated_at' => null, // now this will be stored as null
-        ]);
-
-        // No need to call save() again
-        return $student;
-    }
-
-    public function countStudentUpdatesPerCampus($timeRange)
+    public function countStudentUpdatesPerCampus(string $timeRange)
     {
         $now = Carbon::now();
 

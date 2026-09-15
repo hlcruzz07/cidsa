@@ -29,7 +29,7 @@ export default function Index() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Campus - ${campus}`} />
-            <CampusStudentManager campus={campus} counts={counts} />
+            <CampusStudentManager campus={campus} />
         </AppLayout>
     );
 }

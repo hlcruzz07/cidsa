@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Illuminate\Database\QueryException;
 use PDOException;
@@ -23,18 +24,15 @@ use PDOException;
 class StudentController extends Controller
 {
 
-    protected $students;
 
-    protected $googleDriveService;
 
-    public function __construct(StudentRepository $studentRepository, GoogleDriveService $googleDriveService)
+    public function __construct(protected StudentRepository $repo, protected GoogleDriveService $googleDriveService)
     {
-        $this->students = $studentRepository;
-        $this->googleDriveService = $googleDriveService;
+
     }
     public function index()
     {
-        session()->forget('validated_student_id');
+        session()->forget('student');
 
         return Inertia::render('Student/Index');
     }
@@ -43,43 +41,34 @@ class StudentController extends Controller
     public function validate(ValidateStudentRequest $request)
     {
         try {
-            $student = $this->students->getStudentById(
+            $student = $this->repo->getStudentById(
                 $request->id_number,
-                $request->campus
+                $request->campus,
+                $request->lname,
+                $request->birthdate,
             );
         } catch (PDOException | QueryException $e) {
             report($e);
 
             return back()->with(
                 'error',
-                'Unable to connect to the campus database. Please try again later.'
+                'Database connection failed. Please try again later.'
             );
         }
 
         if (!$student) {
-            return back()->with('error', 'Student not found.');
+            return back()->with('error', 'Student not found. Please check your student information.');
         }
 
-        $storeStudent = Student::updateOrCreate([
-            'id_number' => $student['student_id'],
-        ], [
-            'first_name' => $student['student_firstname'],
-            'middle_init' => $student['student_middlename'] !== '' ? mb_substr($student['student_middlename'], 0, 1) : null,
-            'last_name' => $student['student_lastname'],
-            'suffix' => $student['suffix'],
-            'created_at' => now(),
-            'updated_at' => null
-        ]);
-
         session([
-            'validated_student_id' => $storeStudent->id_number,
+            'student' => $student,
         ]);
 
         return redirect()->route('student.form');
     }
 
 
-    public function updateStudent(CompleteStudentRequest $request)
+    public function create(CompleteStudentRequest $request)
     {
         try {
             $data = $request->except([
@@ -88,38 +77,36 @@ class StudentController extends Controller
                 'hasMajor',
             ]);
 
-            $student = $request->student();
-
             if ($request->hasFile('picture')) {
-                $uploaded = $this->students->storeFile(
+                $uploaded = $this->repo->storeFile(
                     $request->file('picture'),
                     $data['campus'],
-                    $this->students->paths[$data['campus']]['picture']
+                    $this->repo->paths[$data['campus']]['picture']
                 );
                 $data['picture'] = $uploaded['id'];
             }
 
-
             if ($request->hasFile('e_signature')) {
-                $uploaded = $this->students->storeFile(
+                $uploaded = $this->repo->storeFile(
                     $request->file('e_signature'),
                     $data['campus'],
-                    $this->students->paths[$data['campus']]['e_signature']
+                    $this->repo->paths[$data['campus']]['e_signature']
                 );
                 $data['e_signature'] = $uploaded['id'];
             }
 
             $data['is_completed'] = true;
-            DB::transaction(function () use ($request, &$student, $data) {
 
-                $student = $this->students->updateLoadedStudent($student, $data);
+            DB::transaction(function () use ($request, $data) {
+
+                $student = $this->repo->updateOrCreate($data, $data['id_number']);
 
                 if ($request->type === 'replacement') {
 
-                    $uploadedReceipt = $this->students->storeFile(
+                    $uploadedReceipt = $this->repo->storeFile(
                         $request->file('receipt'),
                         $data['campus'],
-                        $this->students->paths[$data['campus']]['receipt']
+                        $this->repo->paths[$data['campus']]['receipt']
                     );
 
                     StudentReplacement::create([
@@ -135,30 +122,39 @@ class StudentController extends Controller
                 }
             });
 
-            session()->forget('validated_student_id');
+            session()->forget('student');
 
-            return Inertia::render('Student/Index', ['success' => true]);
+            Log::info('Successful submission', ['id_number' => $data['id_number']]);
 
-        } catch (Exception $e) {
-            return back()->with('error', 'Something went wrong, please try again' . $e->getMessage());
+            return redirect()->route('home')->with([
+                'id_request_success' => true,
+                'id_number' => $data['id_number'],
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('Student submission failed', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return back()->with('error', 'Something went wrong, please try again.');
         }
     }
 
     public function cancel()
     {
-        session()->forget('validated_student_id');
+        session()->forget('student');
         return redirect()->route('home');
     }
 
     public function studentForm()
     {
-        if (!session()->has('validated_student_id')) {
+        if (!session()->has('student')) {
             return redirect()->route('home')->with('error', 'Session Expired');
         }
 
-        $student = $this->students->findStudentByIdNumber(
-            session('validated_student_id')
-        );
+        $student = session('student');
 
         return Inertia::render('Student/Form/Index', [
             'student' => $student
@@ -167,9 +163,7 @@ class StudentController extends Controller
 
     public function checkReplacement()
     {
-        $student = $this->students->findStudentByIdNumber(
-            session('validated_student_id')
-        );
+        $student = $this->repo->find(session('student')['student_id']);
 
         return $student->replacements()->with('student')
             ->where('is_printed', true)
@@ -177,103 +171,6 @@ class StudentController extends Controller
             ->first() ?? null;
     }
 
-
-    public function importStudents(Request $request)
-    {
-        $request->validate([
-            'students_file' => 'required|file|mimes:csv',
-        ]);
-
-        $file = $request->file('students_file');
-        $now = Carbon::now();
-
-        $handle = fopen($file->getRealPath(), 'r');
-
-        // Read header safely
-        $header = fgetcsv($handle);
-
-        $students = [];
-        $rowNumber = 1;
-
-        $suffixes = ['JR', 'SR', 'II', 'III', 'IV', 'V'];
-
-        while (($row = fgetcsv($handle)) !== false) {
-            $rowNumber++;
-
-            // Normalize row
-            $row = array_map(fn($v) => is_string($v) ? trim($v) : $v, $row);
-
-            // Required fields only (DO NOT rely on column count)
-            $studentId = $row[0] ?? '';
-            $firstName = $row[1] ?? '';
-            $middleName = $row[2] ?? '';
-
-            if ($studentId === '' || $firstName === '') {
-                continue;
-            }
-
-            // Join remaining columns as LAST NAME
-            $lastNameRaw = trim(implode(' ', array_slice($row, 3)));
-
-            // Uppercase
-            $firstName = mb_strtoupper($firstName, 'UTF-8');
-            $middleName = mb_strtoupper($middleName, 'UTF-8');
-            $lastNameRaw = mb_strtoupper($lastNameRaw, 'UTF-8');
-
-            // Remove punctuation
-            $firstName = preg_replace('/[,.]+/', ' ', $firstName);
-            $middleName = preg_replace('/[,.]+/', ' ', $middleName);
-            $lastNameRaw = preg_replace('/[,.]+/', ' ', $lastNameRaw);
-
-            // Normalize spaces
-            $firstName = preg_replace('/\s+/', ' ', trim($firstName));
-            $middleName = preg_replace('/\s+/', ' ', trim($middleName));
-            $lastNameRaw = preg_replace('/\s+/', ' ', trim($lastNameRaw));
-
-            $suffix = null;
-
-            /**
-             * Detect suffix in FIRST NAME
-             */
-            $firstParts = explode(' ', $firstName);
-            if (count($firstParts) > 1 && in_array(end($firstParts), $suffixes, true)) {
-                $suffix = array_pop($firstParts);
-                $firstName = implode(' ', $firstParts);
-            }
-
-            /**
-             * Detect suffix in LAST NAME
-             */
-            $lastParts = explode(' ', $lastNameRaw);
-            if (count($lastParts) > 1 && in_array(end($lastParts), $suffixes, true)) {
-                $suffix = end($lastParts);
-                array_pop($lastParts);
-            }
-
-            $lastName = trim(implode(' ', $lastParts));
-
-            // Final validation
-            if ($firstName === '' || $lastName === '') {
-                continue;
-            }
-
-            $students[] = [
-                'id_number' => $studentId,
-                'first_name' => $firstName,
-                'middle_init' => $middleName !== '' ? mb_substr($middleName, 0, 1) : null,
-                'last_name' => $lastName,
-                'suffix' => $suffix,
-                'created_at' => $now,
-                'updated_at' => null, // explicitly ignored
-            ];
-        }
-
-        fclose($handle);
-
-        $result = $this->students->create($students);
-
-        return redirect()->back()->with('success', "Students imported: " . $result['to_insert']);
-    }
 
     public function importPrintedStudents(Request $request)
     {
@@ -326,7 +223,7 @@ class StudentController extends Controller
     {
         $student = $request->validated();
 
-        $this->students->addStudent($student);
+        $this->repo->addStudent($student);
 
 
         return redirect()->back()->with('success', 'Student ' . $student['id_number'] . ' added.');
@@ -334,7 +231,7 @@ class StudentController extends Controller
 
     public function edit(int $id)
     {
-        $student = $this->students->find($id);
+        $student = $this->repo->find($id);
 
         $student['picture'] = $student['picture'] ? route('gdrive.image', [
             'fileId' => $student['picture']
@@ -351,7 +248,7 @@ class StudentController extends Controller
     }
     public function view(int $id)
     {
-        $student = $this->students->find($id);
+        $student = $this->repo->find($id);
 
         $student['picture'] = $student['picture'] ? route('gdrive.image', [
             'fileId' => $student['picture']
@@ -373,46 +270,22 @@ class StudentController extends Controller
             'hasMajor',
         ]);
 
-        $this->students->updateSingleStudent($data, $id);
+        $this->repo->updateSingleStudent($data, $id);
 
         return back()->with('success', 'Student information updated');
     }
 
-    public function updateIncompleteStudent(Request $request, $id)
-    {
-        $data = $request->validate([
-            'first_name' => 'required|string|max:25',
-            'middle_init' => 'nullable|alpha|size:1',
-            'last_name' => 'required|string|max:25',
-            'suffix' => 'nullable|string',
-        ]);
-
-        $this->students->updateIncompleteStudent($data, $id);
-
-        return back()->with('success', 'Student basic information updated');
-    }
-
-    // public function updateStudentPicture(Request $request, $id)
-    // {
-    //     $data = $request->validate([
-    //         'picture' => 'required|mimes:jpg|max:2048',
-    //     ]);
-
-    //     $this->students->updateStudentPicture($data, $id);
-
-    //     return back()->with('success', 'Student picture updated');
-    // }
 
     public function updateStatusNew(string $status, string $id_number)
     {
 
         switch ($status) {
             case 'pending':
-                $this->students->setPendingForNew($id_number);
+                $this->repo->setPendingForNew($id_number);
 
                 return back()->with('success', 'Student status updated to ' . $status . ' successfully!');
             case 'printed':
-                $this->students->setPrintedForNew($id_number);
+                $this->repo->setPrintedForNew($id_number);
                 return back()->with('success', 'Student status updated to ' . $status . ' successfully!');
             default:
                 return back()->with('error', 'Invalid status.');
@@ -424,11 +297,11 @@ class StudentController extends Controller
 
         switch ($status) {
             case 'pending':
-                $this->students->setPendingForReplacement($id);
+                $this->repo->setPendingForReplacement($id);
 
                 return back()->with('success', 'Student status updated to ' . $status . ' successfully!');
             case 'printed':
-                $this->students->setPrintedForReplacement($id);
+                $this->repo->setPrintedForReplacement($id);
                 return back()->with('success', 'Student status updated to ' . $status . ' successfully!');
             default:
                 return back()->with('error', 'Invalid status.');

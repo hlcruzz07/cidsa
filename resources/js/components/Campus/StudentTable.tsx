@@ -4,22 +4,27 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuSeparator,
+    DropdownMenuLabel,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useInitials } from '@/hooks/use-initials';
 import { StudentProps } from '@/lib/custom-types';
-import { Link, router } from '@inertiajs/react';
+import { ChangeLogsModal } from '@/pages/Campus/Modal/ChangeLogsModal';
+import { StudentEditModal } from '@/pages/Campus/Modal/StudentEditModal';
+import { router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import {
     CheckCheckIcon,
     ClockIcon,
-    EyeIcon,
-    PencilIcon,
+    EllipsisIcon,
+    HistoryIcon,
+    PrinterCheck,
     PrinterIcon,
-    SlidersHorizontalIcon,
-    UserCogIcon,
+    UserSearch,
 } from 'lucide-react';
+import { useState } from 'react';
 import { route } from 'ziggy-js';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 interface StudentTableProps {
     students: StudentProps[];
@@ -50,15 +55,12 @@ export function StudentTable({
 }: StudentTableProps) {
     const headers = [
         '#',
-        'ID Number',
         'Name',
-        'Campus',
-        'College',
-        'Program',
+        'Campus / Department',
+        'Program / Major',
         'Year Level',
         'Status',
-        'Date Updated',
-        'Date Printed',
+        'Date',
         'Action',
     ];
 
@@ -77,6 +79,8 @@ export function StudentTable({
         );
     }
 
+    const getInitials = useInitials();
+
     const handleStatus = (status: 'pending' | 'printed', id_number: string) => {
         router.put(
             route('update.student.new.status', {
@@ -94,8 +98,32 @@ export function StudentTable({
         );
     };
 
+    const [selectedStudent, setSelectedStudent] = useState<StudentProps | null>(
+        null,
+    );
+    const [editOpen, setEditOpen] = useState(false);
+
+    // Change-logs modal state kept separate from selectedStudent/editOpen
+    // above so opening one doesn't affect the other — a row action can
+    // trigger either modal independently.
+    const [logsStudent, setLogsStudent] = useState<StudentProps | null>(null);
+    const [logsOpen, setLogsOpen] = useState(false);
+
     return (
         <>
+            <StudentEditModal
+                student={selectedStudent}
+                open={editOpen}
+                onOpenChange={setEditOpen}
+                onSuccess={onChangeStatus}
+            />
+
+            <ChangeLogsModal
+                student={logsStudent}
+                open={logsOpen}
+                onOpenChange={setLogsOpen}
+            />
+
             <div className="relative mt-3 overflow-x-auto md:shadow-md lg:border">
                 <table className="table w-full text-left text-xs text-foreground">
                     <thead className="lg:border-b">
@@ -130,35 +158,108 @@ export function StudentTable({
                                     >
                                         {row.id}
                                     </td>
-                                    <td
-                                        className="p-2 whitespace-nowrap"
-                                        data-label="ID Number"
-                                    >
-                                        {row.id_number}
-                                    </td>
+
                                     <td
                                         className="p-2 whitespace-nowrap"
                                         data-label="Name"
                                     >
-                                        {`${row.first_name} ${row.middle_init ? row.middle_init + '.' : ''} ${row.last_name} ${row.suffix ? row.suffix + '.' : ''}`}
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="size-8 overflow-hidden rounded-full">
+                                                <AvatarImage
+                                                    src={route(
+                                                        'gdrive.image',
+                                                        row.picture,
+                                                    )}
+                                                    className="object-cover"
+                                                    alt={[
+                                                        row.first_name,
+                                                        row.middle_init
+                                                            ? row.middle_init +
+                                                              '.'
+                                                            : '',
+                                                        row.last_name,
+                                                        row.suffix
+                                                            ? row.suffix + '.'
+                                                            : '',
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' ')}
+                                                />
+                                                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                    {getInitials(
+                                                        [
+                                                            row.first_name,
+                                                            row.middle_init
+                                                                ? row.middle_init +
+                                                                  '.'
+                                                                : '',
+                                                            row.last_name,
+                                                            row.suffix
+                                                                ? row.suffix +
+                                                                  '.'
+                                                                : '',
+                                                        ]
+                                                            .filter(Boolean)
+                                                            .join(' '),
+                                                    )}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <h4 className="font-medium">
+                                                    {[
+                                                        row.first_name,
+                                                        row.middle_init
+                                                            ? row.middle_init +
+                                                              '.'
+                                                            : '',
+                                                        row.last_name,
+                                                        row.suffix
+                                                            ? row.suffix + '.'
+                                                            : '',
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' ')}
+                                                </h4>
+                                                <small className="text-muted-foreground">
+                                                    {row.id_number}
+                                                </small>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td
                                         className="p-2 whitespace-nowrap"
                                         data-label="Campus"
                                     >
-                                        {row.campus}
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-foreground">
+                                                {row.campus}
+                                            </span>
+                                            {row.college_name && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {row.college_name}
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
-                                    <td
-                                        className="p-2 whitespace-nowrap"
-                                        data-label="College"
-                                    >
-                                        {row.college}
-                                    </td>
+
                                     <td
                                         className="p-2 whitespace-nowrap"
                                         data-label="Program"
                                     >
-                                        {row.program}
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-foreground">
+                                                {row.program}
+                                            </span>
+                                            {row.major ? (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {row.major}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">
+                                                    --
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td
                                         className="p-2 whitespace-nowrap"
@@ -172,43 +273,113 @@ export function StudentTable({
                                         data-label="Status"
                                     >
                                         {row.printed_exists ? (
-                                            <Badge>Printed</Badge>
+                                            <Badge>
+                                                <PrinterCheck /> Printed
+                                            </Badge>
                                         ) : (
                                             <Badge variant="outline">
-                                                Pending
+                                                <ClockIcon /> Pending
                                             </Badge>
                                         )}
                                     </td>
-                                    <td className="p-2 whitespace-nowrap">
-                                        {row.updated_at
-                                            ? dayjs(row.updated_at).format(
-                                                  'MMM D, YYYY - h:mm A',
-                                              )
-                                            : ''}
+                                    <td className="p-2 text-[10px]! whitespace-nowrap">
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="w-14 shrink-0 font-medium text-muted-foreground">
+                                                    Created
+                                                </span>
+                                                <span className="text-foreground">
+                                                    {row.created_at
+                                                        ? dayjs(
+                                                              row.created_at,
+                                                          ).format(
+                                                              'MMM D, YYYY · h:mm A',
+                                                          )
+                                                        : '—'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="w-14 shrink-0 font-medium text-muted-foreground">
+                                                    Updated
+                                                </span>
+
+                                                <span
+                                                    className={
+                                                        row.updated_at &&
+                                                        row.created_at &&
+                                                        !dayjs(
+                                                            row.updated_at,
+                                                        ).isSame(
+                                                            dayjs(
+                                                                row.created_at,
+                                                            ),
+                                                        )
+                                                            ? 'text-amber-600 dark:text-amber-400'
+                                                            : 'text-foreground'
+                                                    }
+                                                >
+                                                    {row.updated_at
+                                                        ? dayjs(
+                                                              row.updated_at,
+                                                          ).format(
+                                                              'MMM D, YYYY · h:mm A',
+                                                          )
+                                                        : '—'}
+                                                </span>
+                                            </div>
+
+                                            {row.printed?.created_at && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="w-14 shrink-0 font-medium text-muted-foreground">
+                                                        Printed
+                                                    </span>
+                                                    <span className="font-medium text-green-600 dark:text-green-500">
+                                                        {dayjs(
+                                                            row.printed
+                                                                .created_at,
+                                                        ).format(
+                                                            'MMM D, YYYY · h:mm A',
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
+
                                     <td className="p-2 whitespace-nowrap">
-                                        {row.printed?.created_at
-                                            ? dayjs(
-                                                  row.printed?.created_at,
-                                              ).format('MMM D, YYYY - h:mm A')
-                                            : ''}
-                                    </td>
-                                    <td className="p-2 whitespace-nowrap">
-                                        <div className="flex flex-wrap gap-2">
+                                        <div className="flex items-center gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon-sm"
+                                                aria-label="View / Edit student"
+                                                disabled={!row.is_completed}
+                                                onClick={() => {
+                                                    setSelectedStudent(row);
+                                                    setEditOpen(true);
+                                                }}
+                                            >
+                                                <UserSearch />
+                                            </Button>
+
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button
-                                                        variant="outline"
+                                                        variant="ghost"
                                                         size="icon-sm"
+                                                        aria-label="Actions"
                                                     >
-                                                        <SlidersHorizontalIcon />
+                                                        <EllipsisIcon />
                                                     </Button>
                                                 </DropdownMenuTrigger>
 
                                                 <DropdownMenuContent
-                                                    className="w-max"
-                                                    align="center"
+                                                    className="w-48"
+                                                    align="end"
                                                 >
+                                                    <DropdownMenuLabel>
+                                                        Actions
+                                                    </DropdownMenuLabel>
+
                                                     {onPrint && (
                                                         <DropdownMenuItem
                                                             disabled={
@@ -218,26 +389,34 @@ export function StudentTable({
                                                                 onPrint(row.id)
                                                             }
                                                         >
-                                                            <PrinterIcon className="mr-2 h-4 w-4" />
+                                                            <PrinterIcon />
                                                             Print
                                                         </DropdownMenuItem>
                                                     )}
 
-                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setLogsStudent(row);
+                                                            setLogsOpen(true);
+                                                        }}
+                                                    >
+                                                        <HistoryIcon />
+                                                        View Change Logs
+                                                    </DropdownMenuItem>
 
                                                     {row.printed_exists ? (
                                                         <DropdownMenuItem
                                                             disabled={
                                                                 !row.is_completed
                                                             }
-                                                            onClick={() => {
+                                                            onClick={() =>
                                                                 handleStatus(
                                                                     'pending',
                                                                     row.id_number,
-                                                                );
-                                                            }}
+                                                                )
+                                                            }
                                                         >
-                                                            <ClockIcon className="mr-2 h-4 w-4" />
+                                                            <ClockIcon />
                                                             Mark as Pending
                                                         </DropdownMenuItem>
                                                     ) : (
@@ -245,106 +424,15 @@ export function StudentTable({
                                                             disabled={
                                                                 !row.is_completed
                                                             }
-                                                            onClick={() => {
+                                                            onClick={() =>
                                                                 handleStatus(
                                                                     'printed',
                                                                     row.id_number,
-                                                                );
-                                                            }}
+                                                                )
+                                                            }
                                                         >
-                                                            <CheckCheckIcon className="mr-2 h-4 w-4" />
+                                                            <CheckCheckIcon />
                                                             Mark as Printed
-                                                        </DropdownMenuItem>
-                                                    )}
-
-                                                    {/* <DropdownMenuSub>
-                                                        <DropdownMenuSubTrigger>
-                                                            <CheckCheckIcon className="mr-2 h-4 w-4" />
-                                                            Status
-                                                        </DropdownMenuSubTrigger>
-
-                                                        <DropdownMenuSubContent>
-                                                            <DropdownMenuItem
-                                                                onClick={() => {
-                                                                    handleStatus(
-                                                                        'pending',
-                                                                        row.id_number,
-                                                                    );
-                                                                }}
-                                                                disabled={
-                                                                    !row.printed_exists
-                                                                }
-                                                            >
-                                                                <ClockIcon className="mr-2 h-4 w-4" />
-                                                                Pending
-                                                            </DropdownMenuItem>
-
-                                                            <DropdownMenuItem
-                                                                onClick={() => {
-                                                                    handleStatus(
-                                                                        'printed',
-                                                                        row.id_number,
-                                                                    );
-                                                                }}
-                                                                disabled={
-                                                                    row.printed_exists
-                                                                }
-                                                            >
-                                                                <CheckIcon className="mr-2 h-4 w-4" />
-                                                                Printed
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuSubContent>
-                                                    </DropdownMenuSub> */}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon-sm"
-                                                    >
-                                                        <UserCogIcon />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent
-                                                    className="w-max"
-                                                    align="end"
-                                                >
-                                                    {row.is_completed ? (
-                                                        <Link
-                                                            href={route(
-                                                                'campus.view.student',
-                                                                row.id,
-                                                            )}
-                                                        >
-                                                            <DropdownMenuItem>
-                                                                <EyeIcon /> View
-                                                            </DropdownMenuItem>
-                                                        </Link>
-                                                    ) : (
-                                                        <DropdownMenuItem
-                                                            disabled
-                                                        >
-                                                            <EyeIcon /> View
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                    {row.is_completed ? (
-                                                        <Link
-                                                            href={route(
-                                                                'campus.edit.student',
-                                                                row.id,
-                                                            )}
-                                                        >
-                                                            <DropdownMenuItem>
-                                                                <PencilIcon />{' '}
-                                                                Edit
-                                                            </DropdownMenuItem>
-                                                        </Link>
-                                                    ) : (
-                                                        <DropdownMenuItem
-                                                            disabled
-                                                        >
-                                                            <PencilIcon /> Edit
                                                         </DropdownMenuItem>
                                                     )}
                                                 </DropdownMenuContent>

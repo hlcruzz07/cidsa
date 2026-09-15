@@ -11,11 +11,10 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { StudentProps } from '@/lib/custom-types';
+import { FormDataProps } from '@/lib/form-type';
 import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
-import { usePage } from '@inertiajs/react';
-import { AsteriskIcon } from 'lucide-react';
+import { AsteriskIcon, LockIcon } from 'lucide-react';
 import { useState } from 'react';
 import { route } from 'ziggy-js';
 import AlertReplacement from '../Modal/AlertReplacement';
@@ -26,15 +25,34 @@ interface StepOneProps {
     setData: (key: string, value: any) => void;
     errors: Record<string, string>;
 }
-type PageProps = {
-    student: StudentProps;
-};
+
+// A locked note shown under a dropdown that arrived pre-filled from the
+// student's enrollment record, so they understand why it's disabled.
+function LockedNote() {
+    return (
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <LockIcon size={12} />
+            Pre-filled from your enrollment record.
+        </p>
+    );
+}
 
 export default function StepOne({ data, setData, errors }: StepOneProps) {
-    const { student } = usePage<PageProps>().props;
+    const [isProgramDisabled, setIsProgramDisabled] = useState(!data.college);
+    const [isMajorDisabled, setIsMajorDisabled] = useState(!data.hasMajor);
 
-    const [isProgramDisabled, setIsProgramDisabled] = useState(true);
-    const [isMajorDisabled, setIsMajorDisabled] = useState(true);
+    // Snapshot, ONCE on mount, which fields already came in with a value
+    // from useForm's initial data (campus/program/year straight from the
+    // student record, college resolved from program in the parent). Using
+    // a lazy useState initializer means this is captured only from the
+    // very first render's `data` — later edits to `data` (e.g. a user
+    // picking a program) never retroactively lock/unlock a field.
+    const [lockedFields] = useState(() => ({
+        campus: !!data.campus,
+        college: !!data.college,
+        program: !!data.program,
+        year: !!data.year,
+    }));
 
     const collegeArrFiltered = campusDirectoryArr.find((collegeItem) =>
         collegeItem.campus.includes(data.campus),
@@ -117,7 +135,7 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
     };
 
     return (
-        <>
+        <div className="space-y-5">
             <Heading
                 title="Personal Information"
                 description="Provide your basic personal details as they will appear on your ID."
@@ -142,6 +160,7 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                 </Label>
                 <Select
                     value={data.type}
+                    disabled={!!data.type}
                     onValueChange={(value) => {
                         if (value === 'new') {
                             setData('type', value);
@@ -217,54 +236,42 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                     </div>
                 </>
             )}
-            <div className="flex flex-col gap-2">
-                <Label htmlFor="id_number">Student ID Number</Label>
-                <Input
-                    type="text"
-                    placeholder="Enter ID Number"
-                    disabled
-                    value={student.id_number}
-                />
-                <InputError message={errors.id_number} />
+            <div className="grid gap-4 md:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="id_number">Student ID Number</Label>
+                    <Input
+                        type="text"
+                        placeholder="Enter ID Number"
+                        disabled
+                        value={data.id_number}
+                    />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="first_name">Full Name </Label>
+                    <Input
+                        type="text"
+                        id="first_name"
+                        value={[
+                            data.first_name,
+                            data.middle_init
+                                ? data.middle_init + '.'
+                                : data.middle_init,
+                            data.last_name,
+                            data.suffix,
+                        ]
+                            .filter(Boolean)
+                            .join(' ')}
+                        disabled
+                    />
+                </div>
             </div>
 
             <p className="text-xs text-muted-foreground">
                 Kindly check your enrolment form for your ID number to avoid
                 data duplication.
             </p>
-            <div className="grid gap-3 md:grid-cols-12">
-                <div className="col-span-4 flex w-full grow flex-col gap-2">
-                    <Label htmlFor="first_name">First Name </Label>
-                    <Input
-                        type="text"
-                        id="first_name"
-                        value={student.first_name}
-                        disabled
-                    />
-                </div>
-                <div className="col-span-auto flex w-full flex-col gap-2">
-                    <Label htmlFor="middle_init">M.I.</Label>
-                    <Input
-                        type="text"
-                        id="middle_init"
-                        value={student.middle_init ?? ''}
-                        disabled
-                    />
-                </div>
-                <div className="col-span-4 flex w-full grow flex-col gap-2">
-                    <Label htmlFor="last_name">Last Name</Label>
-                    <Input
-                        type="text"
-                        id="last_name"
-                        disabled
-                        value={student.last_name}
-                    />
-                </div>
-                <div className="col-span-4 flex flex-col gap-2 md:col-span-3">
-                    <Label htmlFor="suffix">Suffix</Label>
-                    <Input disabled type="text" value={student.suffix ?? ''} />
-                </div>
-            </div>
+
             <Heading
                 title="College & Program Information"
                 description="Select your college, program, and major to proceed."
@@ -280,6 +287,7 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                             setData('campus', value);
                             resetForCampusChange();
                         }}
+                        disabled={lockedFields.campus}
                     >
                         <SelectTrigger className="">
                             <SelectValue placeholder="Choose an option">
@@ -302,13 +310,14 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                         </SelectContent>
                     </Select>
                     <InputError message={errors.campus} />
+                    {lockedFields.campus && <LockedNote />}
                 </div>
                 <div className="flex flex-col gap-2">
                     <Label>
                         College <AsteriskIcon size={12} color="red" />
                     </Label>
                     <Select
-                        disabled={data.campus === ''}
+                        disabled={data.campus === '' || lockedFields.college}
                         value={
                             data.campus && data.college && data.college_name
                                 ? JSON.stringify({
@@ -347,6 +356,7 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                         </SelectContent>
                     </Select>
                     <InputError message={errors.college} />
+                    {lockedFields.college && <LockedNote />}
                 </div>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
@@ -362,7 +372,7 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                             resetForProgramChange();
                             handleProgramChange(value);
                         }}
-                        disabled={isProgramDisabled}
+                        disabled={isProgramDisabled || lockedFields.program}
                     >
                         <SelectTrigger className="w-full">
                             <SelectValue placeholder="Choose an option" />
@@ -378,6 +388,7 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                         </SelectContent>
                     </Select>
                     <InputError message={errors.program} />
+                    {lockedFields.program && <LockedNote />}
                 </div>
                 <div className="flex flex-col gap-2">
                     <Label>
@@ -423,6 +434,7 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                     onValueChange={(value) => {
                         setData('year', value);
                     }}
+                    disabled={lockedFields.year}
                 >
                     <SelectTrigger className="w-full">
                         <SelectValue placeholder="Choose an option" />
@@ -444,7 +456,8 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                     </SelectContent>
                 </Select>
                 <InputError message={errors.year} />
+                {lockedFields.year && <LockedNote />}
             </div>
-        </>
+        </div>
     );
 }

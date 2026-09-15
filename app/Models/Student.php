@@ -14,31 +14,26 @@ class Student extends Model
         'id_number',
         'picture',
         'e_signature',
-
         'first_name',
         'middle_init',
         'last_name',
         'suffix',
-
         'emergency_first_name',
         'emergency_middle_init',
         'emergency_last_name',
         'emergency_suffix',
         'relationship',
         'contact_number',
-
         'province',
         'city',
         'barangay',
         'zip_code',
-
         'campus',
         'college',
         'college_name',
         'program',
         'major',
         'year',
-
         'is_completed',
 
     ];
@@ -55,5 +50,10 @@ class Student extends Model
     public function replacements()
     {
         return $this->hasMany(StudentReplacement::class, 'student_id');
+    }
+
+    public function changeLogs()
+    {
+        return $this->hasMany(StudentChangeLog::class, 'student_id');
     }
 }
