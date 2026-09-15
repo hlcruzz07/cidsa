@@ -84,6 +84,8 @@ class StudentController extends Controller
                     $this->repo->paths[$data['campus']]['picture']
                 );
                 $data['picture'] = $uploaded['id'];
+            } else {
+                unset($data['picture']);
             }
 
             if ($request->hasFile('e_signature')) {
@@ -93,6 +95,8 @@ class StudentController extends Controller
                     $this->repo->paths[$data['campus']]['e_signature']
                 );
                 $data['e_signature'] = $uploaded['id'];
+            } else {
+                unset($data['e_signature']);
             }
 
             $data['is_completed'] = true;

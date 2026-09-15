@@ -13,6 +13,13 @@ class CompleteStudentRequest extends FormRequest
         return true;
     }
 
+    protected function studentExists(): bool
+    {
+        $exists = Student::where('id_number', request('id_number'))->exists();
+
+        return $exists;
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -120,8 +127,23 @@ class CompleteStudentRequest extends FormRequest
             'year' => 'required|in:1st Year,2nd Year,3rd Year,4th Year,5th Year',
 
 
-            'picture' => 'required|max:2048',
-            'e_signature' => 'required|max:1024',
+            'picture' => [
+                function ($attribute, $value, $fail) {
+                    if (!$this->studentExists() && !$value) {
+                        $fail('Please upload your picture.');
+                    }
+                },
+                'max:2048',
+            ],
+
+            'e_signature' => [
+                function ($attribute, $value, $fail) {
+                    if (!$this->studentExists() && !$value) {
+                        $fail('Please provide your e-signature.');
+                    }
+                },
+                'max:1024',
+            ],
 
             'confirm_info' => 'required|accepted',
             'data_privacy' => 'required|accepted'
