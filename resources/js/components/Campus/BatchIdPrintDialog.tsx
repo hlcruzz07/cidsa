@@ -22,6 +22,7 @@ import { StudentProps, StudentReplacement } from '@/lib/custom-types';
 import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
 import dayjs from 'dayjs';
+import ExcelJS from 'exceljs';
 import {
     AlertCircleIcon,
     BookMarkedIcon,
@@ -43,10 +44,8 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import * as XLSX from 'xlsx';
 import { route } from 'ziggy-js';
 import { IdCardBack, IdCardFront } from './StudentIdCard';
-
 const DEBUG_PREVIEW_IN_NEW_TAB = false;
 
 const CARD_W = 448;
@@ -432,6 +431,29 @@ export function BatchIdPrintDialog({
         }
     };
 
+    // ─── Auto-fit column widths based on content length ──────────────────────
+    const calculateColumnWidths = (
+        headers: string[],
+        rows: (string | number)[][],
+        options?: { minWidth?: number; maxWidth?: number; padding?: number },
+    ) => {
+        const { minWidth = 10, maxWidth = 60, padding = 2 } = options ?? {};
+
+        return headers.map((header, colIndex) => {
+            const headerLength = header.length;
+            const maxDataLength = rows.reduce((max, row) => {
+                const value = row[colIndex];
+                const length = value != null ? String(value).length : 0;
+                return Math.max(max, length);
+            }, 0);
+
+            const longest = Math.max(headerLength, maxDataLength);
+            const width = longest + padding;
+
+            return Math.min(Math.max(width, minWidth), maxWidth);
+        });
+    };
+
     // ─── Generate checklist Excel ────────────────────────────────────────────
     const generateChecklistExcel = async () => {
         const selectedItems = items.filter((i) => selectedIds.has(i.id));
@@ -451,47 +473,94 @@ export function BatchIdPrintDialog({
                 return a.lastName.localeCompare(b.lastName);
             });
 
-            const rows = sortedItems.map((item) => ({
-                'ID NUMBER': item.id_number,
-                'FULL NAME': formatChecklistName(item),
-                CAMPUS: campus,
-                COLLEGE: getCollegeName(item.college),
-                PROGRAM: item.program,
-                'DATE SUBMITTED': dayjs(item.created_at).format(
-                    'MMM D, YYYY h:mm A',
-                ),
-                STATUS: item.isPrinted ? 'Printed' : 'Pending',
-                // DATE: '',
-                // SIGNATURE: '',
-            }));
+            const COLS = [
+                'ID NUMBER',
+                'FULL NAME',
+                'CAMPUS',
+                'COLLEGE',
+                'PROGRAM',
+                'DATE SUBMITTED',
+                'STATUS',
+            ] as const;
 
-            const worksheet = XLSX.utils.json_to_sheet(rows);
+            // Build plain row values up front — reused for width calc and writing rows
+            const dataRows = sortedItems.map((item) => [
+                item.id_number,
+                formatChecklistName(item),
+                campus,
+                getCollegeName(item.college),
+                item.program,
+                dayjs(item.created_at).format('MMM D, YYYY h:mm A'),
+                item.isPrinted ? 'Printed' : 'Pending',
+            ]);
 
-            // Column widths for readability
-            worksheet['!cols'] = [
-                { wch: 14 }, // ID NUMBER
-                { wch: 32 }, // FULL NAME
-                { wch: 12 }, // CAMPUS
-                { wch: 28 }, // COLLEGE
-                { wch: 24 }, // PROGRAM
-                { wch: 20 }, // DATE SUBMITTED
-                { wch: 14 }, // STATUS
-                // { wch: 20 }, // DATE
-                // { wch: 20 }, // SIGNATURE
-            ];
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Checklist');
 
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Checklist');
+            const COL_WIDTHS = calculateColumnWidths([...COLS], dataRows);
+            worksheet.columns = COLS.map((_, i) => ({ width: COL_WIDTHS[i] }));
+
+            // ── Row 1: Title (merged across A1:E1) ──
+            worksheet.mergeCells('A1:E1');
+            const titleCell = worksheet.getCell('A1');
+            titleCell.value =
+                `${campus.toUpperCase()} - ${modeLabel.toUpperCase()}`.trim();
+            titleCell.font = { name: 'Calibri', size: 30, bold: true };
+            titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
+            worksheet.getRow(1).height = 24.95;
+
+            // ── Row 2: Total count ──
+            const totalCell = worksheet.getCell('A2');
+            totalCell.value = `Total: ${sortedItems.length}`;
+            totalCell.font = { name: 'Calibri', size: 15, bold: true };
+            worksheet.getRow(2).height = 19.5;
+
+            // ── Row 3: Header ──
+            const headerRow = worksheet.getRow(3);
+            headerRow.values = [...COLS];
+            headerRow.height = 24.95;
+            headerRow.eachCell((cell) => {
+                cell.font = {
+                    name: 'Calibri',
+                    size: 12,
+                    color: { argb: 'FFFFFFFF' },
+                };
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FF00B050' },
+                };
+                cell.alignment = { horizontal: 'left', vertical: 'middle' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    left: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+
+            // ── Data rows ──
+            dataRows.forEach((rowValues) => {
+                const row = worksheet.addRow(rowValues);
+                row.height = 24.95;
+                row.eachCell((cell) => {
+                    cell.font = { name: 'Calibri', size: 12 };
+                    cell.alignment = { horizontal: 'left', vertical: 'middle' };
+                    cell.border = {
+                        top: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        left: { style: 'thin' },
+                        right: { style: 'thin' },
+                    };
+                });
+            });
 
             const today = new Date().toISOString().slice(0, 10);
-            const filename = `ID_Checklist_${mode === 'replacement' ? 'Replacement' : 'New'}_${today}.xlsx`;
+            const filename = `${mode === 'replacement' ? 'Replacement' : 'New'}-Students-Checklist-${today}.xlsx`;
 
             // Build the file once — reused for both the Drive upload and the local download
-            const wbArrayBuffer = XLSX.write(workbook, {
-                bookType: 'xlsx',
-                type: 'array',
-            });
-            const blob = new Blob([wbArrayBuffer], {
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             });
 
@@ -506,7 +575,14 @@ export function BatchIdPrintDialog({
             });
 
             // Only download locally once the Drive upload has succeeded
-            XLSX.writeFile(workbook, filename);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         } catch (err) {
             console.error('Failed to upload checklist to Google Drive:', err);
             // optional: surface a toast/error state here

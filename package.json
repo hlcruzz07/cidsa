@@ -65,6 +65,7 @@
         "convert-image": "^1.1.4",
         "date-fns": "^4.1.0",
         "dayjs": "^1.11.19",
+        "exceljs": "^4.4.0",
         "face-api.js": "^0.22.2",
         "globals": "^15.14.0",
         "image-conversion": "^2.1.1",

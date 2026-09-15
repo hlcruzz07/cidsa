@@ -205,8 +205,6 @@ export default function StaffFormIndex() {
         });
     };
 
-    console.log(data);
-
     return (
         <div className="min-h-dvh bg-background">
             <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur-md">

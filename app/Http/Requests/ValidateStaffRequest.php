@@ -45,7 +45,7 @@ class ValidateStaffRequest extends FormRequest
                         ->first();
 
                     if (!$employee) {
-                        $fail('Faculty / Staff not found.');
+                        $fail('Account not found. Please check your account information through ARMVS.');
                         return;
                     }
 

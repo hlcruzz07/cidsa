@@ -40,6 +40,11 @@ type FlashMessages = {
 
 const CAMPUSES = ['TALISAY', 'ALIJIS', 'FORTUNE TOWNE', 'BINALBAGAN'];
 
+// Employee validation flow is not ready yet. Flip this to `true`
+// once the backend + flow are ready to re-enable the tab. Nothing else
+// needs to change — the form, handler, and route call are left intact.
+const STAFF_FORM_ENABLED = false;
+
 // Shown whenever either the student or staff form is mid-request. Kept
 // simple/non-dismissible (no close button, no onOpenChange) since a
 // credential check is a brief, uninterruptible action — the dialog just
@@ -126,6 +131,10 @@ export default function Index() {
 
     const handleStaffSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        // Safety net alongside the disabled UI below — the staff flow
+        // isn't ready yet, so block submission even if the disabled
+        // attribute is bypassed (e.g. via devtools).
+        if (!STAFF_FORM_ENABLED) return;
         if (staffForm.processing) return;
 
         staffForm.post(route('validate.staff'), {
@@ -447,13 +456,27 @@ export default function Index() {
                             </TabsContent>
 
                             <TabsContent value="staff" className="mt-6">
+                                <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-300/60 bg-amber-50 p-4 text-amber-900 dark:border-amber-400/30 dark:bg-amber-950/40 dark:text-amber-200">
+                                    <HelpCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <div className="text-sm leading-5">
+                                        <p className="font-semibold">
+                                            Under Development
+                                        </p>
+                                        <p className="mt-1 text-amber-800/90 dark:text-amber-200/80">
+                                            Employee ID form isn't available
+                                            yet. Please check back later.
+                                        </p>
+                                    </div>
+                                </div>
+
                                 <form
                                     onSubmit={handleStaffSubmit}
                                     className="space-y-5"
+                                    aria-disabled={!STAFF_FORM_ENABLED}
                                 >
                                     <div className="grid gap-2">
                                         <Label className="text-sm font-medium text-[var(--foreground)]">
-                                            Staff/Employee Digital ID Number{' '}
+                                            Employee Digital ID Number{' '}
                                             <AsteriskIcon
                                                 size={12}
                                                 color="red"
@@ -463,6 +486,7 @@ export default function Index() {
                                             type="text"
                                             placeholder="Enter Digital ID Number"
                                             value={staffForm.data.digital_id}
+                                            disabled={!STAFF_FORM_ENABLED}
                                             onChange={(e) => {
                                                 staffForm.setData(
                                                     'digital_id',
@@ -470,7 +494,7 @@ export default function Index() {
                                                 );
                                             }}
                                             maxLength={25}
-                                            className="h-11 rounded-xl border-[var(--border)] bg-[var(--background)] text-base text-[var(--foreground)] focus-visible:ring-[var(--ring)]"
+                                            className="h-11 rounded-xl border-[var(--border)] bg-[var(--background)] text-base text-[var(--foreground)] focus-visible:ring-[var(--ring)] disabled:cursor-not-allowed disabled:opacity-60"
                                         />
                                         <InputError
                                             message={
@@ -481,8 +505,11 @@ export default function Index() {
 
                                     <Button
                                         type="submit"
-                                        className="h-11 w-full rounded-xl bg-primary text-sm font-semibold text-[var(--primary-foreground)] shadow-lg transition hover:bg-primary/90"
-                                        disabled={staffForm.processing}
+                                        className="h-11 w-full rounded-xl bg-primary text-sm font-semibold text-[var(--primary-foreground)] shadow-lg transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                                        disabled={
+                                            !STAFF_FORM_ENABLED ||
+                                            staffForm.processing
+                                        }
                                     >
                                         <span className="flex items-center justify-center gap-2">
                                             Submit

@@ -11,7 +11,6 @@ class StaffController extends Controller
 {
     public function validate(ValidateStaffRequest $request)
     {
-        return back()->with('error', 'This module is currently under development.');
 
         $data = $request->validated();
 

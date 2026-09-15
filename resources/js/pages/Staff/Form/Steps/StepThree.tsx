@@ -24,7 +24,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { capitalizeString, cn } from '@/lib/utils';
 import { AsteriskIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { StaffFormData } from '../types';
@@ -260,35 +260,32 @@ export default function StepThree({ data, setData, errors }: StepThreeProps) {
                 </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-                <div className="flex flex-col gap-2">
-                    <Label htmlFor="emergency_phone">
-                        Emergency Contact Number{' '}
-                        <AsteriskIcon size={12} color="red" />
-                    </Label>
-                    <div className="relative">
-                        <span className="absolute left-2 flex h-full items-center justify-center text-sm">
-                            +63
-                        </span>
-                        <Input
-                            type="number"
-                            id="emergency_phone"
-                            name="emergency_phone"
-                            placeholder="Enter Contact Number"
-                            className="ps-9"
-                            value={data.emergency_phone ?? ''}
-                            onInput={(e) => {
-                                e.currentTarget.value =
-                                    e.currentTarget.value.slice(0, 10);
-                                setData(
-                                    'emergency_phone',
-                                    e.currentTarget.value,
-                                );
-                            }}
-                        />
-                    </div>
-                    <InputError message={errors.emergency_phone} />
+            <div className="flex flex-col gap-2">
+                <Label htmlFor="emergency_phone">
+                    Emergency Contact Number{' '}
+                    <AsteriskIcon size={12} color="red" />
+                </Label>
+                <div className="relative">
+                    <span className="absolute left-2 flex h-full items-center justify-center text-sm">
+                        +63
+                    </span>
+                    <Input
+                        type="number"
+                        id="emergency_phone"
+                        name="emergency_phone"
+                        placeholder="Enter Contact Number"
+                        className="ps-9"
+                        value={data.emergency_phone ?? ''}
+                        onInput={(e) => {
+                            e.currentTarget.value = e.currentTarget.value.slice(
+                                0,
+                                10,
+                            );
+                            setData('emergency_phone', e.currentTarget.value);
+                        }}
+                    />
                 </div>
+                <InputError message={errors.emergency_phone} />
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
@@ -503,14 +500,11 @@ export default function StepThree({ data, setData, errors }: StepThreeProps) {
                     onChange={(e) =>
                         setEmergencyAddress((prev) => ({
                             ...prev,
-                            street: e.target.value,
+                            street: capitalizeString(e.target.value),
                         }))
                     }
                 />
-                {/* Province/City/Barangay/Zip/Street are local UI state used
-                    only to compose emergency_address, which is the single
-                    column the backend validates and persists — so any
-                    server-side validation error surfaces here. */}
+
                 <InputError message={errors.emergency_address} />
             </div>
         </div>

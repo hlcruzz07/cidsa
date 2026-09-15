@@ -514,3 +514,14 @@ export function formatCount(num: number) {
     if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
     return num.toString();
 }
+export const capitalizeString = (text: string) => {
+    if (!text) {
+        return '';
+    }
+
+    return text
+        .toLowerCase()
+        .split(' ')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+};
