@@ -124,8 +124,6 @@ class StudentController extends Controller
 
             session()->forget('student');
 
-            Log::info('Successful submission', ['id_number' => $data['id_number']]);
-
             return redirect()->route('home')->with([
                 'id_request_success' => true,
                 'id_number' => $data['id_number'],

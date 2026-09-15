@@ -461,8 +461,8 @@ export function BatchIdPrintDialog({
                     'MMM D, YYYY h:mm A',
                 ),
                 STATUS: item.isPrinted ? 'Printed' : 'Pending',
-                DATE: '',
-                SIGNATURE: '',
+                // DATE: '',
+                // SIGNATURE: '',
             }));
 
             const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -476,8 +476,8 @@ export function BatchIdPrintDialog({
                 { wch: 24 }, // PROGRAM
                 { wch: 20 }, // DATE SUBMITTED
                 { wch: 14 }, // STATUS
-                { wch: 20 }, // DATE
-                { wch: 20 }, // SIGNATURE
+                // { wch: 20 }, // DATE
+                // { wch: 20 }, // SIGNATURE
             ];
 
             const workbook = XLSX.utils.book_new();
