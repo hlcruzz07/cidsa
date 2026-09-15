@@ -110,7 +110,7 @@ interface ListItem {
     year: string;
     isPrinted: boolean;
     receiptOrExtra?: string; // receipt for replacements
-    updatedAt: string | null; // raw updated_at timestamp, used as "Date Submitted"
+    created_at: string | null; // raw created_at timestamp, used as "Date Submitted"
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -152,7 +152,7 @@ function toListItem(
             year: s.year ?? '',
             isPrinted: r.is_printed,
             receiptOrExtra: r.receipt ?? undefined,
-            updatedAt: (r as any).updated_at ?? null,
+            created_at: (r as any).created_at ?? null,
         };
     } else {
         const s = raw as StudentProps;
@@ -169,7 +169,7 @@ function toListItem(
             year: s.year ?? '',
             // printed = has a PrintedStudents record (backend sends printed_exists or withExists)
             isPrinted: !!(s as any).printed_exists || !!(s as any).printed,
-            updatedAt: (s as any).updated_at ?? null,
+            created_at: (s as any).created_at ?? null,
         };
     }
 }
@@ -370,9 +370,9 @@ export function BatchIdPrintDialog({
     const getCollegeName = (code: string) =>
         collegeOptions.find((c) => c.value === code)?.name ?? code;
 
-    const formatDateSubmitted = (updatedAt: string | null) => {
-        if (!updatedAt) return '';
-        const d = new Date(updatedAt);
+    const formatDateSubmitted = (created_at: string | null) => {
+        if (!created_at) return '';
+        const d = new Date(created_at);
         if (isNaN(d.getTime())) return '';
         return d.toLocaleDateString('en-US', {
             year: 'numeric',
@@ -457,7 +457,8 @@ export function BatchIdPrintDialog({
                 CAMPUS: campus,
                 COLLEGE: getCollegeName(item.college),
                 PROGRAM: item.program,
-                'DATE SUBMITTED': formatDateSubmitted(item.updatedAt),
+                'DATE SUBMITTED': formatDateSubmitted(item.created_at),
+                STATUS: item.isPrinted ? 'PRINTED' : 'PENDING',
                 DATE: '',
                 SIGNATURE: '',
             }));
@@ -472,6 +473,7 @@ export function BatchIdPrintDialog({
                 { wch: 28 }, // COLLEGE
                 { wch: 24 }, // PROGRAM
                 { wch: 16 }, // DATE SUBMITTED
+                { wch: 14 }, // STATUS
                 { wch: 14 }, // DATE
                 { wch: 20 }, // SIGNATURE
             ];
