@@ -455,6 +455,7 @@ export function BatchIdPrintDialog({
     };
 
     // ─── Generate checklist Excel ────────────────────────────────────────────
+    // ─── Generate checklist Excel ────────────────────────────────────────────
     const generateChecklistExcel = async () => {
         const selectedItems = items.filter((i) => selectedIds.has(i.id));
         if (selectedItems.length === 0) return;
@@ -514,6 +515,13 @@ export function BatchIdPrintDialog({
             totalCell.value = `Total: ${sortedItems.length}`;
             totalCell.font = { name: 'Calibri', size: 15, bold: true };
             worksheet.getRow(2).height = 19.5;
+
+            // ── Row 2 (right side): "As of {date}" — merged F2:G2 ──
+            worksheet.mergeCells('F2:G2');
+            const asOfCell = worksheet.getCell('F2');
+            asOfCell.value = `As of ${dayjs().format('MMMM D, YYYY')}`;
+            asOfCell.font = { name: 'Calibri', size: 15, bold: true };
+            asOfCell.alignment = { horizontal: 'left' };
 
             // ── Row 3: Header ──
             const headerRow = worksheet.getRow(3);
