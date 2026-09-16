@@ -142,7 +142,7 @@ class StudentPrintStatusExportController extends Controller
                 'student_id' => $studentId,
                 'last_name' => $sis->student_lastname,
                 'full_name' => $formatName($sis->student_lastname, $sis->student_firstname, $sis->student_middlename),
-                'program' => trim((string) $sis->program_title) ?: 'Unassigned',
+                'program' => trim((string) $sis->program_code) ?: 'Unassigned',
                 'program_key' => trim((string) $sis->program_code) ?: 'UNASSIGNED',
                 'year_level' => $enrollment->yearlevel ?? null,
                 'section' => $enrollment->section_code ?? null,
