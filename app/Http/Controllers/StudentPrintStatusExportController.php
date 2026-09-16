@@ -262,7 +262,7 @@ class StudentPrintStatusExportController extends Controller
 
         $spreadsheet->setActiveSheetIndex(0);
 
-        $filename = 'id-print-checklist-' . Str::slug($campus) . '-' . now()->format('Y-m-d') . '.xlsx';
+        $filename = strtoupper(Str::slug($campus)) . '-STUDENT-STATUS-LIST-' . '-' . now()->format('Y-m-d') . '.xlsx';
 
         return response()->streamDownload(function () use ($spreadsheet) {
             $writer = new Xlsx($spreadsheet);
