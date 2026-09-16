@@ -142,8 +142,8 @@ class StudentPrintStatusExportController extends Controller
                 'student_id' => $studentId,
                 'last_name' => $sis->student_lastname,
                 'full_name' => $formatName($sis->student_lastname, $sis->student_firstname, $sis->student_middlename),
-                'program' => trim((string) $sis->program_code) ?: 'Unassigned',
-                'program_key' => trim((string) $sis->program_code) ?: 'UNASSIGNED',
+                'program' => trim((string) $sis->program_title) ?: 'Unassigned', // <-- back to program_title
+                'program_key' => trim((string) $sis->program_code) ?: 'UNASSIGNED', // <-- grouping key stays program_code
                 'year_level' => $enrollment->yearlevel ?? null,
                 'section' => $enrollment->section_code ?? null,
                 'college' => $college,
@@ -167,19 +167,18 @@ class StudentPrintStatusExportController extends Controller
         $spreadsheet = new Spreadsheet();
         $spreadsheet->removeSheetByIndex(0);
 
-        $headers = ['ID Number', 'Full Name', 'Year Level', 'Section', 'Status', 'Date Submitted', 'Date Printed'];
+        $headers = ['ID Number', 'Full Name', 'Program', 'Year Level', 'Section', 'Status', 'Date Printed'];
 
         foreach ($byProgram as $programKey => $programRows) {
-            $programTitle = $programRows->first()['program'];
 
             $sheet = $spreadsheet->createSheet();
 
-            $sheetTitle = Str::limit(preg_replace('/[\\\\\/\?\*\[\]:]/', '', $programTitle), 31, '');
+            $sheetTitle = Str::limit(preg_replace('/[\\\\\/\?\*\[\]:]/', '', $programKey), 31, ''); // <-- programKey, not programTitle
             $sheet->setTitle($sheetTitle);
 
             $sheet->fromArray($headers, null, 'A1');
-            $sheet->getStyle('A1:G1')->getFont()->setBold(true);
-            $sheet->getStyle('A1:G1')->getFill()
+            $sheet->getStyle('A1:H1')->getFont()->setBold(true);
+            $sheet->getStyle('A1:H1')->getFill()
                 ->setFillType(Fill::FILL_SOLID)
                 ->getStartColor()->setRGB('DDDDDD');
 
@@ -188,16 +187,16 @@ class StudentPrintStatusExportController extends Controller
                 $sheet->fromArray([
                     $row['student_id'],
                     $row['full_name'],
+                    $row['program'],
                     $row['year_level'],
                     $row['section'],
                     $row['status'],
-                    $row['date_submitted'],
                     $row['date_printed'],
                 ], null, "A{$rowNum}");
                 $rowNum++;
             }
 
-            foreach (range('A', 'G') as $col) {
+            foreach (range('A', 'H') as $col) {
                 $sheet->getColumnDimension($col)->setAutoSize(true);
             }
         }
