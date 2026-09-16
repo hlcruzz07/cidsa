@@ -26,6 +26,7 @@ import {
     CalendarIcon,
     ChevronDownIcon,
     ChevronsLeftRight,
+    EllipsisIcon,
     FilterXIcon,
     PrinterCheckIcon,
     Trash2Icon,
@@ -96,6 +97,7 @@ interface FilterBarProps {
     // Total entries
     totalEntries?: number;
     onBatchPrint: () => void;
+    onExportStatus: () => void;
 }
 
 export function FilterBar({
@@ -133,6 +135,7 @@ export function FilterBar({
     hasActiveFilters,
     onReset,
     onBatchPrint,
+    onExportStatus,
     totalEntries = 0,
 }: FilterBarProps) {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -250,9 +253,29 @@ export function FilterBar({
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <Button onClick={onBatchPrint}>
-                        <PrinterCheckIcon /> Batch Print
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                aria-label="More actions"
+                            >
+                                <EllipsisIcon />
+                            </Button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={onBatchPrint}>
+                                <PrinterCheckIcon />
+                                Batch Print
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem onClick={onExportStatus}>
+                                <PrinterCheckIcon />
+                                Export Status
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 

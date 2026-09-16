@@ -273,6 +273,12 @@ export function CampusStudentManager({
 
     const [openBatchReplacement, setOpenBatchReplacement] = useState(false);
 
+    const exportStatus = () => {
+        window.location.href = route('api.export.status', {
+            campus,
+        });
+    };
+
     return (
         <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
@@ -355,6 +361,7 @@ export function CampusStudentManager({
                     onReset={resetStudentFilters}
                     totalEntries={students?.total ?? 0}
                     onBatchPrint={() => setOpenBatch(true)}
+                    onExportStatus={exportStatus}
                 />
                 <StudentTable
                     students={students?.data ?? []}

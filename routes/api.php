@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\StudentApiController;
+use App\Http\Controllers\StudentPrintStatusExportController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(function () {
@@ -18,7 +19,8 @@ Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(f
 
     Route::get('/gdrive-image/{fileId}', [StudentApiController::class, 'image'])
         ->name('gdrive.image');
-
+    Route::get('/api/export-status', [StudentPrintStatusExportController::class, 'export'])
+        ->name('api.export.status');
 
 });
 

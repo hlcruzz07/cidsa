@@ -247,8 +247,7 @@ export function ReplacementFilterBar({
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {/* Batch Print */}
-                    <Button onClick={onBatchPrint}>
+                    <Button variant={'outline'} onClick={onBatchPrint}>
                         <PrinterCheckIcon /> Batch Print
                     </Button>
                 </div>
