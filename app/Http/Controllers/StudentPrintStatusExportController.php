@@ -11,6 +11,8 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class StudentPrintStatusExportController extends Controller
 {
@@ -169,20 +171,64 @@ class StudentPrintStatusExportController extends Controller
 
         $headers = ['ID Number', 'Full Name', 'Program', 'Year Level', 'Section', 'Status', 'Date Printed'];
 
-        foreach ($byProgram as $programKey => $programRows) {
+        $columnWidths = [
+            'A' => 14,
+            'B' => 35,
+            'C' => 35,
+            'D' => 12,
+            'E' => 12,
+            'F' => 12,
+            'G' => 23,
+        ];
 
+        $asOfDate = now()->format('F j, Y');
+        $campusLabel = Str::upper(str_replace(['-', '_'], ' ', $campus)); // e.g. "FORTUNE TOWNE"
+        $title = "{$campusLabel} CAMPUS STUDENT STATUS LIST";
+
+        foreach ($byProgram as $programKey => $programRows) {
             $sheet = $spreadsheet->createSheet();
 
-            $sheetTitle = Str::limit(preg_replace('/[\\\\\/\?\*\[\]:]/', '', $programKey), 31, ''); // <-- programKey, not programTitle
+            $sheetTitle = Str::limit(preg_replace('/[\\\\\/\?\*\[\]:]/', '', $programKey), 31, '');
             $sheet->setTitle($sheetTitle);
 
-            $sheet->fromArray($headers, null, 'A1');
-            $sheet->getStyle('A1:H1')->getFont()->setBold(true);
-            $sheet->getStyle('A1:H1')->getFill()
-                ->setFillType(Fill::FILL_SOLID)
-                ->getStartColor()->setRGB('DDDDDD');
+            $totalCount = $programRows->count();
+            $lastCol = 'G';
+            $titleRow = 1;
+            $summaryRow = 2;
+            $headerRow = 3;
+            $firstDataRow = 4;
+            $lastRow = $totalCount + $firstDataRow - 1;
 
-            $rowNum = 2;
+            // Row 1: Title
+            $sheet->setCellValue("A{$titleRow}", $title);
+            $sheet->getStyle("A{$titleRow}")->getFont()->setName('Calibri')->setSize(30)->setBold(true);
+            $sheet->getStyle("A{$titleRow}")->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_LEFT)
+                ->setVertical(Alignment::VERTICAL_CENTER);
+            $sheet->getRowDimension($titleRow)->setRowHeight(24.95);
+
+            // Row 2: Total + As of date
+            $sheet->setCellValue("A{$summaryRow}", "Total: {$totalCount}");
+            $sheet->setCellValue("F{$summaryRow}", "As of {$asOfDate}");
+            $sheet->getStyle("A{$summaryRow}")->getFont()->setName('Calibri')->setSize(15)->setBold(true);
+            $sheet->getStyle("F{$summaryRow}")->getFont()->setName('Calibri')->setSize(15)->setBold(true);
+            $sheet->getRowDimension($summaryRow)->setRowHeight(19.5);
+
+            // Row 3: Header
+            $sheet->fromArray($headers, null, "A{$headerRow}");
+            $sheet->getRowDimension($headerRow)->setRowHeight(24.95);
+
+            $headerStyle = $sheet->getStyle("A{$headerRow}:{$lastCol}{$headerRow}");
+            $headerStyle->getFont()->setName('Calibri')->setSize(12)->setBold(false)
+                ->getColor()->setRGB('FFFFFF');
+            $headerStyle->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('00B050');
+            $headerStyle->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_LEFT)
+                ->setVertical(Alignment::VERTICAL_CENTER);
+            $headerStyle->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+
+            // Data rows (starting row 4)
+            $rowNum = $firstDataRow;
             foreach ($programRows as $row) {
                 $sheet->fromArray([
                     $row['student_id'],
@@ -193,11 +239,20 @@ class StudentPrintStatusExportController extends Controller
                     $row['status'],
                     $row['date_printed'],
                 ], null, "A{$rowNum}");
+
+                $sheet->getRowDimension($rowNum)->setRowHeight(24.95);
                 $rowNum++;
             }
 
-            foreach (range('A', 'H') as $col) {
-                $sheet->getColumnDimension($col)->setAutoSize(true);
+            $dataStyle = $sheet->getStyle("A{$firstDataRow}:{$lastCol}{$lastRow}");
+            $dataStyle->getFont()->setName('Calibri')->setSize(12);
+            $dataStyle->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_LEFT)
+                ->setVertical(Alignment::VERTICAL_CENTER);
+            $dataStyle->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+
+            foreach ($columnWidths as $col => $width) {
+                $sheet->getColumnDimension($col)->setWidth($width);
             }
         }
 
