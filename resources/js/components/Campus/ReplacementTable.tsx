@@ -125,11 +125,9 @@ export function ReplacementTable({
                         replacements.map((r, index) => {
                             const fullName = [
                                 r.student?.first_name,
-                                r.student?.middle_init
-                                    ? `${r.student.middle_init}.`
-                                    : '',
+                                r.student?.middle_init,
                                 r.student?.last_name,
-                                r.student?.suffix ? `${r.student.suffix}.` : '',
+                                r.student?.suffix,
                             ]
                                 .filter(Boolean)
                                 .join(' ');

@@ -98,7 +98,12 @@ class StudentRepository
 
         if (preg_match('/^(.*)\s+(JR\.?|SR\.?|II|III|IV|V)$/i', $firstName, $matches)) {
             $firstName = trim($matches[1]);
-            $suffix = strtoupper(rtrim($matches[2], '.')) . '.';
+
+            $suffix = strtoupper($matches[2]);
+
+            if (!str_ends_with($suffix, '.')) {
+                $suffix .= '.';
+            }
         }
 
         return [
@@ -696,6 +701,14 @@ class StudentRepository
             'id_number' => $id_number,
         ]);
     }
+
+    public function fetchStudentByIdNumberLname(string $id_number, string $lname)
+    {
+        $student = $this->model->where('id_number', $id_number)->where('last_name', $lname)->first();
+
+        return $student;
+    }
+
 
 
 

@@ -66,13 +66,9 @@ export default function AlertReplacement({
                                     <span>
                                         {[
                                             data.student.first_name,
-                                            data.student.middle_init
-                                                ? data.student.middle_init + '.'
-                                                : '',
+                                            data.student.middle_init,
                                             data.student.last_name,
-                                            data.student.suffix
-                                                ? data.student.suffix + '.'
-                                                : '',
+                                            data.student.suffix,
                                         ]
                                             .filter(Boolean)
                                             .join(' ')}

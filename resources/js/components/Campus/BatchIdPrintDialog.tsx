@@ -122,7 +122,7 @@ function buildFullName(s: {
 }) {
     return [
         s.first_name,
-        s.middle_init ? `${s.middle_init}.` : null,
+        s.middle_init,
         s.last_name,
         s.suffix,
     ]

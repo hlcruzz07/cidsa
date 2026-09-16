@@ -21,13 +21,23 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StudentProps } from '@/lib/custom-types';
+import apiService from '@/services/apiService';
 import { useForm, usePage } from '@inertiajs/react';
-import { AsteriskIcon, HelpCircle, IdCard, LogInIcon } from 'lucide-react';
+import {
+    AsteriskIcon,
+    HelpCircle,
+    IdCard,
+    InfoIcon,
+    LogInIcon,
+    SearchIcon,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 import { ReplacementGuide } from './Form/Modal/ReplacementGuide';
 import { SuccessModal } from './Form/Modal/SucessModal';
+import StudentStatusModal from './Modal/StudentStatusModal';
 
 type FlashMessages = {
     success?: string | null;
@@ -38,6 +48,22 @@ type FlashMessages = {
     id_number?: string | null;
 };
 
+// Shape of whatever the status-check endpoint flashes back. Adjust the
+// field names here to match whatever the backend actually returns —
+// these are guesses (e.g. "status" could be "PENDING" / "READY FOR
+// RELEASE" / "RELEASED", etc).
+type IdStatusResult = {
+    id_number?: string | null;
+    lname?: string | null;
+    status?: string | null;
+    remarks?: string | null;
+} | null;
+
+type StudentStatus =
+    | { status: 'none' }
+    | { status: 'unprinted' | 'printed'; student: StudentProps }
+    | null;
+
 const CAMPUSES = ['TALISAY', 'ALIJIS', 'FORTUNE TOWNE', 'BINALBAGAN'];
 
 // Employee validation flow is not ready yet. Flip this to `true`
@@ -45,11 +71,17 @@ const CAMPUSES = ['TALISAY', 'ALIJIS', 'FORTUNE TOWNE', 'BINALBAGAN'];
 // needs to change — the form, handler, and route call are left intact.
 const STAFF_FORM_ENABLED = false;
 
-// Shown whenever either the student or staff form is mid-request. Kept
+// Shown whenever any of the three forms is mid-request. Kept
 // simple/non-dismissible (no close button, no onOpenChange) since a
 // credential check is a brief, uninterruptible action — the dialog just
 // closes itself once `processing` flips back to false.
-function ValidatingModal({ open }: { open: boolean }) {
+function ValidatingModal({
+    open,
+    label = 'Checking your credentials',
+}: {
+    open: boolean;
+    label?: string;
+}) {
     return (
         <Dialog open={open}>
             <DialogContent
@@ -61,9 +93,7 @@ function ValidatingModal({ open }: { open: boolean }) {
                     <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
                         <Spinner className="h-6 w-6 text-primary" />
                     </div>
-                    <DialogTitle className="mt-2">
-                        Checking your credentials
-                    </DialogTitle>
+                    <DialogTitle className="mt-2">{label}</DialogTitle>
                     <DialogDescription>
                         Please wait while we verify your information. This will
                         only take a moment.
@@ -74,9 +104,67 @@ function ValidatingModal({ open }: { open: boolean }) {
     );
 }
 
+// Simple result modal for the status-check tab. Reuses the same visual
+// language as the rest of the page. Swap the field references inside for
+// whatever your `id_status` flash payload actually contains.
+function StatusResultModal({
+    open,
+    setOpen,
+    result,
+}: {
+    open: boolean;
+    setOpen: (open: boolean) => void;
+    result: IdStatusResult;
+}) {
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent className="sm:max-w-sm">
+                <DialogHeader className="items-center text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                        <SearchIcon className="h-6 w-6 text-primary" />
+                    </div>
+                    <DialogTitle className="mt-2">ID Status</DialogTitle>
+                    <DialogDescription asChild>
+                        <div className="mt-2 space-y-2 text-left text-sm text-[var(--foreground)]">
+                            {result?.id_number && (
+                                <p>
+                                    <span className="font-medium">
+                                        ID Number:
+                                    </span>{' '}
+                                    {result.id_number}
+                                </p>
+                            )}
+                            {result?.lname && (
+                                <p>
+                                    <span className="font-medium">
+                                        Last Name:
+                                    </span>{' '}
+                                    {result.lname}
+                                </p>
+                            )}
+                            {result?.status && (
+                                <p>
+                                    <span className="font-medium">Status:</span>{' '}
+                                    {result.status}
+                                </p>
+                            )}
+                            {result?.remarks && (
+                                <p className="text-[var(--muted-foreground)]">
+                                    {result.remarks}
+                                </p>
+                            )}
+                        </div>
+                    </DialogDescription>
+                </DialogHeader>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export default function Index() {
     const page = usePage();
-    const flash: FlashMessages = page.props.flash || {};
+    const flash: FlashMessages & { id_status?: IdStatusResult } =
+        page.props.flash || {};
 
     // Both the boolean flag and the id_number live under `flash` — that's
     // where HandleInertiaRequests::share() actually puts them. They are
@@ -86,6 +174,10 @@ export default function Index() {
     const [submittedIdNumber, setSubmittedIdNumber] = useState<string | null>(
         null,
     );
+
+    const [showStatusResult, setShowStatusResult] = useState(false);
+    const [statusResult, setStatusResult] = useState<IdStatusResult>(null);
+    const [studentStatus, setStudentStatus] = useState<StudentStatus>(null);
 
     useEffect(() => {
         if (!flash) return;
@@ -102,6 +194,15 @@ export default function Index() {
         }
     }, [flash.id_request_success, flash.id_number]);
 
+    // Fires once the backend flashes back an `id_status` payload from the
+    // status-check endpoint.
+    useEffect(() => {
+        if (flash.id_status) {
+            setStatusResult(flash.id_status);
+            setShowStatusResult(true);
+        }
+    }, [flash.id_status]);
+
     const [openGuide, setOpenGuide] = useState(false);
 
     const studentForm = useForm({
@@ -115,7 +216,16 @@ export default function Index() {
         digital_id: '',
     });
 
-    const isValidating = studentForm.processing || staffForm.processing;
+    const [statusForm, setStatusForm] = useState({
+        id_number: '',
+        lname: '',
+    });
+
+    const [statusProcessing, setStatusProcessing] = useState(false);
+    const [showStudentStatus, setShowStudentStatus] = useState(false);
+
+    const isValidating =
+        studentForm.processing || staffForm.processing || statusProcessing;
 
     const handleStudentSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -145,11 +255,55 @@ export default function Index() {
         });
     };
 
+    // NOTE: 'id.status.check' is a placeholder route name — swap it for
+    // whatever you register on the backend for this lookup.
+    const handleStatusSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+
+        if (statusProcessing) return;
+
+        if (!statusForm.id_number && !statusForm.lname) return;
+
+        setStatusProcessing(true);
+
+        try {
+            const response = await apiService.post(
+                route('api.student.status', {
+                    id_number: statusForm.id_number,
+                    last_name: statusForm.lname,
+                }),
+            );
+
+            setStudentStatus(response.data);
+            setShowStudentStatus(true);
+        } catch (error) {
+            console.error('Error checking ID status', error);
+        } finally {
+            setStatusProcessing(false);
+        }
+    };
     return (
         <>
-            <ValidatingModal open={isValidating} />
+            <ValidatingModal
+                open={isValidating}
+                label={
+                    statusProcessing
+                        ? 'Checking your ID status'
+                        : 'Checking your credentials'
+                }
+            />
             <SuccessModal open={showSuccess} idNumber={submittedIdNumber} />
+            <StatusResultModal
+                open={showStatusResult}
+                setOpen={setShowStatusResult}
+                result={statusResult}
+            />
             <ReplacementGuide open={openGuide} setOpen={setOpenGuide} />
+            <StudentStatusModal
+                open={showStudentStatus}
+                setOpen={setShowStudentStatus}
+                result={studentStatus}
+            />
             <ThemeButton />
 
             <div className="flex min-h-dvh items-center justify-center border-2 bg-[var(--background)] px-4 py-6 sm:px-6 lg:px-8">
@@ -241,12 +395,18 @@ export default function Index() {
                         </div>
 
                         <Tabs defaultValue="student" className="mt-6">
-                            <TabsList className="grid w-full grid-cols-2 rounded-xl bg-[var(--muted)] p-1">
+                            <TabsList className="grid w-full grid-cols-3 rounded-xl bg-[var(--muted)] p-1">
                                 <TabsTrigger
                                     value="student"
                                     className="rounded-lg"
                                 >
                                     Student
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="status"
+                                    className="rounded-lg"
+                                >
+                                    Check ID Status
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="staff"
@@ -452,6 +612,101 @@ export default function Index() {
                                         or visit our office during our office
                                         hours for assistance.
                                     </p>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="status" className="mt-6">
+                                <form
+                                    onSubmit={handleStatusSubmit}
+                                    className="space-y-5"
+                                >
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <div className="grid gap-2">
+                                            <Label className="text-sm font-medium text-[var(--foreground)]">
+                                                ID Number{' '}
+                                                <AsteriskIcon
+                                                    size={12}
+                                                    color="red"
+                                                />
+                                            </Label>
+                                            <Input
+                                                type="text"
+                                                placeholder="Enter ID Number"
+                                                value={statusForm.id_number}
+                                                onChange={(e) => {
+                                                    setStatusForm((prev) => ({
+                                                        ...prev,
+                                                        id_number:
+                                                            e.target.value.toUpperCase(),
+                                                    }));
+                                                }}
+                                                maxLength={25}
+                                                className="h-11 rounded-xl border-[var(--border)] bg-[var(--background)] text-base text-[var(--foreground)] focus-visible:ring-[var(--ring)]"
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label className="text-sm font-medium text-[var(--foreground)]">
+                                                Last Name{' '}
+                                                <AsteriskIcon
+                                                    size={12}
+                                                    color="red"
+                                                />
+                                            </Label>
+                                            <Input
+                                                type="text"
+                                                placeholder="Enter Last Name"
+                                                value={statusForm.lname}
+                                                onChange={(e) => {
+                                                    setStatusForm((prev) => ({
+                                                        ...prev,
+                                                        lname: e.target.value.toUpperCase(),
+                                                    }));
+                                                }}
+                                                maxLength={25}
+                                                className="h-11 rounded-xl border-[var(--border)] bg-[var(--background)] text-base text-[var(--foreground)] focus-visible:ring-[var(--ring)]"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <Button
+                                        type="submit"
+                                        className="h-11 w-full rounded-xl bg-primary text-sm font-semibold text-[var(--primary-foreground)] shadow-lg transition hover:bg-primary/90"
+                                        disabled={
+                                            (!statusForm.id_number &&
+                                                !statusForm.lname) ||
+                                            statusProcessing
+                                        }
+                                    >
+                                        <span className="flex items-center justify-center gap-2">
+                                            Check Status
+                                            {statusProcessing ? (
+                                                <Spinner />
+                                            ) : (
+                                                <SearchIcon className="h-4 w-4" />
+                                            )}
+                                        </span>
+                                    </Button>
+                                </form>
+
+                                <div className="mt-5 rounded-xl border border-[var(--border)] bg-[var(--muted)] p-4">
+                                    <div className="flex gap-3">
+                                        <InfoIcon className="mt-0.5 h-5 w-5 shrink-0 text-[var(--primary)]" />
+
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-medium text-[var(--foreground)]">
+                                                Check Student ID Status
+                                            </p>
+
+                                            <p className="text-sm text-[var(--muted-foreground)]">
+                                                Use this form to check the
+                                                current progress and status of
+                                                your Student ID. Enter your ID
+                                                number and last name below to
+                                                view your status.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </TabsContent>
 

@@ -191,7 +191,12 @@ export default function Index() {
     // reject the submission.
     useEffect(() => {
         apiService
-            .get(route('api.student.status', student.id_number))
+            .post(
+                route('api.student.status', {
+                    id_number: student.id_number,
+                    last_name: student.last_name,
+                }),
+            )
             .then((res) => {
                 const status: SubmissionStatus = res.data.status;
                 setSubmissionStatus(status);

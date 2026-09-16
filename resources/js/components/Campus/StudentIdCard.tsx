@@ -203,9 +203,7 @@ export function StudentIdCard({ data, isFlipped }: StudentIdCardProps) {
                             <AutoFitText
                                 text={[
                                     data.first_name,
-                                    data.middle_init
-                                        ? `${data.middle_init}.`
-                                        : null,
+                                    data.middle_init,
                                     data.last_name,
                                     data.suffix,
                                 ]
@@ -303,9 +301,7 @@ export function StudentIdCard({ data, isFlipped }: StudentIdCardProps) {
                                 <h2 className="font-arial font-bold text-black uppercase">
                                     {[
                                         data.emergency_first_name,
-                                        data.emergency_middle_init
-                                            ? `${data.emergency_middle_init}.`
-                                            : null,
+                                        data.emergency_middle_init,
                                         data.emergency_last_name,
                                         data.emergency_suffix,
                                     ]
@@ -414,9 +410,7 @@ export function IdCardFront({ data }: { data: StudentIdCardData }) {
                         <AutoFitText
                             text={[
                                 data.first_name,
-                                data.middle_init
-                                    ? `${data.middle_init}.`
-                                    : null,
+                                data.middle_init,
                                 data.last_name,
                                 data.suffix,
                             ]
@@ -509,9 +503,7 @@ export function IdCardBack({ data }: { data: StudentIdCardData }) {
                             <h2 className="font-arial font-bold text-black uppercase">
                                 {[
                                     data.emergency_first_name,
-                                    data.emergency_middle_init
-                                        ? `${data.emergency_middle_init}.`
-                                        : null,
+                                    data.emergency_middle_init,
                                     data.emergency_last_name,
                                     data.emergency_suffix,
                                 ]

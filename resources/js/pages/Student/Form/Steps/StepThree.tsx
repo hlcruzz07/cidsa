@@ -654,7 +654,7 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
                                                     className="lg::w-auto w-20 md:w-40"
                                                 />
                                                 <h1 className="text-sm font-extrabold uppercase md:text-xl lg:text-3xl dark:text-black">
-                                                    {`${student.first_name} ${student.middle_init ? student.middle_init + '.' : ''} ${student.last_name} ${student.suffix ? student.suffix + '.' : ''}`}
+                                                    {[student.first_name, student.middle_init, student.last_name, student.suffix].filter(Boolean).join(' ')}
                                                 </h1>
                                                 <h1 className="capitalized text-[9px] font-medium md:text-base lg:text-lg dark:text-black">
                                                     {data.program}
@@ -713,15 +713,9 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
                                                 <p className="text-base font-bold md:text-2xl">
                                                     {[
                                                         data.emergency_first_name,
-                                                        data.emergency_middle_init
-                                                            ? data.emergency_middle_init +
-                                                              '.'
-                                                            : '',
+                                                        data.emergency_middle_init,
                                                         data.emergency_last_name,
-                                                        data.emergency_suffix
-                                                            ? data.emergency_suffix +
-                                                              '.'
-                                                            : '',
+                                                        data.emergency_suffix,
                                                     ]
                                                         .filter(Boolean)
                                                         .join(' ')}

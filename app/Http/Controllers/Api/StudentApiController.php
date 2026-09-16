@@ -130,9 +130,9 @@ class StudentApiController extends Controller
         return $this->googleDriveService->getGDriveImage($fileId);
     }
 
-    public function checkStatus(string $id_number)
+    public function checkStatus(string $id_number, string $last_name)
     {
-        $student = Student::where('id_number', $id_number)->first();
+        $student = Student::where('id_number', $id_number)->where('last_name', $last_name)->with('printed')->first();
 
         if (!$student) {
             return response()->json([

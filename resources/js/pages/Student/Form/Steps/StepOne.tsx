@@ -254,9 +254,7 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                         id="first_name"
                         value={[
                             data.first_name,
-                            data.middle_init
-                                ? data.middle_init + '.'
-                                : data.middle_init,
+                            data.middle_init,
                             data.last_name,
                             data.suffix,
                         ]

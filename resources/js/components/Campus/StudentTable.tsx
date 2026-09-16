@@ -173,14 +173,9 @@ export function StudentTable({
                                                     className="object-cover"
                                                     alt={[
                                                         row.first_name,
-                                                        row.middle_init
-                                                            ? row.middle_init +
-                                                              '.'
-                                                            : '',
+                                                        row.middle_init,
                                                         row.last_name,
-                                                        row.suffix
-                                                            ? row.suffix + '.'
-                                                            : '',
+                                                        row.suffix,
                                                     ]
                                                         .filter(Boolean)
                                                         .join(' ')}
@@ -189,15 +184,9 @@ export function StudentTable({
                                                     {getInitials(
                                                         [
                                                             row.first_name,
-                                                            row.middle_init
-                                                                ? row.middle_init +
-                                                                  '.'
-                                                                : '',
+                                                            row.middle_init,
                                                             row.last_name,
-                                                            row.suffix
-                                                                ? row.suffix +
-                                                                  '.'
-                                                                : '',
+                                                            row.suffix,
                                                         ]
                                                             .filter(Boolean)
                                                             .join(' '),
@@ -208,14 +197,9 @@ export function StudentTable({
                                                 <h4 className="font-medium">
                                                     {[
                                                         row.first_name,
-                                                        row.middle_init
-                                                            ? row.middle_init +
-                                                              '.'
-                                                            : '',
+                                                        row.middle_init,
                                                         row.last_name,
-                                                        row.suffix
-                                                            ? row.suffix + '.'
-                                                            : '',
+                                                        row.suffix,
                                                     ]
                                                         .filter(Boolean)
                                                         .join(' ')}

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AddStudentRequest;
+use App\Http\Requests\CheckIdStatusRequest;
 use App\Http\Requests\CompleteStudentRequest;
 use App\Http\Requests\UpdateStudentRequest;
 use App\Http\Requests\ValidateStudentRequest;
@@ -280,4 +281,5 @@ class StudentController extends Controller
 
         return response()->json($result);
     }
+
 }

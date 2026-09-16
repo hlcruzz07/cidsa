@@ -22,10 +22,16 @@ export default function PreviewModal({
     setIsOpen,
 }: PreviewModalProps) {
     const formatFullName = (s: StudentProps) =>
-        `${(s.first_name || '').toUpperCase()}${s.middle_init ? ' ' + s.middle_init.toUpperCase() : ''} ${(s.last_name || '').toUpperCase()}${s.suffix ? ' ' + s.suffix.toUpperCase() : ''}`.trim();
+        [s.first_name, s.middle_init, s.last_name, s.suffix]
+            .filter(Boolean)
+            .map((v) => (v as string).toUpperCase())
+            .join(' ');
 
     const formatEmergencyName = (s: StudentProps) =>
-        `${(s.emergency_first_name || '').toUpperCase()}${s.emergency_middle_init ? ' ' + s.emergency_middle_init.toUpperCase() : ''} ${(s.emergency_last_name || '').toUpperCase()}${s.emergency_suffix ? ' ' + s.emergency_suffix.toUpperCase() : ''}`.trim();
+        [s.emergency_first_name, s.emergency_middle_init, s.emergency_last_name, s.emergency_suffix]
+            .filter(Boolean)
+            .map((v) => (v as string).toUpperCase())
+            .join(' ');
 
     const formatContact = (s: StudentProps) => {
         const n = String(s.contact_number) || '';

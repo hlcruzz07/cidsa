@@ -24,4 +24,4 @@ Route::middleware(['auth', 'check.role:admin|super admin'])->group(function () {
 
 });
 
-Route::get('/api/student/status/{id_number}', [StudentApiController::class, 'checkStatus'])->name('api.student.status');
+Route::post('/api/student/status/{id_number}/{last_name}', [StudentApiController::class, 'checkStatus'])->name('api.student.status');

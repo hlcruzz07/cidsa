@@ -43,9 +43,9 @@ export function ChangeLogsModal({
     const fullName = student
         ? [
               student.first_name,
-              student.middle_init ? student.middle_init + '.' : '',
+              student.middle_init,
               student.last_name,
-              student.suffix ? student.suffix + '.' : '',
+              student.suffix,
           ]
               .filter(Boolean)
               .join(' ')
