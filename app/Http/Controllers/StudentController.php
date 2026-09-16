@@ -221,50 +221,6 @@ class StudentController extends Controller
         return redirect()->back()->with('success', 'Students imported successfully: ' . count($students));
     }
 
-    public function addStudent(AddStudentRequest $request)
-    {
-        $student = $request->validated();
-
-        $this->repo->addStudent($student);
-
-
-        return redirect()->back()->with('success', 'Student ' . $student['id_number'] . ' added.');
-    }
-
-    public function edit(int $id)
-    {
-        $student = $this->repo->find($id);
-
-        $student['picture'] = $student['picture'] ? route('gdrive.image', [
-            'fileId' => $student['picture']
-        ]) : null;
-
-        $student['e_signature'] = $student['e_signature'] ? route('gdrive.image', [
-            'fileId' => $student['e_signature']
-        ]) : null;
-
-
-        return Inertia::render('Campus/Edit/Index', [
-            'student' => $student
-        ]);
-    }
-    public function view(int $id)
-    {
-        $student = $this->repo->find($id);
-
-        $student['picture'] = $student['picture'] ? route('gdrive.image', [
-            'fileId' => $student['picture']
-        ]) : null;
-
-        $student['e_signature'] = $student['e_signature'] ? route('gdrive.image', [
-            'fileId' => $student['e_signature']
-        ]) : null;
-
-        return Inertia::render('Campus/View/Index', [
-            'student' => $student
-        ]);
-    }
-
 
     public function update(UpdateStudentRequest $request, $id)
     {

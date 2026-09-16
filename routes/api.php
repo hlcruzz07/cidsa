@@ -4,7 +4,7 @@ use App\Http\Controllers\Api\StudentApiController;
 use App\Http\Controllers\StudentPrintStatusExportController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', 'check.role:admin|super admin'])->group(function () {
+Route::middleware(['auth', 'check.role:admin|super admin'])->group(function () {
 
     Route::get('/api/student/filterPaginate', [StudentApiController::class, 'filterPaginate'])->name('filter.paginate');
     Route::get('/api/student/filterPaginateReplacement', [StudentApiController::class, 'filterPaginateReplacement'])->name('filter.paginate.replacements');

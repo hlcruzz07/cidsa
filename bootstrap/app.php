@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CheckCampusAccess;
 use App\Http\Middleware\CheckStudentHasSession;
 use App\Http\Middleware\CheckUserRole;
 use App\Http\Middleware\CheckValidatedStudent;
@@ -23,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Middleware aliases here
         $middleware->alias([
             'check.role' => CheckUserRole::class,
+            'campus' => CheckCampusAccess::class,
             'validate.student' => ValidateStudent::class,
             'student.validated' => CheckValidatedStudent::class,
             'student.has.session' => CheckStudentHasSession::class,
