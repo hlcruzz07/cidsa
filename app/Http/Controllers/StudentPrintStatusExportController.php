@@ -182,7 +182,7 @@ class StudentPrintStatusExportController extends Controller
         ];
 
         $asOfDate = now()->format('F j, Y');
-        $campusLabel = Str::upper(str_replace(['-', '_'], ' ', $campus)); // e.g. "FORTUNE TOWNE"
+        $campusLabel = Str::upper(str_replace(['-', '_'], ' ', $campus));
         $title = "{$campusLabel} CAMPUS STUDENT STATUS LIST";
 
         foreach ($byProgram as $programKey => $programRows) {
@@ -192,11 +192,17 @@ class StudentPrintStatusExportController extends Controller
             $sheet->setTitle($sheetTitle);
 
             $totalCount = $programRows->count();
+            $statusCounts = $programRows->countBy('status');
+            $printedCount = $statusCounts->get('Printed', 0);
+            $pendingCount = $statusCounts->get('Pending', 0);
+            $noDataCount = $statusCounts->get('No Data', 0);
+
             $lastCol = 'G';
             $titleRow = 1;
             $summaryRow = 2;
-            $headerRow = 3;
-            $firstDataRow = 4;
+            $breakdownRow = 3;
+            $headerRow = 4;
+            $firstDataRow = 5;
             $lastRow = $totalCount + $firstDataRow - 1;
 
             // Row 1: Title
@@ -214,7 +220,16 @@ class StudentPrintStatusExportController extends Controller
             $sheet->getStyle("F{$summaryRow}")->getFont()->setName('Calibri')->setSize(15)->setBold(true);
             $sheet->getRowDimension($summaryRow)->setRowHeight(19.5);
 
-            // Row 3: Header
+            // Row 3: Status breakdown (Printed / Pending / No Data)
+            $sheet->setCellValue("A{$breakdownRow}", "Printed: {$printedCount}");
+            $sheet->setCellValue("C{$breakdownRow}", "Pending: {$pendingCount}");
+            $sheet->setCellValue("E{$breakdownRow}", "No Data: {$noDataCount}");
+            foreach (['A', 'C', 'E'] as $col) {
+                $sheet->getStyle("{$col}{$breakdownRow}")->getFont()->setName('Calibri')->setSize(12)->setBold(true);
+            }
+            $sheet->getRowDimension($breakdownRow)->setRowHeight(19.5);
+
+            // Row 4: Header
             $sheet->fromArray($headers, null, "A{$headerRow}");
             $sheet->getRowDimension($headerRow)->setRowHeight(24.95);
 
@@ -227,7 +242,7 @@ class StudentPrintStatusExportController extends Controller
                 ->setVertical(Alignment::VERTICAL_CENTER);
             $headerStyle->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
 
-            // Data rows (starting row 4)
+            // Data rows (starting row 5)
             $rowNum = $firstDataRow;
             foreach ($programRows as $row) {
                 $sheet->fromArray([
