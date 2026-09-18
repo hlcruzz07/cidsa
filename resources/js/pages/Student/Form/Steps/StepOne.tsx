@@ -127,8 +127,6 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                 // No existing replacement — show the guide steps instead.
                 setOpenReplaceGuide(true);
             }
-
-            console.log(response.data);
         } catch (error) {
             console.error('Error checking if has a replacement', error);
         }

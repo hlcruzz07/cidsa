@@ -167,9 +167,23 @@ class GoogleDriveService
 
         if (file_exists($cachePath)) {
             $contentType = mime_content_type($cachePath) ?: 'image/jpeg';
+
+            // Use the file's last-modified time as the ETag so the browser
+            // can skip re-downloading an image it already has in its cache.
+            $etag = md5_file($cachePath);
+            $request = request();
+
+            if ($request->header('If-None-Match') === $etag) {
+                return response('', 304, [
+                    'ETag'          => $etag,
+                    'Cache-Control' => 'public, max-age=31536000',
+                ]);
+            }
+
             return response()->file($cachePath, [
-                'Content-Type' => $contentType,
+                'Content-Type'  => $contentType,
                 'Cache-Control' => 'public, max-age=31536000',
+                'ETag'          => $etag,
             ]);
         }
 
@@ -177,13 +191,17 @@ class GoogleDriveService
             $token = $this->getGoogleAccessToken();
 
             $response = \Illuminate\Support\Facades\Http::withToken($token)
+                ->timeout(15)
                 ->get("https://www.googleapis.com/drive/v3/files/{$fileId}?alt=media");
 
             if (!$response->successful()) {
-                return response()->json(['error' => 'Failed to fetch file from Google Drive', 'status' => $response->status()], $response->status());
+                return response()->json([
+                    'error'  => 'Failed to fetch file from Google Drive',
+                    'status' => $response->status(),
+                ], $response->status());
             }
 
-            $content = $response->body();
+            $content     = $response->body();
             $contentType = $response->header('Content-Type') ?: 'image/jpeg';
 
             // Ensure cache directory exists
@@ -193,9 +211,12 @@ class GoogleDriveService
 
             file_put_contents($cachePath, $content);
 
+            $etag = md5($content);
+
             return response($content, 200, [
-                'Content-Type' => $contentType,
+                'Content-Type'  => $contentType,
                 'Cache-Control' => 'public, max-age=31536000',
+                'ETag'          => $etag,
             ]);
 
         } catch (\Exception $e) {

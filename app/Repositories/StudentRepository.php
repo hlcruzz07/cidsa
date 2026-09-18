@@ -261,18 +261,26 @@ class StudentRepository
             }
         }
 
+        // 📅 Date range — filters against `created_at` or `updated_at`,
+        // selectable via `dateField`. Defaults to `created_at` so any existing
+        // caller that doesn't send this param keeps behaving exactly as
+        // before.
+        $dateField = in_array($filters['dateField'] ?? null, ['created_at', 'updated_at'], true)
+            ? $filters['dateField']
+            : 'created_at';
+
         if (!empty($filters['from']) && !empty($filters['to'])) {
             if ($filters['from'] === $filters['to']) {
-                $query->whereDate('updated_at', '=', $filters['from']);
+                $query->whereDate($dateField, '=', $filters['from']);
             } else {
-                $query->whereBetween('updated_at', [
+                $query->whereBetween($dateField, [
                     $filters['from'],
                     $filters['to'],
                 ]);
             }
         }
 
-        $sort = $filters['sort'] ?? 'updated_at';
+        $sort = $filters['sort'] ?? 'created_at';
         $order = $filters['order'] ?? 'desc';
         $query->orderBy($sort, $order);
 
@@ -521,31 +529,6 @@ class StudentRepository
         return $this->googleDriveService->uploadPicture($file, $campus, $typeFolder);
     }
 
-
-    public function setCompleted(int $id)
-    {
-        $student = $this->model->findOrFail($id);
-        $student->timestamps = false;
-        $student->is_completed = true;
-        $student->save();
-
-        return $student;
-    }
-
-    public function addStudent(array $data)
-    {
-
-        return $this->model->insert([
-            'id_number' => $data['id_number'],
-            'first_name' => $data['first_name'],
-            'middle_init' => $data['middle_init'],
-            'last_name' => $data['last_name'],
-            'suffix' => $data['suffix'],
-            'created_at' => Carbon::now(),
-            'updated_at' => null,
-        ]);
-    }
-
     //Widgets Data
     public function countStudentsHasUpdatesByCampus(string $campus): int
     {
@@ -597,9 +580,8 @@ class StudentRepository
 
         return $this->model
             ->where('campus', $campus)
-            ->whereNotNull('updated_at')
-            ->whereBetween('updated_at', [$startDate, $now])
-            ->selectRaw('DATE(updated_at) as date, college, COUNT(*) as total')
+            ->whereBetween('created_at', [$startDate, $now])
+            ->selectRaw('DATE(created_at) as date, college, COUNT(*) as total')
             ->groupBy('date', 'college')
             ->orderBy('date')
             ->orderBy('college')
@@ -631,11 +613,11 @@ class StudentRepository
 
         $students = DB::table('students')
             ->select(
-                DB::raw('DATE(updated_at) as date'),
+                DB::raw('DATE(created_at) as date'),
                 'campus',
                 DB::raw('COUNT(*) as total')
             )
-            ->where('updated_at', '>=', $startDate)
+            ->where('created_at', '>=', $startDate)
             ->groupBy('date', 'campus')
             ->orderBy('date')
             ->get();

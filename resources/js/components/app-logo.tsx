@@ -10,7 +10,9 @@ export default function AppLogo() {
                 <span className="mb-0.5 truncate leading-tight font-semibold">
                     CIDSA
                     <br />
-                    <p className="text-[9.5px] font-medium">Administrator</p>
+                    <p className="text-[9.5px] font-medium">
+                        Super Administrator
+                    </p>
                 </span>
             </div>
         </div>

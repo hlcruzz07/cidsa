@@ -27,8 +27,6 @@ import {
 } from '@/components/ui/select';
 import apiService from '@/services/apiService';
 import dayjs from 'dayjs';
-import { ImportIcon } from 'lucide-react';
-import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
 
 const chartConfig = {
@@ -56,10 +54,8 @@ type ChartRow = {
     bin: number;
     ft: number;
 };
-type DashboardChartProps = {
-    onImport: (open: boolean) => void;
-};
-export function DashboardChart({ onImport }: DashboardChartProps) {
+
+export function DashboardChart() {
     const [timeRange, setTimeRange] = React.useState('90d');
     const [chartData, setChartData] = React.useState<ChartRow[]>([]);
     const [loading, setLoading] = React.useState(false);
@@ -127,13 +123,6 @@ export function DashboardChart({ onImport }: DashboardChartProps) {
                         </SelectItem>
                     </SelectContent>
                 </Select>
-                <Button
-                    onClick={() => onImport(true)}
-                    variant="outline"
-                    type="button"
-                >
-                    <ImportIcon /> Import Printed Students
-                </Button>
             </CardHeader>
             <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
                 {loading ? (

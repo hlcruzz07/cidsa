@@ -37,16 +37,18 @@ Route::get('/test-databases', function () {
 
     return response()->json($results);
 });
-Route::get('/', [StudentController::class, 'index'])->name('home');
-Route::post('/validate/student', [StudentController::class, 'validate'])->name('validate.student');
-Route::get('/form', [StudentController::class, 'studentForm'])->name('student.form');
-Route::post('/student/create', [StudentController::class, 'create'])->name('student.create');
-Route::post('/student/cancel', [StudentController::class, 'cancel'])->name('student.cancel');
-Route::get('/student/checkReplacement', [StudentController::class, 'checkReplacement'])->name('student.check.replacement');
+Route::middleware('guest')->group(function () {
+    Route::get('/', [StudentController::class, 'index'])->name('home');
+    Route::post('/validate/student', [StudentController::class, 'validate'])->name('validate.student');
+    Route::get('/form', [StudentController::class, 'studentForm'])->name('student.form');
+    Route::post('/student/create', [StudentController::class, 'create'])->name('student.create');
+    Route::post('/student/cancel', [StudentController::class, 'cancel'])->name('student.cancel');
+    Route::get('/student/checkReplacement', [StudentController::class, 'checkReplacement'])->name('student.check.replacement');
 
-Route::post('/validate/staff', [StaffController::class, 'validate'])->name('validate.staff');
-Route::get('/form/staff', [StaffController::class, 'form'])->name('form.staff');
-Route::post('/staff/store', [StaffController::class, 'store'])->name('store.staff');
+    Route::post('/validate/staff', [StaffController::class, 'validate'])->name('validate.staff');
+    Route::get('/form/staff', [StaffController::class, 'form'])->name('form.staff');
+    Route::post('/staff/store', [StaffController::class, 'store'])->name('store.staff');
+});
 
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('google.callback');

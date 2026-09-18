@@ -7,7 +7,6 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { route } from 'ziggy-js';
-import { ImportPrintedStudents } from './Campus/Modal/ImportPrintedStudents';
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Dashboard',
@@ -69,15 +68,10 @@ export default function Dashboard() {
         handleFilter();
     }, [searchValue, range, perPage, sort, order]);
 
-    const [openImportPrintedModal, setOpenImportPrintedModal] = useState(false);
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
-            <ImportPrintedStudents
-                isOpen={openImportPrintedModal}
-                setIsOpen={() => setOpenImportPrintedModal(false)}
-                reload={handleFilter}
-            />
+
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="grid auto-rows-min gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <DashboardWidget
@@ -95,7 +89,7 @@ export default function Dashboard() {
                     />
                 </div>
                 <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                    <DashboardChart onImport={setOpenImportPrintedModal} />
+                    <DashboardChart />
                 </div>
             </div>
         </AppLayout>

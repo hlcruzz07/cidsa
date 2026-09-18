@@ -54,7 +54,6 @@ export function StudentTable({
     onChangeStatus,
 }: StudentTableProps) {
     const headers = [
-        '#',
         'Name',
         'Campus / Department',
         'Program / Major',
@@ -154,13 +153,6 @@ export function StudentTable({
                                 <tr key={index} className="hover:bg-muted/50">
                                     <td
                                         className="p-2 whitespace-nowrap"
-                                        data-label="#"
-                                    >
-                                        {row.id}
-                                    </td>
-
-                                    <td
-                                        className="p-2 whitespace-nowrap"
                                         data-label="Name"
                                     >
                                         <div className="flex items-center gap-2">
@@ -171,6 +163,8 @@ export function StudentTable({
                                                         row.picture,
                                                     )}
                                                     className="object-cover"
+                                                    loading="lazy"
+                                                    decoding="async"
                                                     alt={[
                                                         row.first_name,
                                                         row.middle_init,
@@ -230,12 +224,18 @@ export function StudentTable({
                                         className="p-2 whitespace-nowrap"
                                         data-label="Program"
                                     >
-                                        <div className="flex flex-col">
-                                            <span className="font-medium text-foreground">
+                                        <div className="flex max-w-[300px] flex-col">
+                                            <span
+                                                className="truncate font-medium text-foreground"
+                                                title={row.program}
+                                            >
                                                 {row.program}
                                             </span>
                                             {row.major ? (
-                                                <span className="text-xs text-muted-foreground">
+                                                <span
+                                                    className="truncate text-xs text-muted-foreground"
+                                                    title={row.major}
+                                                >
                                                     {row.major}
                                                 </span>
                                             ) : (

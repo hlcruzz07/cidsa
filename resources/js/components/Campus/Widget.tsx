@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/card';
 import { formatCount } from '@/lib/utils';
 import dayjs from 'dayjs';
-import { CheckCircle2, TrendingUp } from 'lucide-react';
+import { Clock, LucideIcon, Printer, RefreshCcw, Users } from 'lucide-react';
 
 type WidgetProps = {
     count: number;
@@ -18,67 +18,82 @@ type WidgetProps = {
         | 'totalPendingReplacement';
 };
 
-const widgetConfig = {
+const widgetConfig: Record<
+    WidgetProps['type'],
+    {
+        title: string;
+        description: string;
+        icon: LucideIcon;
+        text: string;
+        bg: string;
+        bgSoft: string;
+    }
+> = {
     totalUpdates: {
-        title: 'Total Student Updates',
-        description: 'Number of student records updated.',
-        color: {
-            text: 'text-emerald-500',
-            bg: 'bg-emerald-500',
-        },
+        title: 'Total',
+        description: 'Number of student submissions.',
+        icon: Users,
+        text: 'text-chart-1',
+        bg: 'bg-chart-1',
+        bgSoft: 'bg-chart-1/10',
     },
     totalNewPendings: {
-        title: 'New Pending IDs',
+        title: 'Pendings',
         description: 'Students waiting for their first ID to be printed.',
-        color: {
-            text: 'text-amber-500',
-            bg: 'bg-amber-500',
-        },
+        icon: Clock,
+        text: 'text-chart-2',
+        bg: 'bg-chart-2',
+        bgSoft: 'bg-chart-2/10',
     },
     totalNewPrinted: {
-        title: 'New Printed IDs',
+        title: 'Printed',
         description: 'Students whose first ID has been printed.',
-        color: {
-            text: 'text-blue-500',
-            bg: 'bg-blue-500',
-        },
+        icon: Printer,
+        text: 'text-chart-3',
+        bg: 'bg-chart-3',
+        bgSoft: 'bg-chart-3/10',
     },
     totalPendingReplacement: {
         title: 'Pending Replacements',
         description: 'Replacement ID requests awaiting printing.',
-        color: {
-            text: 'text-violet-500',
-            bg: 'bg-violet-500',
-        },
+        icon: RefreshCcw,
+        text: 'text-chart-4',
+        bg: 'bg-chart-4',
+        bgSoft: 'bg-chart-4/10',
     },
-} as const;
+};
 
 export default function Widget({ count, type }: WidgetProps) {
     const config = widgetConfig[type];
+    const Icon = config.icon;
 
     return (
-        <Card className="relative w-full overflow-hidden rounded-xl bg-background">
+        <Card className="group relative w-full overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm transition-shadow hover:shadow-md">
+            {/* Accent glow */}
             <div
-                className={`absolute inset-x-0 top-0 h-1 ${config.color.bg}`}
+                className={`pointer-events-none absolute -top-8 -right-8 h-32 w-32 rounded-full opacity-20 blur-2xl transition-opacity group-hover:opacity-30 ${config.bg}`}
             />
 
-            <CardHeader className="space-y-1 pb-2">
-                <div className="flex items-center gap-2">
-                    <CheckCircle2 className={`h-5 w-5 ${config.color.text}`} />
-                    <CardTitle className="text-lg font-semibold tracking-wide text-muted-foreground">
+            <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
+                <div className="space-y-1.5">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                         {config.title}
                     </CardTitle>
+                    <CardDescription className="text-xs leading-snug">
+                        {config.description}
+                    </CardDescription>
                 </div>
 
-                <CardDescription>{config.description}</CardDescription>
+                <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${config.bgSoft} ${config.text}`}
+                >
+                    <Icon className="h-4.5 w-4.5" />
+                </div>
             </CardHeader>
 
-            <CardContent className="space-y-2">
-                <div
-                    className={`flex items-center gap-5 text-4xl font-extrabold tabular-nums ${config.color.text}`}
-                >
+            <CardContent className="space-y-1">
+                <div className="text-3xl font-bold tracking-tight text-foreground tabular-nums">
                     {formatCount(count)}
-                    <TrendingUp size={55} />
                 </div>
 
                 <p className="text-xs text-muted-foreground">

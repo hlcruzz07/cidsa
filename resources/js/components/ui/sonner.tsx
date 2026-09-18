@@ -1,8 +1,10 @@
+import { usePage } from "@inertiajs/react";
 import { useEffect, useState } from "react"
 import { Toaster as Sonner, ToasterProps } from "sonner"
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const [theme, setTheme] = useState<"light" | "dark">("light")
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+ 
 
   useEffect(() => {
     // Function to check <html> class
@@ -14,6 +16,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
     // Initial check
     setTheme(getTheme())
   }, [])
+
 
   return (
     <Sonner

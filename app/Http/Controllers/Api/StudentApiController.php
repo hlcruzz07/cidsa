@@ -19,21 +19,7 @@ class StudentApiController extends Controller
     public function filterPaginate(Request $request)
     {
 
-        $filters = $request->only([
-            'search',
-            'type',
-            'college',
-            'program',
-            'is_printed',
-            'major',
-            'year',
-            'from',
-            'to',
-            'sort',
-            'order',
-            'perPage',
-            'campus',
-        ]);
+        $filters = $request->all();
 
 
 

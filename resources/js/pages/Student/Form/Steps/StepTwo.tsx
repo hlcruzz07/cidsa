@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { FormDataProps } from '@/lib/form-type';
 import {
     applyWhiteBackground,
     resizeWithFaceCentering,
@@ -22,7 +23,6 @@ import * as hf from '@huggingface/transformers';
 import { usePage } from '@inertiajs/react';
 import * as imageConversion from 'image-conversion';
 import {
-    AsteriskIcon,
     Ban,
     Camera,
     ImageIcon,
@@ -543,7 +543,7 @@ export default function StepTwo({
                         type="file"
                         name="picture"
                         id="picture"
-                        accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                        accept=".jpg,.jpeg,.png"
                         onChange={handleFileChange}
                         className="hidden"
                     />
@@ -574,7 +574,6 @@ export default function StepTwo({
                         <div>
                             <Label className="text-base font-semibold">
                                 E - Signature{' '}
-                                <AsteriskIcon size={12} color="red" />
                             </Label>
                             <p className="mt-1 text-sm text-gray-500">
                                 Draw or upload your signature.

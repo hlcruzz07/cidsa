@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { route } from 'ziggy-js';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 interface PaginationLink {
     url: string | null;
@@ -50,7 +51,6 @@ export function ReplacementTable({
     onChangeStatus,
 }: ReplacementTableProps) {
     const headers = [
-        '#',
         'Name',
         'Campus / Department',
         'Program / Major',
@@ -136,13 +136,6 @@ export function ReplacementTable({
                                 <tr key={r.id} className="hover:bg-muted/50">
                                     <td
                                         className="p-2 whitespace-nowrap"
-                                        data-label="#"
-                                    >
-                                        {r.id}
-                                    </td>
-
-                                    <td
-                                        className="p-2 whitespace-nowrap"
                                         data-label="Name"
                                     >
                                         <div className="flex items-center gap-2">
@@ -196,13 +189,19 @@ export function ReplacementTable({
                                         className="p-2 whitespace-nowrap"
                                         data-label="Program"
                                     >
-                                        <div className="flex flex-col">
-                                            <span className="font-medium text-foreground">
-                                                {r.student?.program ?? '—'}
+                                        <div className="flex max-w-[300px] flex-col">
+                                            <span
+                                                className="truncate font-medium text-foreground"
+                                                title={r.student?.program}
+                                            >
+                                                {r.student?.program}
                                             </span>
                                             {r.student?.major ? (
-                                                <span className="text-xs text-muted-foreground">
-                                                    {r.student.major}
+                                                <span
+                                                    className="truncate text-xs text-muted-foreground"
+                                                    title={r.student?.major}
+                                                >
+                                                    {r.student?.major}
                                                 </span>
                                             ) : (
                                                 <span className="text-xs text-muted-foreground">
@@ -223,7 +222,16 @@ export function ReplacementTable({
                                         className="max-w-[180px] truncate p-2"
                                         data-label="Reason"
                                     >
-                                        {r.reason ?? '—'}
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="truncate">
+                                                    {r.reason ?? '—'}
+                                                </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>{r.reason ?? '—'}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
                                     </td>
 
                                     <td

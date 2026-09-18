@@ -21,8 +21,6 @@ import { Input } from '@/components/ui/input';
 import { StudentProps, StudentReplacement } from '@/lib/custom-types';
 import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
-import dayjs from 'dayjs';
-import ExcelJS from 'exceljs';
 import {
     AlertCircleIcon,
     BookMarkedIcon,
@@ -32,7 +30,6 @@ import {
     CheckSquare,
     ChevronDownIcon,
     ClockIcon,
-    FileSpreadsheetIcon,
     FilterXIcon,
     IdCard,
     Loader2,
@@ -120,12 +117,7 @@ function buildFullName(s: {
     last_name?: string | null;
     suffix?: string | null;
 }) {
-    return [
-        s.first_name,
-        s.middle_init,
-        s.last_name,
-        s.suffix,
-    ]
+    return [s.first_name, s.middle_init, s.last_name, s.suffix]
         .filter(Boolean)
         .join(' ');
 }
@@ -191,9 +183,6 @@ export function BatchIdPrintDialog({
     const [currentPage, setCurrentPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
     const [totalCount, setTotalCount] = useState(0);
-
-    console.log(items);
-
     // ─── Filters ──────────────────────────────────────────────────────────────
     const defaultFilters = (): ListFilters => ({
         search: '',
@@ -209,9 +198,6 @@ export function BatchIdPrintDialog({
     // ─── Selection / print ────────────────────────────────────────────────────
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [printStep, setPrintStep] = useState<PrintStep>({ type: 'idle' });
-
-    // ─── Checklist export ─────────────────────────────────────────────────────
-    const [isGeneratingChecklist, setIsGeneratingChecklist] = useState(false);
 
     const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -367,32 +353,6 @@ export function BatchIdPrintDialog({
 
     const resetFilters = () => setFilters(defaultFilters());
 
-    // ─── Checklist helpers ────────────────────────────────────────────────────
-    const getCollegeName = (code: string) =>
-        collegeOptions.find((c) => c.value === code)?.name ?? code;
-
-    const formatDateSubmitted = (created_at: string | null) => {
-        if (!created_at) return '';
-        const d = new Date(created_at);
-        if (isNaN(d.getTime())) return '';
-        return d.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: '2-digit',
-        });
-    };
-
-    const formatChecklistName = (item: ListItem) => {
-        const last = [item.lastName, item.suffix].filter(Boolean).join(' ');
-        const first = [
-            item.firstName,
-            item.middleInit ? `${item.middleInit}.` : null,
-        ]
-            .filter(Boolean)
-            .join(' ');
-        return [last, first].filter(Boolean).join(', ');
-    };
-
     const [isMarkingPrinted, setIsMarkingPrinted] = useState(false);
 
     const markSelectedAsPrinted = async () => {
@@ -429,180 +389,6 @@ export function BatchIdPrintDialog({
             );
         } finally {
             setIsMarkingPrinted(false);
-        }
-    };
-
-    // ─── Auto-fit column widths based on content length ──────────────────────
-    const calculateColumnWidths = (
-        headers: string[],
-        rows: (string | number)[][],
-        options?: { minWidth?: number; maxWidth?: number; padding?: number },
-    ) => {
-        const { minWidth = 10, maxWidth = 60, padding = 2 } = options ?? {};
-
-        return headers.map((header, colIndex) => {
-            const headerLength = header.length;
-            const maxDataLength = rows.reduce((max, row) => {
-                const value = row[colIndex];
-                const length = value != null ? String(value).length : 0;
-                return Math.max(max, length);
-            }, 0);
-
-            const longest = Math.max(headerLength, maxDataLength);
-            const width = longest + padding;
-
-            return Math.min(Math.max(width, minWidth), maxWidth);
-        });
-    };
-
-    // ─── Generate checklist Excel ────────────────────────────────────────────
-    // ─── Generate checklist Excel ────────────────────────────────────────────
-    const generateChecklistExcel = async () => {
-        const selectedItems = items.filter((i) => selectedIds.has(i.id));
-        if (selectedItems.length === 0) return;
-
-        setIsGeneratingChecklist(true);
-        try {
-            const sortedItems = [...selectedItems].sort((a, b) => {
-                const collegeCompare = getCollegeName(a.college).localeCompare(
-                    getCollegeName(b.college),
-                );
-                if (collegeCompare !== 0) return collegeCompare;
-
-                const programCompare = a.program.localeCompare(b.program);
-                if (programCompare !== 0) return programCompare;
-
-                return a.lastName.localeCompare(b.lastName);
-            });
-
-            const COLS = [
-                'ID NUMBER',
-                'FULL NAME',
-                'CAMPUS',
-                'COLLEGE',
-                'PROGRAM',
-                'DATE SUBMITTED',
-                'STATUS',
-                'DATE PRINTED',
-            ] as const;
-
-            // Build plain row values up front — reused for width calc and writing rows
-            const dataRows = sortedItems.map((item) => [
-                item.id_number,
-                formatChecklistName(item),
-                campus,
-                getCollegeName(item.college),
-                item.program,
-                dayjs(item.created_at).format('MMM D, YYYY h:mm A'),
-                item.isPrinted ? 'Printed' : 'Pending',
-                item.printedAt
-                    ? dayjs(item.printedAt).format('MMM D, YYYY h:mm A')
-                    : '',
-            ]);
-            const workbook = new ExcelJS.Workbook();
-            const worksheet = workbook.addWorksheet('Checklist');
-
-            const COL_WIDTHS = calculateColumnWidths([...COLS], dataRows);
-            worksheet.columns = COLS.map((_, i) => ({ width: COL_WIDTHS[i] }));
-
-            // ── Row 1: Title (merged across A1:E1) ──
-            worksheet.mergeCells('A1:E1');
-            const titleCell = worksheet.getCell('A1');
-            titleCell.value =
-                `${campus.toUpperCase()} CAMPUS - ${modeLabel.toUpperCase()}`.trim();
-            titleCell.font = { name: 'Calibri', size: 30, bold: true };
-            titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
-            worksheet.getRow(1).height = 24.95;
-
-            const totalCell = worksheet.getCell('A2');
-            totalCell.value = `Total: ${sortedItems.length}`;
-            totalCell.font = { name: 'Calibri', size: 15, bold: true };
-            worksheet.getRow(2).height = 19.5;
-
-            // ── Row 2 (right side): "As of {date}" — merged over the last two columns ──
-            const lastColLetter = worksheet.getColumn(COLS.length).letter;
-            const secondToLastColLetter = worksheet.getColumn(
-                COLS.length - 1,
-            ).letter;
-            worksheet.mergeCells(`${secondToLastColLetter}2:${lastColLetter}2`);
-            const asOfCell = worksheet.getCell(`${secondToLastColLetter}2`);
-            asOfCell.value = `As of ${dayjs().format('MMMM D, YYYY')}`;
-            asOfCell.font = { name: 'Calibri', size: 15, bold: true };
-            asOfCell.alignment = { horizontal: 'left' };
-
-            // ── Row 3: Header ──
-            const headerRow = worksheet.getRow(3);
-            headerRow.values = [...COLS];
-            headerRow.height = 24.95;
-            headerRow.eachCell((cell) => {
-                cell.font = {
-                    name: 'Calibri',
-                    size: 12,
-                    color: { argb: 'FFFFFFFF' },
-                };
-                cell.fill = {
-                    type: 'pattern',
-                    pattern: 'solid',
-                    fgColor: { argb: 'FF00B050' },
-                };
-                cell.alignment = { horizontal: 'left', vertical: 'middle' };
-                cell.border = {
-                    top: { style: 'thin' },
-                    bottom: { style: 'thin' },
-                    left: { style: 'thin' },
-                    right: { style: 'thin' },
-                };
-            });
-
-            // ── Data rows ──
-            dataRows.forEach((rowValues) => {
-                const row = worksheet.addRow(rowValues);
-                row.height = 24.95;
-                row.eachCell((cell) => {
-                    cell.font = { name: 'Calibri', size: 12 };
-                    cell.alignment = { horizontal: 'left', vertical: 'middle' };
-                    cell.border = {
-                        top: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        left: { style: 'thin' },
-                        right: { style: 'thin' },
-                    };
-                });
-            });
-
-            const today = new Date().toISOString().slice(0, 10);
-            const filename = `${mode === 'replacement' ? 'Replacement' : 'New'}-Students-Checklist-${today}.xlsx`;
-
-            // Build the file once — reused for both the Drive upload and the local download
-            const buffer = await workbook.xlsx.writeBuffer();
-            const blob = new Blob([buffer], {
-                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            });
-
-            const formData = new FormData();
-            formData.append('file', blob, filename);
-            formData.append('campus', campus);
-
-            // Upload to Google Drive first, filed under Checklist/<campus>.
-            // If this fails, the local download is skipped and the error surfaces below.
-            await apiService.post(route('checklist.store'), formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
-
-            // Only download locally once the Drive upload has succeeded
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } catch (err) {
-            console.error('Failed to upload checklist to Google Drive:', err);
-            // optional: surface a toast/error state here
-        } finally {
-            setIsGeneratingChecklist(false);
         }
     };
 
@@ -1368,26 +1154,6 @@ export function BatchIdPrintDialog({
                             Cancel
                         </Button>
                         <div className="flex gap-2">
-                            {/* Generate checklist Excel — only shown when something is selected */}
-                            {selectedCount > 0 && (
-                                <Button
-                                    variant="secondary"
-                                    onClick={generateChecklistExcel}
-                                    disabled={
-                                        isGeneratingChecklist ||
-                                        isPrinting ||
-                                        isMarkingPrinted
-                                    }
-                                >
-                                    {isGeneratingChecklist ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <FileSpreadsheetIcon className="h-4 w-4" />
-                                    )}
-                                    Generate Checklist
-                                </Button>
-                            )}
-
                             {/* Mark selected as printed — only shown when there are unprinted selections */}
                             {selectedCount > 0 &&
                                 items.some(

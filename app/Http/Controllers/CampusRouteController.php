@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Student;
 use App\Repositories\StudentRepository;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -48,6 +49,8 @@ class CampusRouteController extends Controller
             'totalPendingReplacement' => $this->students->countReplacementPendingByCampus($campus)
         ];
 
+        $programs = Student::query()->whereNotNull('program')->where('campus', $campus)->distinct()->orderBy('program')->pluck('program')->map(fn($program) => ['name' => $program])->values();
+
         $studentsChart = $this->students->studentsUpdateChart($campus, '90d');
 
         // Use a single view for all campuses
@@ -55,6 +58,7 @@ class CampusRouteController extends Controller
             'campus' => $campus,
             'counts' => $counts,
             'studentsChart' => $studentsChart,
+            'programs' => $programs,
         ]);
     }
 }

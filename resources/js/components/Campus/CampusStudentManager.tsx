@@ -6,10 +6,11 @@ import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
 import { usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 import Heading from '../heading';
 import { BatchIdPrintDialog } from './BatchIdPrintDialog';
-import { FilterBar } from './FilterBar';
+import { ExportStatusOptions, FilterBar } from './FilterBar';
 import { IdPreviewDialog } from './Preview';
 import { ReplacementFilterBar } from './ReplacementFilterBar';
 import { ReplacementTable } from './ReplacementTable';
@@ -18,7 +19,7 @@ import { StudentTable } from './StudentTable';
 import Widget from './Widget';
 
 type DateRange = { from: Date; to?: Date };
-
+type DateField = 'created_at' | 'updated_at';
 interface CampusStudentManagerProps {
     campus: string;
     onFilterChange?: (params: any) => void;
@@ -49,8 +50,9 @@ export function CampusStudentManager({
     const [sMajor, setSMajor] = useState<string | null>(null);
     const [sYear, setSYear] = useState<string | null>(null);
     const [sRange, setSRange] = useState<DateRange | undefined>();
+    const [sDateField, setSDateField] = useState<DateField>('created_at');
     const [sPerPage, setSPerPage] = useState(10);
-    const [sSort, setSSort] = useState('updated_at');
+    const [sSort, setSSort] = useState('created_at');
     const [sOrder, setSOrder] = useState<'asc' | 'desc'>('desc');
 
     const sProgramsArr =
@@ -67,6 +69,7 @@ export function CampusStudentManager({
         year: sYear || null,
         from: startOfDay(sRange?.from),
         to: endOfDay(sRange?.to),
+        dateField: sDateField,
         perPage: sPerPage,
         sort: sSort,
         order: sOrder,
@@ -84,7 +87,7 @@ export function CampusStudentManager({
                 sYear ||
                 sRange ||
                 sPerPage !== 10 ||
-                sSort !== 'updated_at' ||
+                sSort !== 'created_at' ||
                 sOrder !== 'desc'
             ),
         [
@@ -125,7 +128,8 @@ export function CampusStudentManager({
         setSMajor(null);
         setSYear(null);
         setSRange(undefined);
-        setSSort('updated_at');
+        setSDateField('created_at');
+        setSSort('created_at');
         setSOrder('desc');
         setSPerPage(10);
     };
@@ -141,6 +145,7 @@ export function CampusStudentManager({
         sMajor,
         sYear,
         sRange,
+        sDateField,
         sPerPage,
         sSort,
         sOrder,
@@ -206,7 +211,7 @@ export function CampusStudentManager({
                 rIsPrinted !== null ||
                 rRange ||
                 rPerPage !== 10 ||
-                rSort !== 'updated_at' ||
+                rSort !== 'created_at' ||
                 rOrder !== 'desc'
             ),
         [
@@ -231,8 +236,6 @@ export function CampusStudentManager({
                 { params: { ...rFilterParams(), ...(page ? { page } : {}) } },
             );
             setReplacements(data);
-
-            console.log(data);
         } catch (e) {
             console.error('Error fetching replacements:', e);
         } finally {
@@ -249,7 +252,7 @@ export function CampusStudentManager({
         setRIsPrinted(null);
 
         setRRange(undefined);
-        setRSort('updated_at');
+        setRSort('created_at');
         setROrder('desc');
         setRPerPage(10);
     };
@@ -273,10 +276,76 @@ export function CampusStudentManager({
 
     const [openBatchReplacement, setOpenBatchReplacement] = useState(false);
 
-    const exportStatus = () => {
-        window.location.href = route('api.export.status', {
-            campus,
-        });
+    // ─── Export Status ────────────────────────────────────────────────────────
+    const [isExportingStatus, setIsExportingStatus] = useState(false);
+
+    /**
+     * Reads an error response back out of an axios error when the request
+     * was made with `responseType: 'blob'`. In that mode, even a JSON error
+     * body from the server arrives as a Blob instead of parsed JSON, so it
+     * has to be read back out as text and parsed manually — otherwise the
+     * backend's specific message (e.g. "SIS database offline") never
+     * reaches the user and they just get a generic failure.
+     */
+    const extractErrorMessage = async (
+        err: any,
+        fallback: string,
+    ): Promise<string> => {
+        const data = err?.response?.data;
+
+        if (data instanceof Blob) {
+            try {
+                const text = await data.text();
+                const parsed = JSON.parse(text);
+                if (typeof parsed?.message === 'string') return parsed.message;
+            } catch {
+                // Not JSON (or empty) — fall through to the generic message.
+            }
+        } else if (typeof data?.message === 'string') {
+            return data.message;
+        }
+
+        return fallback;
+    };
+
+    const exportStatus = async (options: ExportStatusOptions) => {
+        setIsExportingStatus(true);
+        try {
+            const response = await apiService.get(route('api.export.status'), {
+                params: {
+                    campus,
+                    programs: options.programs,
+                    columns: options.columns,
+                    statuses: options.statuses,
+                    year_level: options.yearLevels,
+                },
+                responseType: 'blob',
+            });
+
+            const blob = new Blob([response.data], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const today = new Date().toISOString().slice(0, 10);
+            a.href = url;
+            a.download = `${campus.toUpperCase()}-STUDENT-STATUS-LIST-${today}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            toast.success('Exported successfully.');
+        } catch (err) {
+            const message = await extractErrorMessage(
+                err,
+                'Failed to export status. Please try again.',
+            );
+            console.error('Error exporting status:', err);
+            toast.error(message);
+        } finally {
+            setIsExportingStatus(false);
+        }
     };
 
     return (
@@ -327,6 +396,7 @@ export function CampusStudentManager({
                     description="Students currently applying for a new student ID."
                 />
                 <FilterBar
+                    campus={campus}
                     searchValue={sSearch}
                     onSearchChange={setSSearch}
                     perPage={sPerPage}
@@ -357,6 +427,8 @@ export function CampusStudentManager({
                     onYearChange={setSYear}
                     range={sRange}
                     onRangeChange={setSRange}
+                    dateField={sDateField}
+                    onDateFieldChange={setSDateField}
                     hasActiveFilters={sHasActiveFilters}
                     onReset={resetStudentFilters}
                     totalEntries={students?.total ?? 0}
