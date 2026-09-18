@@ -39,8 +39,11 @@ import {
     BookMarkedIcon,
     BookOpenCheck,
     CalendarIcon,
+    ChartLineIcon,
+    CheckIcon,
     ChevronDownIcon,
     ChevronsLeftRight,
+    ClockIcon,
     DownloadCloudIcon,
     EllipsisIcon,
     PrinterCheckIcon,
@@ -119,6 +122,14 @@ const EXPORT_YEAR_LEVELS: { value: number; label: string }[] = [
 // request. Gives the user a window to cancel a click they didn't mean to
 // make (e.g. hit the wrong menu item).
 const SYNC_YEAR_LEVEL_DELAY_SECONDS = 5;
+
+// Printed status options for the FilterBar's Status filter — mirrors the
+// same is_printed filter used by BatchIdPrintDialog, so the main table and
+// the batch print list stay consistent with each other.
+const PRINTED_STATUS_OPTIONS: { label: string; value: boolean }[] = [
+    { label: 'Printed', value: true },
+    { label: 'Pending', value: false },
+];
 
 export interface ExportStatusOptions {
     programs: string[]; // empty array = all programs
@@ -224,6 +235,11 @@ interface FilterBarProps {
     selectedYear: string | null;
     onYearChange: (value: string | null) => void;
 
+    // Printed Status Filter — matches the batch print dialog's status
+    // filter (null = all, true = printed, false = pending)
+    isPrinted: boolean | null;
+    onPrintedChange: (value: boolean | null) => void;
+
     // Campus for this table
     campus: string;
 
@@ -275,6 +291,8 @@ export function FilterBar({
     yearOptions = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'],
     selectedYear,
     onYearChange,
+    isPrinted,
+    onPrintedChange,
     campus,
     range,
     onRangeChange,
@@ -821,6 +839,7 @@ export function FilterBar({
                         </DropdownMenu>
                     )}
 
+                    {/* Year Level Filter */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="rounded-full!">
@@ -846,6 +865,47 @@ export function FilterBar({
                                     }
                                 >
                                     {item}
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Printed Status Filter — mirrors the batch print
+                        dialog's is_printed filter, so both stay consistent. */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="rounded-full!">
+                                <ChartLineIcon />
+                                Status
+                                {isPrinted === true && (
+                                    <Badge className="ml-2">
+                                        <CheckIcon className="h-2.5 w-2.5" />{' '}
+                                        Printed
+                                    </Badge>
+                                )}
+                                {isPrinted === false && (
+                                    <Badge variant="outline" className="ml-2">
+                                        <ClockIcon className="h-2.5 w-2.5" />{' '}
+                                        Pending
+                                    </Badge>
+                                )}
+                                <ChevronDownIcon />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-max" align="start">
+                            {PRINTED_STATUS_OPTIONS.map((item) => (
+                                <DropdownMenuCheckboxItem
+                                    key={item.label}
+                                    checked={isPrinted === item.value}
+                                    onSelect={() =>
+                                        onPrintedChange(
+                                            isPrinted === item.value
+                                                ? null
+                                                : item.value,
+                                        )
+                                    }
+                                >
+                                    {item.label}
                                 </DropdownMenuCheckboxItem>
                             ))}
                         </DropdownMenuContent>
@@ -978,6 +1038,15 @@ export function FilterBar({
                         <FilterChip
                             label={`Year Level: ${selectedYear}`}
                             onClear={() => onYearChange(null)}
+                        />
+                    )}
+
+                    {isPrinted !== null && (
+                        <FilterChip
+                            label={`Status: ${
+                                isPrinted ? 'Printed' : 'Pending'
+                            }`}
+                            onClear={() => onPrintedChange(null)}
                         />
                     )}
 

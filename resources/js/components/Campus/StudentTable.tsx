@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -15,10 +14,10 @@ import { router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import {
     CheckCheckIcon,
+    CheckIcon,
     ClockIcon,
     EllipsisIcon,
     HistoryIcon,
-    PrinterCheck,
     PrinterIcon,
     UserSearch,
 } from 'lucide-react';
@@ -58,7 +57,6 @@ export function StudentTable({
         'Campus / Department',
         'Program / Major',
         'Year Level',
-        'Status',
         'Date',
         'Action',
     ];
@@ -156,37 +154,46 @@ export function StudentTable({
                                         data-label="Name"
                                     >
                                         <div className="flex items-center gap-2">
-                                            <Avatar className="size-8 overflow-hidden rounded-full">
-                                                <AvatarImage
-                                                    src={route(
-                                                        'gdrive.image',
-                                                        row.picture,
-                                                    )}
-                                                    className="object-cover"
-                                                    loading="lazy"
-                                                    decoding="async"
-                                                    alt={[
-                                                        row.first_name,
-                                                        row.middle_init,
-                                                        row.last_name,
-                                                        row.suffix,
-                                                    ]
-                                                        .filter(Boolean)
-                                                        .join(' ')}
-                                                />
-                                                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                                    {getInitials(
-                                                        [
+                                            <div className="relative">
+                                                {row.printed ? (
+                                                    <CheckIcon className="absolute -top-1 -right-2 z-10 size-3.5 rounded-full border bg-primary p-0.5 text-white" />
+                                                ) : (
+                                                    <ClockIcon className="absolute -top-1 -right-2 z-10 size-3.5 rounded-full border bg-muted p-0.5 text-white" />
+                                                )}
+
+                                                <Avatar className="size-8 overflow-hidden rounded-full">
+                                                    <AvatarImage
+                                                        src={route(
+                                                            'gdrive.image',
+                                                            row.picture,
+                                                        )}
+                                                        className="object-cover"
+                                                        loading="lazy"
+                                                        decoding="async"
+                                                        alt={[
                                                             row.first_name,
                                                             row.middle_init,
                                                             row.last_name,
                                                             row.suffix,
                                                         ]
                                                             .filter(Boolean)
-                                                            .join(' '),
-                                                    )}
-                                                </AvatarFallback>
-                                            </Avatar>
+                                                            .join(' ')}
+                                                    />
+                                                    <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                        {getInitials(
+                                                            [
+                                                                row.first_name,
+                                                                row.middle_init,
+                                                                row.last_name,
+                                                                row.suffix,
+                                                            ]
+                                                                .filter(Boolean)
+                                                                .join(' '),
+                                                        )}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            </div>
+
                                             <div>
                                                 <h4 className="font-medium">
                                                     {[
@@ -198,9 +205,24 @@ export function StudentTable({
                                                         .filter(Boolean)
                                                         .join(' ')}
                                                 </h4>
-                                                <small className="text-muted-foreground">
-                                                    {row.id_number}
-                                                </small>
+
+                                                <div className="flex items-center gap-2">
+                                                    <small className="text-muted-foreground">
+                                                        {row.id_number}
+                                                    </small>
+
+                                                    <small className="text-muted-foreground">
+                                                        •
+                                                    </small>
+
+                                                    <small
+                                                        className={`font-bold ${row.printed ? 'text-primary' : 'text-muted-foreground'}`}
+                                                    >
+                                                        {row.printed
+                                                            ? 'Printed'
+                                                            : 'Pending'}
+                                                    </small>
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
@@ -252,20 +274,6 @@ export function StudentTable({
                                         {row.year}
                                     </td>
 
-                                    <td
-                                        className="p-2 whitespace-nowrap"
-                                        data-label="Status"
-                                    >
-                                        {row.printed_exists ? (
-                                            <Badge>
-                                                <PrinterCheck /> Printed
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="outline">
-                                                <ClockIcon /> Pending
-                                            </Badge>
-                                        )}
-                                    </td>
                                     <td className="p-2 text-[10px]! whitespace-nowrap">
                                         <div className="flex flex-col gap-1">
                                             <div className="flex items-center gap-1.5">

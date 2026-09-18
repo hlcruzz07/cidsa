@@ -223,7 +223,7 @@ class StudentController extends Controller
     }
 
 
-    public function update(UpdateStudentRequest $request, $id)
+    public function update(UpdateStudentRequest $request, int $id)
     {
         $data = $request->except([
             'hasMajor',

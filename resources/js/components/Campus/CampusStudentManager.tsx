@@ -49,6 +49,7 @@ export function CampusStudentManager({
     const [sProgram, setSProgram] = useState<string | null>(null);
     const [sMajor, setSMajor] = useState<string | null>(null);
     const [sYear, setSYear] = useState<string | null>(null);
+    const [sIsPrinted, setSIsPrinted] = useState<boolean | null>(null);
     const [sRange, setSRange] = useState<DateRange | undefined>();
     const [sDateField, setSDateField] = useState<DateField>('created_at');
     const [sPerPage, setSPerPage] = useState(10);
@@ -67,6 +68,7 @@ export function CampusStudentManager({
         program: sProgram || null,
         major: sMajor || null,
         year: sYear || null,
+        is_printed: sIsPrinted,
         from: startOfDay(sRange?.from),
         to: endOfDay(sRange?.to),
         dateField: sDateField,
@@ -85,6 +87,7 @@ export function CampusStudentManager({
                 sProgram ||
                 sMajor ||
                 sYear ||
+                sIsPrinted !== null ||
                 sRange ||
                 sPerPage !== 10 ||
                 sSort !== 'created_at' ||
@@ -97,6 +100,7 @@ export function CampusStudentManager({
             sProgram,
             sMajor,
             sYear,
+            sIsPrinted,
             sRange,
             sPerPage,
             sSort,
@@ -127,6 +131,7 @@ export function CampusStudentManager({
         setSProgram(null);
         setSMajor(null);
         setSYear(null);
+        setSIsPrinted(null);
         setSRange(undefined);
         setSDateField('created_at');
         setSSort('created_at');
@@ -144,6 +149,7 @@ export function CampusStudentManager({
         sProgram,
         sMajor,
         sYear,
+        sIsPrinted,
         sRange,
         sDateField,
         sPerPage,
@@ -181,9 +187,9 @@ export function CampusStudentManager({
     const [rOrder, setROrder] = useState<'asc' | 'desc'>('desc');
 
     const rProgramsArr =
-        collegeTalArr?.find((c) => c.value === rCollege)?.programs ?? null;
+        collegeTalArr?.find((c) => c.value === rCollege)?.programs ?? [];
     const rMajorArr =
-        rProgramsArr?.find((p) => p.name === rProgram)?.majors ?? null;
+        rProgramsArr?.find((p) => p.name === rProgram)?.majors ?? [];
 
     const rFilterParams = () => ({
         search: rSearch || null,
@@ -425,6 +431,8 @@ export function CampusStudentManager({
                     onMajorChange={setSMajor}
                     selectedYear={sYear}
                     onYearChange={setSYear}
+                    isPrinted={sIsPrinted}
+                    onPrintedChange={setSIsPrinted}
                     range={sRange}
                     onRangeChange={setSRange}
                     dateField={sDateField}

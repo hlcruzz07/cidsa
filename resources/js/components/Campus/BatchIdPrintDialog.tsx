@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
@@ -11,20 +12,24 @@ import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
     DropdownMenuContent,
-    DropdownMenuSeparator,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { StudentProps, StudentReplacement } from '@/lib/custom-types';
 import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
 import {
-    AlertCircleIcon,
     BookMarkedIcon,
     BookOpenCheck,
+    CalendarIcon,
     ChartLineIcon,
     CheckIcon,
     CheckSquare,
@@ -72,14 +77,30 @@ type PrintStep =
     | { type: 'done'; count: number }
     | { type: 'error'; message: string };
 
-// Single flat filter shape — isCompleted is only sent to the API when mode === 'new'
+// Date range shape — matches FilterBar's DateRange.
+type DateRange = {
+    from: Date;
+    to?: Date;
+};
+
+// Which timestamp column the range filters against. Keep in sync with
+// StudentRepository::filterPaginate, which only accepts these two and
+// falls back to 'created_at' for anything else.
+type DateField = 'created_at' | 'updated_at';
+
+const DATE_FIELD_LABELS: Record<DateField, string> = {
+    created_at: 'Date Created',
+    updated_at: 'Date Updated',
+};
+
 interface ListFilters {
     search: string;
     college: string | null;
     program: string | null;
     year: string | null;
     isPrinted: boolean | null;
-    isCompleted: boolean | null; // only relevant for mode === 'new'
+    range: DateRange | undefined;
+    dateField: DateField;
 }
 
 const YEAR_OPTIONS = [
@@ -88,6 +109,14 @@ const YEAR_OPTIONS = [
     '3rd Year',
     '4th Year',
     '5th Year',
+];
+
+// Same shape/labels as FilterBar's PRINTED_STATUS_OPTIONS — both modes here
+// filter the same boolean `is_printed`, so there's no reason for the status
+// filter to look or behave differently between them, or from the main table.
+const PRINTED_STATUS_OPTIONS: { label: string; value: boolean }[] = [
+    { label: 'Printed', value: true },
+    { label: 'Pending', value: false },
 ];
 
 // A unified "list item" that works for both modes
@@ -166,6 +195,18 @@ function toListItem(
     }
 }
 
+// Format a Date as 'YYYY-MM-DD' using LOCAL date parts (not
+// toISOString, which shifts to UTC and can land on the wrong day
+// depending on the user's timezone). StudentRepository::filterPaginate
+// passes this straight into whereDate/whereBetween on a date column, so
+// it needs to be a plain calendar date, not a timestamp.
+function toDateParam(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function BatchIdPrintDialog({
@@ -190,10 +231,12 @@ export function BatchIdPrintDialog({
         program: null,
         year: null,
         isPrinted: null,
-        isCompleted: null,
+        range: undefined,
+        dateField: 'created_at',
     });
 
     const [filters, setFilters] = useState<ListFilters>(defaultFilters());
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
     // ─── Selection / print ────────────────────────────────────────────────────
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -208,6 +251,28 @@ export function BatchIdPrintDialog({
     const programOptions =
         collegeOptions.find((c) => c.value === filters.college)?.programs ?? [];
 
+    // College badge wants the human-readable name, not the raw value — matches
+    // FilterBar's selectedCollegeName treatment.
+    const selectedCollegeName =
+        collegeOptions.find((c) => c.value === filters.college)?.name ??
+        filters.college;
+
+    // Human-readable label for the current range, prefixed with which
+    // column it's filtering — matches FilterBar's rangeLabel.
+    const formatDisplayDate = (d: Date) =>
+        d.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        });
+    const rangeLabel = filters.range?.from
+        ? `${DATE_FIELD_LABELS[filters.dateField]}: ${formatDisplayDate(filters.range.from)}${
+              filters.range.to
+                  ? ` – ${formatDisplayDate(filters.range.to)}`
+                  : ''
+          }`
+        : null;
+
     // ─── Build API params ─────────────────────────────────────────────────────
     const buildParams = (page: number) => {
         const base = {
@@ -220,10 +285,20 @@ export function BatchIdPrintDialog({
             page,
         };
 
+        // filterPaginate only applies the range when BOTH `from` and `to`
+        // are present, and treats from === to as a single-day match — so
+        // an unfinished range (just `from` picked) sends `to` = `from`
+        // rather than being dropped.
+        const hasRange = !!filters.range?.from;
+
         return {
             ...base,
             is_printed: filters.isPrinted,
-            ...(mode === 'new' ? { is_completed: filters.isCompleted } : {}),
+            dateField: hasRange ? filters.dateField : null,
+            from: hasRange ? toDateParam(filters.range!.from) : null,
+            to: hasRange
+                ? toDateParam(filters.range!.to ?? filters.range!.from)
+                : null,
         };
     };
 
@@ -348,7 +423,7 @@ export function BatchIdPrintDialog({
         filters.program ||
         filters.year ||
         filters.isPrinted !== null ||
-        filters.isCompleted !== null
+        filters.range?.from
     );
 
     const resetFilters = () => setFilters(defaultFilters());
@@ -668,7 +743,7 @@ export function BatchIdPrintDialog({
                                         College
                                         {filters.college && (
                                             <Badge className="ml-1 text-[10px]">
-                                                {filters.college}
+                                                {selectedCollegeName}
                                             </Badge>
                                         )}
                                         <ChevronDownIcon className="h-3.5 w-3.5" />
@@ -771,163 +846,133 @@ export function BatchIdPrintDialog({
                             </DropdownMenuContent>
                         </DropdownMenu>
 
-                        {/* Status — differs per mode */}
+                        {/* Status — matches FilterBar's PRINTED_STATUS_OPTIONS */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline" size="sm">
                                     <ChartLineIcon className="h-3.5 w-3.5" />
                                     Status
-                                    <div className="flex gap-1">
-                                        {/* Printed badge — both modes */}
-                                        {filters.isPrinted === true && (
-                                            <Badge className="text-[10px]">
-                                                <CheckIcon className="h-2.5 w-2.5" />{' '}
-                                                Printed
-                                            </Badge>
-                                        )}
-                                        {filters.isPrinted === false && (
-                                            <Badge
-                                                variant="outline"
-                                                className="text-[10px]"
-                                            >
-                                                <ClockIcon className="h-2.5 w-2.5" />{' '}
-                                                Pending
-                                            </Badge>
-                                        )}
-                                        {/* Completed badge — new mode only */}
-                                        {mode === 'new' &&
-                                            filters.isCompleted === true && (
-                                                <Badge className="text-[10px]">
-                                                    <CheckIcon className="h-2.5 w-2.5" />{' '}
-                                                    Completed
-                                                </Badge>
-                                            )}
-                                        {mode === 'new' &&
-                                            filters.isCompleted === false && (
-                                                <Badge
-                                                    variant="destructive"
-                                                    className="text-[10px]"
-                                                >
-                                                    <AlertCircleIcon className="h-2.5 w-2.5" />{' '}
-                                                    Incomplete
-                                                </Badge>
-                                            )}
-                                    </div>
+                                    {filters.isPrinted === true && (
+                                        <Badge className="ml-1 text-[10px]">
+                                            <CheckIcon className="h-2.5 w-2.5" />{' '}
+                                            Printed
+                                        </Badge>
+                                    )}
+                                    {filters.isPrinted === false && (
+                                        <Badge
+                                            variant="outline"
+                                            className="ml-1 text-[10px]"
+                                        >
+                                            <ClockIcon className="h-2.5 w-2.5" />{' '}
+                                            Pending
+                                        </Badge>
+                                    )}
                                     <ChevronDownIcon className="h-3.5 w-3.5" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                                {/* Printed — both modes */}
-                                {mode === 'new' ? (
-                                    <DropdownMenuSub>
-                                        <DropdownMenuSubTrigger>
-                                            Printed
-                                        </DropdownMenuSubTrigger>
-                                        <DropdownMenuSubContent>
-                                            {[
-                                                {
-                                                    label: 'Printed',
-                                                    value: true,
-                                                },
-                                                {
-                                                    label: 'Not Printed',
-                                                    value: false,
-                                                },
-                                            ].map((item) => (
-                                                <DropdownMenuCheckboxItem
-                                                    key={item.label}
-                                                    checked={
-                                                        filters.isPrinted ===
-                                                        item.value
-                                                    }
-                                                    onSelect={(e) => {
-                                                        e.preventDefault();
-                                                        setFilter(
-                                                            'isPrinted',
-                                                            filters.isPrinted ===
-                                                                item.value
-                                                                ? null
-                                                                : item.value,
-                                                        );
-                                                    }}
-                                                >
-                                                    {item.label}
-                                                </DropdownMenuCheckboxItem>
-                                            ))}
-                                        </DropdownMenuSubContent>
-                                    </DropdownMenuSub>
-                                ) : (
-                                    // Replacement: flat list for isPrinted
-                                    [
-                                        { label: 'Printed', value: true },
-                                        { label: 'Pending', value: false },
-                                    ].map((item) => (
-                                        <DropdownMenuCheckboxItem
-                                            key={item.label}
-                                            checked={
+                                {PRINTED_STATUS_OPTIONS.map((item) => (
+                                    <DropdownMenuCheckboxItem
+                                        key={item.label}
+                                        checked={
+                                            filters.isPrinted === item.value
+                                        }
+                                        onSelect={() =>
+                                            setFilter(
+                                                'isPrinted',
                                                 filters.isPrinted === item.value
-                                            }
-                                            onSelect={(e) => {
-                                                e.preventDefault();
-                                                setFilter(
-                                                    'isPrinted',
-                                                    filters.isPrinted ===
-                                                        item.value
-                                                        ? null
-                                                        : item.value,
-                                                );
-                                            }}
-                                        >
-                                            {item.label}
-                                        </DropdownMenuCheckboxItem>
-                                    ))
-                                )}
-
-                                {/* Completed — new mode only */}
-                                {mode === 'new' && (
-                                    <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuSub>
-                                            <DropdownMenuSubTrigger>
-                                                Completed
-                                            </DropdownMenuSubTrigger>
-                                            <DropdownMenuSubContent>
-                                                {[
-                                                    {
-                                                        label: 'Yes',
-                                                        value: true,
-                                                    },
-                                                    {
-                                                        label: 'No',
-                                                        value: false,
-                                                    },
-                                                ].map((item) => (
-                                                    <DropdownMenuCheckboxItem
-                                                        key={item.label}
-                                                        checked={
-                                                            filters.isCompleted ===
-                                                            item.value
-                                                        }
-                                                        onSelect={(e) => {
-                                                            e.preventDefault();
-                                                            setFilter(
-                                                                'isCompleted',
-                                                                filters.isCompleted ===
-                                                                    item.value
-                                                                    ? null
-                                                                    : item.value,
-                                                            );
-                                                        }}
-                                                    >
-                                                        {item.label}
-                                                    </DropdownMenuCheckboxItem>
-                                                ))}
-                                            </DropdownMenuSubContent>
-                                        </DropdownMenuSub>
-                                    </>
-                                )}
+                                                    ? null
+                                                    : item.value,
+                                            )
+                                        }
+                                    >
+                                        {item.label}
+                                    </DropdownMenuCheckboxItem>
+                                ))}
                             </DropdownMenuContent>
                         </DropdownMenu>
+
+                        {/* Date Range — mirrors FilterBar's dateField +
+                            Calendar control; sends dateField/from/to the
+                            way StudentRepository::filterPaginate expects. */}
+                        <div className="flex items-center">
+                            <DropdownMenu
+                                open={isCalendarOpen}
+                                onOpenChange={setIsCalendarOpen}
+                            >
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className={
+                                            filters.range?.from
+                                                ? 'rounded-e-none border-e-0'
+                                                : ''
+                                        }
+                                    >
+                                        <CalendarIcon className="h-3.5 w-3.5" />
+                                        {rangeLabel ??
+                                            DATE_FIELD_LABELS[
+                                                filters.dateField
+                                            ]}
+                                        <ChevronDownIcon className="h-3.5 w-3.5" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-auto space-y-3 p-3">
+                                    <div className="flex items-center gap-2">
+                                        <Label className="text-xs whitespace-nowrap text-muted-foreground">
+                                            Filter by
+                                        </Label>
+                                        <Select
+                                            value={filters.dateField}
+                                            onValueChange={(v) =>
+                                                setFilter(
+                                                    'dateField',
+                                                    v as DateField,
+                                                )
+                                            }
+                                        >
+                                            <SelectTrigger className="h-8 w-[150px]">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="created_at">
+                                                    Date Created
+                                                </SelectItem>
+                                                <SelectItem value="updated_at">
+                                                    Date Updated
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <Calendar
+                                        mode="range"
+                                        selected={filters.range}
+                                        captionLayout="dropdown"
+                                        onSelect={(newRange) => {
+                                            if (!newRange) return;
+                                            setFilter(
+                                                'range',
+                                                newRange as DateRange,
+                                            );
+                                        }}
+                                    />
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            {filters.range?.from && (
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() =>
+                                        setFilter('range', undefined)
+                                    }
+                                    className="rounded-s-none"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </Button>
+                            )}
+                        </div>
 
                         {/* Reset */}
                         {hasActiveFilters && (

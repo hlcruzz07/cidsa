@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -13,6 +12,7 @@ import { router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import {
     CheckCheckIcon,
+    CheckIcon,
     ClockIcon,
     EllipsisIcon,
     PrinterIcon,
@@ -56,7 +56,6 @@ export function ReplacementTable({
         'Program / Major',
         'Year Level',
         'Reason',
-        'Status',
         'Date',
         'Action',
     ];
@@ -139,32 +138,62 @@ export function ReplacementTable({
                                         data-label="Name"
                                     >
                                         <div className="flex items-center gap-2">
-                                            <Avatar className="size-8 overflow-hidden rounded-full">
-                                                <AvatarImage
-                                                    src={
-                                                        r.student?.picture
-                                                            ? route(
-                                                                  'gdrive.image',
-                                                                  r.student
-                                                                      .picture,
-                                                              )
-                                                            : undefined
-                                                    }
-                                                    className="object-cover"
-                                                    alt={fullName}
-                                                />
-                                                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                                    {getInitials(fullName)}
-                                                </AvatarFallback>
-                                            </Avatar>
+                                            <div className="relative">
+                                                {r.student?.printed ? (
+                                                    <CheckIcon className="absolute -top-1 -right-2 z-10 size-3.5 rounded-full border bg-primary p-0.5 text-white" />
+                                                ) : (
+                                                    <ClockIcon className="absolute -top-1 -right-2 z-10 size-3.5 rounded-full border bg-muted p-0.5 text-white" />
+                                                )}
+
+                                                <Avatar className="size-8 overflow-hidden rounded-full">
+                                                    <AvatarImage
+                                                        src={route(
+                                                            'gdrive.image',
+                                                            r.student?.picture,
+                                                        )}
+                                                        className="object-cover"
+                                                        loading="lazy"
+                                                        decoding="async"
+                                                        alt={[
+                                                            r.student
+                                                                ?.first_name,
+                                                            r.student
+                                                                ?.middle_init,
+                                                            r.student
+                                                                ?.last_name,
+                                                            r.student?.suffix,
+                                                        ]
+                                                            .filter(Boolean)
+                                                            .join(' ')}
+                                                    />
+                                                    <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                        {getInitials(fullName)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            </div>
+
                                             <div>
-                                                <h4 className="font-medium uppercase">
-                                                    {fullName || '—'}
+                                                <h4 className="font-medium">
+                                                    {fullName}
                                                 </h4>
-                                                <small className="text-muted-foreground">
-                                                    {r.student?.id_number ??
-                                                        '—'}
-                                                </small>
+
+                                                <div className="flex items-center gap-2">
+                                                    <small className="text-muted-foreground">
+                                                        {r.student?.id_number}
+                                                    </small>
+
+                                                    <small className="text-muted-foreground">
+                                                        •
+                                                    </small>
+
+                                                    <small
+                                                        className={`font-bold ${r.student?.printed ? 'text-primary' : 'text-muted-foreground'}`}
+                                                    >
+                                                        {r.student?.printed
+                                                            ? 'Printed'
+                                                            : 'Pending'}
+                                                    </small>
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
@@ -232,21 +261,6 @@ export function ReplacementTable({
                                                 <p>{r.reason ?? '—'}</p>
                                             </TooltipContent>
                                         </Tooltip>
-                                    </td>
-
-                                    <td
-                                        className="p-2 whitespace-nowrap"
-                                        data-label="Status"
-                                    >
-                                        {r.is_printed ? (
-                                            <Badge>
-                                                <CheckCheckIcon /> Printed
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="outline">
-                                                <ClockIcon /> Pending
-                                            </Badge>
-                                        )}
                                     </td>
 
                                     <td className="p-2 text-[10px]! whitespace-nowrap">

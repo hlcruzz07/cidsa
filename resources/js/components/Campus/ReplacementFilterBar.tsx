@@ -31,17 +31,25 @@ import {
     ClockIcon,
     FilterXIcon,
     PrinterCheckIcon,
+    Search,
     Trash2Icon,
     XIcon,
 } from 'lucide-react';
 import { useState } from 'react';
 
-type DateRange = { from: Date; to?: Date };
-
 interface FilterOption {
     label: string;
     value: string;
 }
+
+// Date range shape — matches FilterBar's / BatchIdPrintDialog's DateRange.
+// No dateField selector here since CampusStudentManager only ever passes
+// `range` for replacements (no `dateField`/`onDateFieldChange`), so the
+// backend's filterPaginate() default of 'created_at' applies.
+type DateRange = {
+    from: Date;
+    to?: Date;
+};
 
 interface ReplacementFilterBarProps {
     // Search
@@ -84,7 +92,7 @@ interface ReplacementFilterBarProps {
     isPrinted: boolean | null;
     onPrintedChange: (value: boolean | null) => void;
 
-    // Date range
+    // Date Range
     range: DateRange | undefined;
     onRangeChange: (range: DateRange | undefined) => void;
 
@@ -127,7 +135,6 @@ export function ReplacementFilterBar({
     onYearChange,
     isPrinted,
     onPrintedChange,
-
     range,
     onRangeChange,
     hasActiveFilters,
@@ -137,29 +144,59 @@ export function ReplacementFilterBar({
 }: ReplacementFilterBarProps) {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
+    const formatDate = (d: Date) =>
+        d.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        });
+
+    const rangeLabel = range?.from
+        ? `Date: ${formatDate(range.from)}${
+              range.to ? ` – ${formatDate(range.to)}` : ''
+          }`
+        : null;
+
     return (
         <div className="flex flex-col gap-3">
             {/* Top Row: Search + Actions */}
             <div className="flex flex-col items-start justify-between gap-3 xl:flex-row">
-                <Input
-                    type="search"
-                    placeholder="Search ID Number, Name..."
-                    className="w-full"
-                    value={searchValue || ''}
-                    onChange={(e) =>
-                        onSearchChange(
-                            e.target.value === ''
-                                ? null
-                                : e.target.value.toUpperCase(),
-                        )
-                    }
-                />
+                <div className="relative w-full min-w-[200px] flex-1">
+                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder="Search ID Number, Name..."
+                        className="w-full rounded-full pl-9"
+                        value={searchValue || ''}
+                        onChange={(e) =>
+                            onSearchChange(
+                                e.target.value === ''
+                                    ? null
+                                    : e.target.value.toUpperCase(),
+                            )
+                        }
+                    />
+                    {searchValue && (
+                        <button
+                            type="button"
+                            className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            onClick={() => onSearchChange(null)}
+                            aria-label="Clear search"
+                        >
+                            <XIcon className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
 
-                <div className="flex w-full flex-wrap items-center justify-between gap-3 md:w-auto md:grow md:flex-nowrap">
+                <div className="flex w-max flex-wrap items-center justify-between gap-3">
                     {/* Per Page */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-full!"
+                            >
                                 Show {perPage}
                                 <ChevronsLeftRight className="rotate-90 transform" />
                             </Button>
@@ -184,7 +221,11 @@ export function ReplacementFilterBar({
                     {/* Sort */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-full!"
+                            >
                                 <ArrowUpDownIcon /> Sort <ChevronDownIcon />
                             </Button>
                         </DropdownMenuTrigger>
@@ -247,7 +288,12 @@ export function ReplacementFilterBar({
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <Button variant={'outline'} onClick={onBatchPrint}>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full!"
+                        onClick={onBatchPrint}
+                    >
                         <PrinterCheckIcon /> Batch Print
                     </Button>
                 </div>
@@ -255,19 +301,19 @@ export function ReplacementFilterBar({
 
             {/* Bottom Row: Filters */}
             <div className="flex flex-col items-start justify-between gap-5 md:flex-row md:items-start">
-                <div className="flex w-full grow flex-wrap gap-3 xl:w-auto">
+                <div className="flex w-full grow flex-wrap items-center gap-2 xl:w-auto">
                     {/* College */}
                     {collegeOptions.length > 0 && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline">
-                                    <BookMarkedIcon /> College{' '}
-                                    <ChevronDownIcon />
+                                <Button variant="outline" size="sm">
+                                    <BookMarkedIcon /> College
                                     {selectedCollege && (
-                                        <Badge className="ml-2">
+                                        <Badge className="ml-1 text-[10px]">
                                             {selectedCollege}
                                         </Badge>
                                     )}
+                                    <ChevronDownIcon className="h-3.5 w-3.5" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
@@ -299,14 +345,14 @@ export function ReplacementFilterBar({
                     {programOptions?.length > 0 && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline">
-                                    <BookOpenCheck /> Programs{' '}
-                                    <ChevronDownIcon />
+                                <Button variant="outline" size="sm">
+                                    <BookOpenCheck /> Programs
                                     {selectedProgram && (
-                                        <Badge className="ml-2">
+                                        <Badge className="ml-1 text-[10px]">
                                             {selectedProgram}
                                         </Badge>
                                     )}
+                                    <ChevronDownIcon className="h-3.5 w-3.5" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
@@ -334,16 +380,17 @@ export function ReplacementFilterBar({
                     )}
 
                     {/* Major */}
-                    {majorOptions?.length > 0 && (
+                    {majorOptions.length > 0 && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline">
-                                    <BookOpenCheck /> Majors <ChevronDownIcon />
+                                <Button variant="outline" size="sm">
+                                    <BookOpenCheck /> Majors
                                     {selectedMajor && (
-                                        <Badge className="ml-2">
+                                        <Badge className="ml-1 text-[10px]">
                                             {selectedMajor}
                                         </Badge>
                                     )}
+                                    <ChevronDownIcon className="h-3.5 w-3.5" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
@@ -372,13 +419,14 @@ export function ReplacementFilterBar({
                     {/* Year Level */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline">
-                                <BookOpenCheck /> Year Level <ChevronDownIcon />
+                            <Button variant="outline" size="sm">
+                                <BookOpenCheck /> Year Level
                                 {selectedYear && (
-                                    <Badge className="ml-2">
+                                    <Badge className="ml-1 text-[10px]">
                                         {selectedYear}
                                     </Badge>
                                 )}
+                                <ChevronDownIcon className="h-3.5 w-3.5" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-max" align="start">
@@ -398,28 +446,34 @@ export function ReplacementFilterBar({
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {/* Status — is_printed + is_completed */}
+                    {/* Status */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline">
+                            <Button variant="outline" size="sm">
                                 <ChartLineIcon />
                                 Status
-                                <div className="space-x-1">
+                                <div className="flex gap-1">
                                     {isPrinted === true && (
-                                        <Badge variant="default">
-                                            <CheckIcon className="h-3 w-3" />{' '}
+                                        <Badge
+                                            variant="default"
+                                            className="text-[10px]"
+                                        >
+                                            <CheckIcon className="h-2.5 w-2.5" />{' '}
                                             Printed
                                         </Badge>
                                     )}
 
                                     {isPrinted === false && (
-                                        <Badge variant="outline">
-                                            <ClockIcon className="h-3 w-3" />{' '}
+                                        <Badge
+                                            variant="outline"
+                                            className="text-[10px]"
+                                        >
+                                            <ClockIcon className="h-2.5 w-2.5" />{' '}
                                             Pending
                                         </Badge>
                                     )}
                                 </div>
-                                <ChevronDownIcon />
+                                <ChevronDownIcon className="h-3.5 w-3.5" />
                             </Button>
                         </DropdownMenuTrigger>
 
@@ -446,7 +500,9 @@ export function ReplacementFilterBar({
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {/* Date Range */}
+                    {/* Date Range — no dateField selector; filters on
+                        created_at (StudentRepository::filterPaginate's
+                        default when dateField isn't sent). */}
                     <div className="flex items-center">
                         <DropdownMenu
                             open={isCalendarOpen}
@@ -455,16 +511,17 @@ export function ReplacementFilterBar({
                             <DropdownMenuTrigger asChild>
                                 <Button
                                     variant="outline"
-                                    className={`w-max justify-between ${range ? 'rounded-e-none border-e-0' : ''}`}
+                                    size="sm"
+                                    className={
+                                        range ? 'rounded-e-none border-e-0' : ''
+                                    }
                                 >
-                                    <CalendarIcon />
-                                    {range?.from && range?.to
-                                        ? `${range.from.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} – ${range.to.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
-                                        : 'Date'}
-                                    <ChevronDownIcon />
+                                    <CalendarIcon className="h-3.5 w-3.5" />
+                                    {rangeLabel ?? 'Date'}
+                                    <ChevronDownIcon className="h-3.5 w-3.5" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-auto p-0">
+                            <DropdownMenuContent className="w-auto p-3">
                                 <Calendar
                                     mode="range"
                                     selected={range}
@@ -472,7 +529,6 @@ export function ReplacementFilterBar({
                                     onSelect={(newRange) => {
                                         if (!newRange) return;
                                         onRangeChange(newRange as DateRange);
-                                        setIsCalendarOpen(false);
                                     }}
                                 />
                             </DropdownMenuContent>
@@ -481,10 +537,11 @@ export function ReplacementFilterBar({
                             <Button
                                 type="button"
                                 variant="destructive"
+                                size="sm"
                                 onClick={() => onRangeChange(undefined)}
                                 className="rounded-s-none"
                             >
-                                <XIcon />
+                                <XIcon className="h-3.5 w-3.5" />
                             </Button>
                         )}
                     </div>
@@ -495,8 +552,9 @@ export function ReplacementFilterBar({
                             type="button"
                             onClick={onReset}
                             variant="destructive"
+                            size="sm"
                         >
-                            <FilterXIcon /> Reset Filter
+                            <FilterXIcon className="h-3.5 w-3.5" /> Reset
                         </Button>
                     )}
                 </div>

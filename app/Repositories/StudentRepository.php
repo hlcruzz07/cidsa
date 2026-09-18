@@ -237,20 +237,6 @@ class StudentRepository
         if (!empty($filters['year'])) {
             $query->where('year', $filters['year']);
         }
-
-        // 📋 is_completed filter — defaults to true when not explicitly set
-        $isCompleted = $filters['is_completed'] ?? null;
-        if (!is_null($isCompleted)) {
-            $query->where(
-                'is_completed',
-                filter_var($isCompleted, FILTER_VALIDATE_BOOLEAN)
-            );
-        } else {
-            // Default: only show completed students
-            $query->where('is_completed', true);
-        }
-
-        // 🖨️ is_printed filter — checks existence in PrintedStudents via printed() relation
         $isPrinted = $filters['is_printed'] ?? null;
         if (!is_null($isPrinted)) {
             $printed = filter_var($isPrinted, FILTER_VALIDATE_BOOLEAN);
@@ -260,11 +246,6 @@ class StudentRepository
                 $query->whereDoesntHave('printed');
             }
         }
-
-        // 📅 Date range — filters against `created_at` or `updated_at`,
-        // selectable via `dateField`. Defaults to `created_at` so any existing
-        // caller that doesn't send this param keeps behaving exactly as
-        // before.
         $dateField = in_array($filters['dateField'] ?? null, ['created_at', 'updated_at'], true)
             ? $filters['dateField']
             : 'created_at';
@@ -339,9 +320,6 @@ class StudentRepository
                 if (!empty($filters['year'])) {
                     $q->where('year', $filters['year']);
                 }
-
-                // Only show students who have completed their profile
-                $q->where('is_completed', true);
             });
 
         // 🖨️ is_printed lives on StudentReplacement itself
@@ -410,10 +388,6 @@ class StudentRepository
             });
         }
 
-        $query->where(
-            'is_completed',
-            filter_var(false, FILTER_VALIDATE_BOOLEAN)
-        );
         if (!empty($filters['from']) && !empty($filters['to'])) {
             if ($filters['from'] === $filters['to']) {
                 $query->whereDate('created_at', '=', $filters['from']);
