@@ -116,6 +116,7 @@ class StudentYearLevelSyncController extends Controller
                             }
 
                             $student->year = $newYear;
+                            $student->timestamps = false;
                             $student->save();
                             $updated++;
                         }
