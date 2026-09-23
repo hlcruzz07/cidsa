@@ -3,19 +3,13 @@ use App\Http\Controllers\CampusRouteController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StudentController;
-use App\Models\Student;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
-const AUDIT_CAMPUS_CONNECTIONS = [
-    'Talisay' => 'tal_mysql',
-    'Alijis' => 'ali_mysql',
-    'Fortune Towne' => 'ft_mysql',
-    'Binalbagan' => 'bin_mysql',
-];
+
 
 Route::get('/students/audit/find-campus', function (Request $request): JsonResponse {
     $validated = $request->validate([
@@ -33,8 +27,13 @@ Route::get('/students/audit/find-campus', function (Request $request): JsonRespo
     // 2. Check every campus SIS connection for a matching student row.
     $foundIn = [];
     $connectionErrors = [];
-
-    foreach (AUDIT_CAMPUS_CONNECTIONS as $campusName => $connection) {
+    $AUDIT_CAMPUS_CONNECTIONS = [
+        'Talisay' => 'tal_mysql',
+        'Alijis' => 'ali_mysql',
+        'Fortune Towne' => 'ft_mysql',
+        'Binalbagan' => 'bin_mysql',
+    ];
+    foreach ($AUDIT_CAMPUS_CONNECTIONS as $campusName => $connection) {
         try {
             $sisRow = DB::connection($connection)
                 ->table('student')
@@ -91,8 +90,14 @@ Route::get('/students/audit/find-campus', function (Request $request): JsonRespo
 });
 
 Route::get('/students/audit/unenrolled', function (Request $request): JsonResponse {
+    $AUDIT_CAMPUS_CONNECTIONS = [
+        'Talisay' => 'tal_mysql',
+        'Alijis' => 'ali_mysql',
+        'Fortune Towne' => 'ft_mysql',
+        'Binalbagan' => 'bin_mysql',
+    ];
     $validated = $request->validate([
-        'campus' => ['required', 'string', 'in:' . implode(',', array_keys(AUDIT_CAMPUS_CONNECTIONS))],
+        'campus' => ['required', 'string', 'in:' . implode(',', array_keys($AUDIT_CAMPUS_CONNECTIONS))],
         // Omitted/null = every local student for the campus, unfiltered
         // by print status (original behavior).
         'status' => ['nullable', 'string', 'in:pending,printed'],
@@ -100,7 +105,7 @@ Route::get('/students/audit/unenrolled', function (Request $request): JsonRespon
 
     $campus = $validated['campus'];
     $status = $validated['status'] ?? null;
-    $connection = AUDIT_CAMPUS_CONNECTIONS[$campus];
+    $connection = $AUDIT_CAMPUS_CONNECTIONS[$campus];
     $schoolYear = now()->year;
 
     $isConnectionError = function (Throwable $e): bool {
