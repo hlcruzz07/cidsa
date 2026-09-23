@@ -96,6 +96,9 @@ class StudentRepository
         $suffix = null;
         $firstName = trim($student->student_firstname);
 
+        // Remove commas from the first name
+        $firstName = str_replace(',', '', $firstName);
+
         if (preg_match('/^(.*)\s+(JR\.?|SR\.?|II|III|IV|V)$/i', $firstName, $matches)) {
             $firstName = trim($matches[1]);
 
