@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\Route;
 
 const AUDIT_CAMPUS_CONNECTIONS = [
     'Talisay' => 'tal_mysql',
-    'Alijis' => 'ali_mysql',       // placeholder — confirm actual connection name
+    'Alijis' => 'ali_mysql',
     'Fortune Towne' => 'ft_mysql',
-    'Binalbagan' => 'bin_mysql',   // placeholder — confirm actual connection name
+    'Binalbagan' => 'bin_mysql',
 ];
 
 Route::get('/students/audit/find-campus', function (Request $request): JsonResponse {
