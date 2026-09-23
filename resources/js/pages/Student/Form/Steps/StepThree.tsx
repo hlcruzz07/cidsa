@@ -238,12 +238,12 @@ export default function StepThree({ data, setData, errors }: StepThreeProps) {
                         <SelectContent>
                             <SelectGroup>
                                 {[
-                                    'JR',
-                                    'SR',
-                                    'II',
-                                    'III',
-                                    'IV',
-                                    'V',
+                                    'JR.',
+                                    'SR.',
+                                    'II.',
+                                    'III.',
+                                    'IV.',
+                                    'V.',
                                     'None',
                                 ].map((item) => (
                                     <SelectItem key={item} value={item}>
@@ -654,7 +654,14 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
                                                     className="lg::w-auto w-20 md:w-40"
                                                 />
                                                 <h1 className="text-sm font-extrabold uppercase md:text-xl lg:text-3xl dark:text-black">
-                                                    {[student.first_name, student.middle_init, student.last_name, student.suffix].filter(Boolean).join(' ')}
+                                                    {[
+                                                        student.first_name,
+                                                        student.middle_init,
+                                                        student.last_name,
+                                                        student.suffix,
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' ')}
                                                 </h1>
                                                 <h1 className="capitalized text-[9px] font-medium md:text-base lg:text-lg dark:text-black">
                                                     {data.program}

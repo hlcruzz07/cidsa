@@ -648,12 +648,12 @@ export default function Index() {
                                     <SelectContent className="w-full md:w-10">
                                         <SelectGroup>
                                             {[
-                                                'JR',
-                                                'SR',
-                                                'II',
-                                                'III',
-                                                'IV',
-                                                'V',
+                                                'JR.',
+                                                'SR.',
+                                                'II.',
+                                                'III.',
+                                                'IV.',
+                                                'V.',
                                                 'None',
                                             ].map((item, key) => (
                                                 <SelectItem
@@ -1041,12 +1041,12 @@ export default function Index() {
                                             <SelectContent className="w-full md:w-10">
                                                 <SelectGroup>
                                                     {[
-                                                        'JR',
-                                                        'SR',
-                                                        'II',
-                                                        'III',
-                                                        'IV',
-                                                        'V',
+                                                        'JR.',
+                                                        'SR.',
+                                                        'II.',
+                                                        'III.',
+                                                        'IV.',
+                                                        'V.',
                                                         'None',
                                                     ].map((item, key) => (
                                                         <SelectItem

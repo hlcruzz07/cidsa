@@ -198,7 +198,7 @@ export default function StepThree({ data, setData, errors }: StepThreeProps) {
                                 'emergency_mname',
                                 e.currentTarget.value === ''
                                     ? null
-                                    : e.currentTarget.value.toUpperCase(),
+                                    : e.currentTarget.value.toUpperCase() + '.',
                             )
                         }
                     />
@@ -241,12 +241,12 @@ export default function StepThree({ data, setData, errors }: StepThreeProps) {
                         <SelectContent>
                             <SelectGroup>
                                 {[
-                                    'JR',
-                                    'SR',
-                                    'II',
-                                    'III',
-                                    'IV',
-                                    'V',
+                                    'JR.',
+                                    'SR.',
+                                    'II.',
+                                    'III.',
+                                    'IV.',
+                                    'V.',
                                     'None',
                                 ].map((item) => (
                                     <SelectItem key={item} value={item}>
