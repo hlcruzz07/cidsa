@@ -111,11 +111,11 @@ class StudentRepository
 
         return [
             'id_number' => $student->student_id,
-            'first_name' => $firstName,
+            'first_name' => strtoupper($firstName),
             'middle_init' => $student->student_middlename
-                ? strtoupper(substr($student->student_middlename, 0, 1))
+                ? strtoupper(substr($student->student_middlename, 0, 1)) . '.'
                 : null,
-            'last_name' => $student->student_lastname,
+            'last_name' => strtoupper($student->student_lastname),
             'suffix' => $suffix,
             'year' => $this->formatYearLevel($student->yearlevel),
             'campus' => ucwords(strtolower($campus)),
