@@ -13,35 +13,65 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/students/audit/find-campus', function (Request $request): JsonResponse {
     $validated = $request->validate([
-        'id_number' => ['required', 'string'],
+        'id_number' => ['nullable', 'string'],
+        'last_name' => ['nullable', 'string'],
     ]);
 
-    $idNumber = trim($validated['id_number']);
+    $idNumber = isset($validated['id_number']) ? trim($validated['id_number']) : null;
+    $lastName = isset($validated['last_name']) ? trim($validated['last_name']) : null;
 
-    // 1. What does the LOCAL students table say?
-    $localRecord = DB::table('students')
-        ->where('id_number', $idNumber)
-        ->select('id_number', 'campus', 'created_at')
-        ->first();
+    if (!$idNumber && !$lastName) {
+        return response()->json([
+            'error' => 'missing_search_term',
+            'message' => 'Provide at least one of id_number or last_name.',
+        ], 422);
+    }
 
-    // 2. Check every campus SIS connection for a matching student row.
+    $campusConnections = [
+        'Talisay' => 'tal_mysql',
+        'Alijis' => 'ali_mysql',       // placeholder — confirm actual connection name
+        'Fortune Towne' => 'ft_mysql',
+        'Binalbagan' => 'bin_mysql',   // placeholder — confirm actual connection name
+    ];
+
+    // 1. What does the LOCAL students table say? Same dual search — by
+    // id_number if given, by last_name (LIKE) if given, matching both when
+    // both are present.
+    $localQuery = DB::table('students')->select('id_number', 'campus', 'lastname', 'created_at');
+
+    if ($idNumber) {
+        $localQuery->where('id_number', $idNumber);
+    }
+
+    if ($lastName) {
+        $localQuery->where('lastname', 'like', '%' . $lastName . '%');
+    }
+
+    $localRecords = $localQuery->get();
+
+    // 2. Check every campus SIS connection for matching student row(s).
     $foundIn = [];
     $connectionErrors = [];
-    $AUDIT_CAMPUS_CONNECTIONS = [
-        'Talisay' => 'tal_mysql',
-        'Alijis' => 'ali_mysql',
-        'Fortune Towne' => 'ft_mysql',
-        'Binalbagan' => 'bin_mysql',
-    ];
-    foreach ($AUDIT_CAMPUS_CONNECTIONS as $campusName => $connection) {
-        try {
-            $sisRow = DB::connection($connection)
-                ->table('student')
-                ->where('student_id', $idNumber)
-                ->select('student_id', 'student_lastname', 'student_firstname', 'student_middlename', 'curriculum_major_id')
-                ->first();
 
-            if ($sisRow) {
+    foreach ($campusConnections as $campusName => $connection) {
+        try {
+            $sisQuery = DB::connection($connection)
+                ->table('student')
+                ->select('student_id', 'student_lastname', 'student_firstname', 'student_middlename', 'curriculum_major_id');
+
+            if ($idNumber) {
+                $sisQuery->where('student_id', $idNumber);
+            }
+
+            if ($lastName) {
+                $sisQuery->where('student_lastname', 'like', '%' . $lastName . '%');
+            }
+
+            $sisRows = $sisQuery->get();
+
+            foreach ($sisRows as $sisRow) {
+                $studentId = trim((string) $sisRow->student_id);
+
                 // Also check whether this student resolves through the
                 // curriculum -> program join chain on this connection, and
                 // whether they have a current-school-year load — same
@@ -52,19 +82,20 @@ Route::get('/students/audit/find-campus', function (Request $request): JsonRespo
                     ->join('curriculum_major', 'student.curriculum_major_id', '=', 'curriculum_major.curriculum_major_id')
                     ->join('curriculum', 'curriculum_major.curriculum_id', '=', 'curriculum.curriculum_id')
                     ->join('program', 'curriculum.program_code', '=', 'program.program_code')
-                    ->where('student.student_id', $idNumber)
+                    ->where('student.student_id', $studentId)
                     ->exists();
 
                 $hasCurrentLoad = DB::connection($connection)
                     ->table('student_load')
                     ->join('class', 'student_load.class_code', '=', 'class.class_code')
-                    ->where('student_load.student_id', $idNumber)
+                    ->where('student_load.student_id', $studentId)
                     ->where('class.school_year', now()->year)
                     ->exists();
 
                 $foundIn[] = [
                     'campus' => $campusName,
                     'connection' => $connection,
+                    'sis_student_id' => $studentId,
                     'sis_lastname' => $sisRow->student_lastname,
                     'sis_firstname' => $sisRow->student_firstname,
                     'sis_middlename' => $sisRow->student_middlename,
@@ -78,11 +109,17 @@ Route::get('/students/audit/find-campus', function (Request $request): JsonRespo
     }
 
     return response()->json([
-        'id_number' => $idNumber,
-        'local_record' => $localRecord ? [
-            'campus' => $localRecord->campus,
-            'created_at' => $localRecord->created_at,
-        ] : null,
+        'search' => [
+            'id_number' => $idNumber,
+            'last_name' => $lastName,
+        ],
+        'local_records' => $localRecords->map(fn($r) => [
+            'id_number' => $r->id_number,
+            'campus' => $r->campus,
+            'lastname' => $r->lastname,
+            'created_at' => $r->created_at,
+        ]),
+        'local_records_count' => $localRecords->count(),
         'found_in_sis' => $foundIn,
         'found_in_sis_count' => count($foundIn),
         'connection_errors' => $connectionErrors ?: null,

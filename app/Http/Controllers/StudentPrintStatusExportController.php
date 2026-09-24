@@ -157,6 +157,11 @@ class StudentPrintStatusExportController extends Controller
 
             // 1a. Base population: EVERY student's declared program via their
             // curriculum, regardless of whether they currently have a class load.
+            // NOTE: this is the full population used for the export — no
+            // current-school-year enrollment filter is applied on top of it
+            // (see 1b below). A student shows up here as long as they exist
+            // in the SIS `student` table and resolve through the
+            // curriculum_major -> curriculum -> program join chain.
             $sisByStudentId = DB::connection($connection)
                 ->table('student')
                 ->join('curriculum_major', 'student.curriculum_major_id', '=', 'curriculum_major.curriculum_major_id')
@@ -174,11 +179,11 @@ class StudentPrintStatusExportController extends Controller
                 ->get()
                 ->keyBy(fn($row) => trim((string) $row->student_id));
 
-            // 1b. Current SY enrollment (year level, section) — student must have a
-            // load this school year to be included at all. `yearlevel` here is a
-            // raw integer (1-4) from the SIS database and is kept as an integer
-            // all the way through $data and into the exported sheet — no
-            // "1st Year"-style relabeling anywhere.
+            // 1b. Current SY enrollment (year level, section), used purely to
+            // ENRICH a row with year level/section when available — no longer
+            // used to filter the population. A student with no current-SY
+            // load still appears in the export; their year_level/section
+            // cells are just left null (see 3. below).
             $enrollmentByStudentId = DB::connection($connection)
                 ->table('student_load')
                 ->join('class', 'student_load.class_code', '=', 'class.class_code')
@@ -189,12 +194,6 @@ class StudentPrintStatusExportController extends Controller
                 ->get()
                 ->groupBy(fn($row) => trim((string) $row->student_id))
                 ->map(fn($rows) => $rows->first());
-
-            // 1a-filtered. Restrict to students who have a current load this SY
-            // (inner-join semantics against 1b).
-            $sisByStudentId = $sisByStudentId->filter(
-                fn($row, $studentId) => $enrollmentByStudentId->has($studentId)
-            );
 
             // 2. Local CIDSA requests for this campus.
             $localByIdNumber = Student::query()
@@ -243,9 +242,11 @@ class StudentPrintStatusExportController extends Controller
             // 3. Build one row per SIS student, cross-checked against local data
             // and enrollment data. year_level stays a raw integer here so every
             // downstream filter/sort/group/display compares/shows ints as-is.
+            // A student with no current-SY enrollment row simply gets a null
+            // year_level/section instead of being dropped from $data entirely.
             $data = $sisByStudentId->map(function ($sis, $studentId) use ($localByIdNumber, $printedByIdNumber, $enrollmentByStudentId, $collegeDescByCode, $formatName) {
                 $local = $localByIdNumber->get($studentId);
-                $enrollment = $enrollmentByStudentId->get($studentId);
+                $enrollment = $enrollmentByStudentId->get($studentId); // may be null
 
                 if (!$local) {
                     $printedRecord = $printedByIdNumber->get($studentId);
@@ -281,7 +282,9 @@ class StudentPrintStatusExportController extends Controller
                     // value on each row.
                     'program' => trim((string) $sis->program_title) ?: 'Unassigned',
                     'program_key' => trim((string) $sis->program_code) ?: 'UNASSIGNED', // grouping key stays program_code
-                    'year_level' => $enrollment->yearlevel !== null ? (int) $enrollment->yearlevel : null,
+                    // Null when the student has no current-school-year load —
+                    // no longer used to exclude the student from the export.
+                    'year_level' => $enrollment?->yearlevel !== null ? (int) $enrollment->yearlevel : null,
                     'section' => $enrollment->section_code ?? null,
                     'college' => $college,
                     'status' => $status,
@@ -307,6 +310,9 @@ class StudentPrintStatusExportController extends Controller
 
             // 3d. Restrict to the selected year levels (raw SIS integers, e.g.
             // [1, 3] from checkboxes). Empty selection = all year levels.
+            // A student with a null year_level (no current-SY load) is
+            // excluded whenever a specific year-level filter is applied,
+            // since they can't match any selected integer.
             //
             // If this filter doesn't seem to be taking effect (all year levels
             // still showing up regardless of what's checked), the request never
@@ -320,6 +326,10 @@ class StudentPrintStatusExportController extends Controller
             }
 
             // 4. Sort by program name, year level, section, then lastname.
+            // Students with a null year_level/section sort first within
+            // their program (Laravel's sortBy treats null as the lowest
+            // value), which naturally groups "no current load" students
+            // together at the top of each program sheet.
             $data = $data->sortBy([
                 ['program', 'asc'],
                 ['year_level', 'asc'],
