@@ -37,14 +37,14 @@ Route::get('/students/audit/find-campus', function (Request $request): JsonRespo
     // 1. What does the LOCAL students table say? Same dual search — by
     // id_number if given, by last_name (LIKE) if given, matching both when
     // both are present.
-    $localQuery = DB::table('students')->select('id_number', 'campus', 'lastname', 'created_at');
+    $localQuery = DB::table('students')->select('id_number', 'campus', 'last_name', 'created_at');
 
     if ($idNumber) {
         $localQuery->where('id_number', $idNumber);
     }
 
     if ($lastName) {
-        $localQuery->where('lastname', 'like', '%' . $lastName . '%');
+        $localQuery->where('last_name', 'like', '%' . $lastName . '%');
     }
 
     $localRecords = $localQuery->get();
