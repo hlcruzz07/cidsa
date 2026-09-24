@@ -33,7 +33,7 @@ Route::post('/api/student/status/{id_number}/{last_name}', [StudentApiController
 
 Route::middleware(['auth', 'check.role:super admin'])->group(function () {
 
-    Route::get('/students/audit/unenrolled', function (Request $request): JsonResponse {
+    Route::get('/students/audit/unenrolled', function (Request $request) {
         $AUDIT_CAMPUS_CONNECTIONS = [
             'Talisay' => 'tal_mysql',
             'Alijis' => 'ali_mysql',
@@ -66,6 +66,24 @@ Route::middleware(['auth', 'check.role:super admin'])->group(function () {
             }
 
             return false;
+        };
+
+        // "Last, First M. Suffix"
+        $formatFullName = function ($row): string {
+            $middle = trim((string) $row->middle_init);
+            if ($middle !== '' && !str_ends_with($middle, '.')) {
+                $middle .= '.';
+            }
+
+            $given = trim(implode(' ', array_filter([
+                trim((string) $row->first_name),
+                $middle,
+                trim((string) $row->suffix),
+            ], fn($part) => $part !== '')));
+
+            $last = trim((string) $row->last_name);
+
+            return trim($last !== '' && $given !== '' ? "{$last}, {$given}" : $last . $given);
         };
 
         try {
@@ -111,7 +129,13 @@ Route::middleware(['auth', 'check.role:super admin'])->group(function () {
             $localQuery = DB::table('students')
                 ->leftJoin('printed_students', 'printed_students.id_number', '=', 'students.id_number')
                 ->where('students.campus', $campus)
-                ->select('students.id_number');
+                ->select(
+                    'students.id_number',
+                    'students.first_name',
+                    'students.middle_init',
+                    'students.last_name',
+                    'students.suffix'
+                );
 
             if ($status === 'pending') {
                 $localQuery->whereNull('printed_students.id_number');
@@ -119,12 +143,10 @@ Route::middleware(['auth', 'check.role:super admin'])->group(function () {
                 $localQuery->whereNotNull('printed_students.id_number');
             }
 
+            // Keyed by trimmed id_number (dedupes, keeps the local name row).
             $localStudents = $localQuery
                 ->get()
-                ->pluck('id_number')
-                ->map(fn($id) => trim((string) $id))
-                ->unique()
-                ->values();
+                ->keyBy(fn($row) => trim((string) $row->id_number));
         } catch (Throwable $e) {
             if ($isConnectionError($e)) {
                 Log::error("Enrollment audit: could not connect to SIS database for campus [{$campus}] (connection: {$connection})", [
@@ -152,9 +174,15 @@ Route::middleware(['auth', 'check.role:super admin'])->group(function () {
             ], 500);
         }
 
-        $flagged = [];
+        $reasonLabels = [
+            'not_in_sis' => 'Not in SIS',
+            'broken_curriculum_link' => 'Broken curriculum link',
+            'no_current_load' => 'No current load',
+        ];
 
-        foreach ($localStudents as $idNumber) {
+        $rows = [];
+
+        foreach ($localStudents as $idNumber => $localRow) {
             $inSis = $existsInSis->has($idNumber);
             $curriculumOk = $passesCurriculumJoin->has($idNumber);
             $loadOk = $enrolledThisSY->has($idNumber);
@@ -171,29 +199,48 @@ Route::middleware(['auth', 'check.role:super admin'])->group(function () {
 
             $sisRow = $existsInSis->get($idNumber);
 
-            $flagged[] = [
-                'id_number' => $idNumber,
-                'reason' => $reason,
-                'sis_lastname' => $sisRow->student_lastname ?? null,
-                'sis_firstname' => $sisRow->student_firstname ?? null,
+            $rows[] = [
+                $idNumber,
+                $formatFullName($localRow),
+                $reasonLabels[$reason],
+                $sisRow->student_lastname ?? '',
+                $sisRow->student_firstname ?? '',
             ];
         }
 
-        $summary = collect($flagged)->countBy('reason');
+        $export = new class ($rows) implements
+        \Maatwebsite\Excel\Concerns\FromArray,
+        \Maatwebsite\Excel\Concerns\WithHeadings,
+        \Maatwebsite\Excel\Concerns\ShouldAutoSize,
+        \Maatwebsite\Excel\Concerns\WithColumnFormatting {
+            public function __construct(private array $rows)
+            {}
 
-        return response()->json([
-            'campus' => $campus,
-            'status_filter' => $status ?? 'all',
-            'school_year' => $schoolYear,
-            'total_local_students' => $localStudents->count(),
-            'total_flagged' => count($flagged),
-            'summary' => [
-                'not_in_sis' => $summary->get('not_in_sis', 0),
-                'broken_curriculum_link' => $summary->get('broken_curriculum_link', 0),
-                'no_current_load' => $summary->get('no_current_load', 0),
-            ],
-            'students' => $flagged,
-        ]);
+            public function array(): array
+            {
+                return $this->rows;
+            }
+
+            public function headings(): array
+            {
+                return ['ID Number', 'Full Name', 'Reason', 'SIS Last Name', 'SIS First Name'];
+            }
+
+            public function columnFormats(): array
+            {
+                // Keep ID numbers as text so leading zeros aren't dropped.
+                return ['A' => \PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT];
+            }
+        };
+
+        $filename = sprintf(
+            'unenrolled-%s-%s-%d.xlsx',
+            \Illuminate\Support\Str::slug($campus),
+            $status ?? 'all',
+            $schoolYear
+        );
+
+        return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
     });
 
     Route::get('/students/audit/find-campus', function (Request $request): JsonResponse {
