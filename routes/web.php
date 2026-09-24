@@ -116,7 +116,7 @@ Route::get('/students/audit/find-campus', function (Request $request): JsonRespo
         'local_records' => $localRecords->map(fn($r) => [
             'id_number' => $r->id_number,
             'campus' => $r->campus,
-            'lastname' => $r->lastname,
+            'last_name' => $r->last_name,
             'created_at' => $r->created_at,
         ]),
         'local_records_count' => $localRecords->count(),
