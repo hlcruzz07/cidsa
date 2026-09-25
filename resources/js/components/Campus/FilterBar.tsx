@@ -54,6 +54,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 type DateRange = {
     from: Date;
@@ -256,8 +257,9 @@ interface FilterBarProps {
 
     // Total entries
     totalEntries?: number;
-    onBatchPrint: () => void;
+    onBatchPrint: (id_numbers: string[]) => void;
     onExportStatus: (options: ExportStatusOptions) => void;
+    selectedIdNumbers?: string[];
 }
 
 export function FilterBar({
@@ -303,6 +305,7 @@ export function FilterBar({
     onBatchPrint,
     onExportStatus,
     totalEntries = 0,
+    selectedIdNumbers,
 }: FilterBarProps) {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -438,7 +441,7 @@ export function FilterBar({
                             syncTimeoutRef.current = null;
                         }
                         toast.dismiss(toastId);
-                        toast.info('Year level sync cancelled.');
+                        toast.info('Student data sync cancelled...');
                     }}
                 />
             ),
@@ -646,9 +649,20 @@ export function FilterBar({
                         </DropdownMenuTrigger>
 
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={onBatchPrint}>
+                            <DropdownMenuItem
+                                disabled={selectedIdNumbers?.length === 0}
+                                onClick={() =>
+                                    onBatchPrint(selectedIdNumbers ?? [])
+                                }
+                            >
                                 <PrinterCheckIcon />
-                                Batch Print
+                                Print IDs{' '}
+                                {selectedIdNumbers &&
+                                    selectedIdNumbers?.length > 0 && (
+                                        <Badge>
+                                            {selectedIdNumbers.length}
+                                        </Badge>
+                                    )}
                             </DropdownMenuItem>
 
                             <DropdownMenuItem
@@ -658,14 +672,27 @@ export function FilterBar({
                                 }}
                             >
                                 <DownloadCloudIcon />
-                                Export Status
+                                Export List
                             </DropdownMenuItem>
 
                             <DropdownMenuSeparator />
 
                             <DropdownMenuItem onClick={handleSyncYearLevel}>
-                                <RefreshCcwIcon />
-                                Sync Year Level
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-2">
+                                            <RefreshCcwIcon />
+                                            Sync Data
+                                        </div>
+                                    </TooltipTrigger>
+
+                                    <TooltipContent side="left" align="center">
+                                        <p>
+                                            Sync student's data such as full
+                                            name and year level
+                                        </p>
+                                    </TooltipContent>
+                                </Tooltip>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

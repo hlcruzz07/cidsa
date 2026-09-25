@@ -670,6 +670,23 @@ class StudentRepository
 
 
 
+    public function getStudentByIds(array $ids)
+    {
+        $students = $this->model->whereIn('id_number', $ids)->get();
 
+        $students->transform(function ($student) {
+            $student->picture = $student->picture
+                ? route('gdrive.image', ['fileId' => $student->picture])
+                : null;
+
+            $student->e_signature = $student->e_signature
+                ? route('gdrive.image', ['fileId' => $student->e_signature])
+                : null;
+
+            return $student;
+        });
+
+        return $students;
+    }
 
 }

@@ -1,0 +1,35 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('inventory_receipts', function (Blueprint $table) {
+            $table->id();
+
+            $table->foreignId('inventory_stock_id')
+                ->constrained('inventory_stocks')
+                ->cascadeOnDelete();
+            $table->unsignedBigInteger('quantity');
+            $table->string('ref_no')->unique();
+            $table->string('delivered_by');
+            $table->text('remarks')->nullable();
+            $table->timestamp('received_at')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('inventory_receipts');
+    }
+};

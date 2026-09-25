@@ -42,8 +42,6 @@ Route::middleware(['auth', 'check.role:super admin'])->group(function () {
         ];
         $validated = $request->validate([
             'campus' => ['required', 'string', 'in:' . implode(',', array_keys($AUDIT_CAMPUS_CONNECTIONS))],
-            // Omitted/null = every local student for the campus, unfiltered
-            // by print status (original behavior).
             'status' => ['nullable', 'string', 'in:pending,printed'],
         ]);
 

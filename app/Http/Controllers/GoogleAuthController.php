@@ -29,4 +29,5 @@ class GoogleAuthController extends Controller
 
         return redirect()->route('dashboard')->with('success', "Welcome " . Auth::user()->name);
     }
+
 }

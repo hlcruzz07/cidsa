@@ -56,4 +56,9 @@ class Student extends Model
     {
         return $this->hasMany(StudentChangeLog::class, 'student_id');
     }
+
+    public function activityLog()
+    {
+        return $this->hasMany(ActivityLog::class, 'student_id');
+    }
 }

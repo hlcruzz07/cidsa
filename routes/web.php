@@ -3,46 +3,8 @@ use App\Http\Controllers\CampusRouteController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StudentController;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
-
-
-
-
-Route::get('/test-databases', function () {
-    $connections = [
-        'mysql',
-        'tal_mysql',
-        'ali_mysql',
-        'ft_mysql',
-        'bin_mysql',
-        'armvs'
-    ];
-
-    $results = [];
-
-    foreach ($connections as $connection) {
-        try {
-            DB::connection($connection)->getPdo();
-
-            $results[$connection] = [
-                'status' => 'Connected',
-                'database' => DB::connection($connection)->getDatabaseName(),
-            ];
-        } catch (\Throwable $e) {
-            $results[$connection] = [
-                'status' => 'Failed',
-                'error' => $e->getMessage(),
-            ];
-        }
-    }
-
-    return response()->json($results);
-});
 Route::middleware('guest')->group(function () {
     Route::get('/', [StudentController::class, 'index'])->name('home');
     Route::post('/validate/student', [StudentController::class, 'validate'])->name('validate.student');
@@ -93,8 +55,6 @@ Route::middleware(['auth', 'check.role:admin|super admin'])->group(function () {
     Route::get('/exports/{export}/download', [StudentController::class, 'download'])
         ->name('exports.download');
     Route::post('/checklists', [StudentController::class, 'storeChecklist'])->name('checklist.store');
-
-
 
 });
 

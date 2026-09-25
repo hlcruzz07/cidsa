@@ -80,7 +80,7 @@ class StudentApiController extends Controller
     }
 
 
-    public function getStudentById(int $id)
+    public function getStudentById(string $id)
     {
 
         $student = $this->studentRepository->find($id);
@@ -99,18 +99,16 @@ class StudentApiController extends Controller
 
     public function getStudentByIds(Request $request)
     {
-        $ids = $request->input('ids');
-        return $this->studentRepository->getStudetsByIds($ids)
-            ->transform(function ($student) {
-                foreach (['picture', 'e_signature'] as $field) {
-                    $student->{$field} = filled($student->{$field})
-                        ? route('gdrive.image', ['fileId' => $student->{$field}])
-                        : null;
-                }
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'max:100'],
+            'ids.*' => ['string'],
+        ]);
 
-                return $student;
-            });
+        return response()->json(
+            $this->studentRepository->getStudentByIds($validated['ids'])
+        );
     }
+
     public function image(string $fileId)
     {
         return $this->googleDriveService->getGDriveImage($fileId);
@@ -139,4 +137,5 @@ class StudentApiController extends Controller
             'student' => $student,
         ]);
     }
+
 }

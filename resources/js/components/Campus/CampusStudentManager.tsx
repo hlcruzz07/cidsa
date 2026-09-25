@@ -1,3 +1,4 @@
+import ResponsiveTabs from '@/layouts/responsive-tabs-layout';
 import {
     PaginateStudentReplacement,
     PaginateStudents,
@@ -5,16 +6,18 @@ import {
 import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
 import { usePage } from '@inertiajs/react';
+import { Clock, Printer, Users, WrenchIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 import Heading from '../heading';
+import { Badge } from '../ui/badge';
+import { BatchIdPreviewDialog } from './BatchIdPreviewDialog';
 import { BatchIdPrintDialog } from './BatchIdPrintDialog';
 import { ExportStatusOptions, FilterBar } from './FilterBar';
 import { IdPreviewDialog } from './Preview';
 import { ReplacementFilterBar } from './ReplacementFilterBar';
 import { ReplacementTable } from './ReplacementTable';
-import { StudentsUpdateChart } from './StudentChart';
 import { StudentTable } from './StudentTable';
 import Widget from './Widget';
 
@@ -157,20 +160,15 @@ export function CampusStudentManager({
         sOrder,
     ]);
 
-    // ─── Single ID preview ────────────────────────────────────────────────────
     const [openPreview, setOpenPreview] = useState(false);
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const printStudent = (id: number) => {
         setOpenPreview(true);
         setSelectedId(id);
     };
+    const [selectedIdNumbers, setSelectedIdNumbers] = useState<string[]>([]);
+    const [openBatchPreview, setOpenBatchPreview] = useState(false);
 
-    // ─── Batch print ──────────────────────────────────────────────────────────
-    const [openBatch, setOpenBatch] = useState(false);
-
-    // =========================================================================
-    // REPLACEMENT STUDENTS
-    // =========================================================================
     const [replacements, setReplacements] =
         useState<PaginateStudentReplacement | null>(null);
     const [replacementsLoading, setReplacementsLoading] = useState(false);
@@ -281,18 +279,6 @@ export function CampusStudentManager({
     ]);
 
     const [openBatchReplacement, setOpenBatchReplacement] = useState(false);
-
-    // ─── Export Status ────────────────────────────────────────────────────────
-    const [isExportingStatus, setIsExportingStatus] = useState(false);
-
-    /**
-     * Reads an error response back out of an axios error when the request
-     * was made with `responseType: 'blob'`. In that mode, even a JSON error
-     * body from the server arrives as a Blob instead of parsed JSON, so it
-     * has to be read back out as text and parsed manually — otherwise the
-     * backend's specific message (e.g. "SIS database offline") never
-     * reaches the user and they just get a generic failure.
-     */
     const extractErrorMessage = async (
         err: any,
         fallback: string,
@@ -315,7 +301,6 @@ export function CampusStudentManager({
     };
 
     const exportStatus = async (options: ExportStatusOptions) => {
-        setIsExportingStatus(true);
         try {
             const response = await apiService.get(route('api.export.status'), {
                 params: {
@@ -349,43 +334,21 @@ export function CampusStudentManager({
             );
             console.error('Error exporting status:', err);
             toast.error(message);
-        } finally {
-            setIsExportingStatus(false);
         }
     };
 
     return (
         <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                <Widget type="totalUpdates" count={counts.totalUpdates} />
-
-                <Widget
-                    type="totalNewPendings"
-                    count={counts.totalNewPendings}
-                />
-
-                <Widget type="totalNewPrinted" count={counts.totalNewPrinted} />
-
-                <Widget
-                    type="totalPendingReplacement"
-                    count={counts.totalPendingReplacement}
-                />
-            </div>
-
-            <StudentsUpdateChart campus={campus} />
-
-            {/* Shared dialogs */}
             <IdPreviewDialog
                 open={openPreview}
                 setOpen={setOpenPreview}
                 id={selectedId}
             />
-            <BatchIdPrintDialog
-                open={openBatch}
-                setOpen={setOpenBatch}
-                campus={campus}
-                mode="new"
-                onClose={fetchStudents}
+            <BatchIdPreviewDialog
+                open={openBatchPreview}
+                setOpen={setOpenBatchPreview}
+                idNumbers={selectedIdNumbers}
+                onSelectionChange={setSelectedIdNumbers}
             />
             <BatchIdPrintDialog
                 open={openBatchReplacement}
@@ -395,121 +358,192 @@ export function CampusStudentManager({
                 onClose={fetchReplacements}
             />
 
-            {/* ── New Student ID Requests ── */}
-            <div className="flex flex-col gap-4 rounded-xl border border-sidebar-border/70 p-4 dark:border-sidebar-border">
-                <Heading
-                    title="New Student ID Requests"
-                    description="Students currently applying for a new student ID."
-                />
-                <FilterBar
-                    campus={campus}
-                    searchValue={sSearch}
-                    onSearchChange={setSSearch}
-                    perPage={sPerPage}
-                    onPerPageChange={setSPerPage}
-                    sort={sSort}
-                    onSortChange={setSSort}
-                    order={sOrder}
-                    onOrderChange={setSOrder}
-                    selectedType={sType}
-                    onTypeChange={setSType}
-                    collegeOptions={collegeTalArr}
-                    selectedCollege={sCollege}
-                    onCollegeChange={(v) => {
-                        setSCollege(v);
-                        setSProgram(null);
-                        setSMajor(null);
-                    }}
-                    programOptions={sProgramsArr!}
-                    selectedProgram={sProgram}
-                    onProgramChange={(v) => {
-                        setSProgram(v);
-                        setSMajor(null);
-                    }}
-                    majorOptions={sMajorArr!}
-                    selectedMajor={sMajor}
-                    onMajorChange={setSMajor}
-                    selectedYear={sYear}
-                    onYearChange={setSYear}
-                    isPrinted={sIsPrinted}
-                    onPrintedChange={setSIsPrinted}
-                    range={sRange}
-                    onRangeChange={setSRange}
-                    dateField={sDateField}
-                    onDateFieldChange={setSDateField}
-                    hasActiveFilters={sHasActiveFilters}
-                    onReset={resetStudentFilters}
-                    totalEntries={students?.total ?? 0}
-                    onBatchPrint={() => setOpenBatch(true)}
-                    onExportStatus={exportStatus}
-                />
-                <StudentTable
-                    students={students?.data ?? []}
-                    total={students?.total}
-                    from={students?.from}
-                    to={students?.to}
-                    links={students?.links}
-                    onPageChange={(page) => fetchStudents(page)}
-                    isLoading={studentsLoading}
-                    onPrint={printStudent}
-                    onChangeStatus={fetchStudents}
-                />
-            </div>
-
-            {/* ── Replacement ID Requests ── */}
-            <div className="flex flex-col gap-4 rounded-xl border border-sidebar-border/70 p-4 px-5 dark:border-sidebar-border">
-                <Heading
-                    title="Replacement ID Requests"
-                    description="Students requesting a replacement for their student ID."
-                />
-                <ReplacementFilterBar
-                    searchValue={rSearch}
-                    onSearchChange={setRSearch}
-                    perPage={rPerPage}
-                    onPerPageChange={setRPerPage}
-                    sort={rSort}
-                    onSortChange={setRSort}
-                    order={rOrder}
-                    onOrderChange={setROrder}
-                    collegeOptions={collegeTalArr}
-                    selectedCollege={rCollege}
-                    onCollegeChange={(v) => {
-                        setRCollege(v);
-                        setRProgram(null);
-                        setRMajor(null);
-                    }}
-                    programOptions={rProgramsArr!}
-                    selectedProgram={rProgram}
-                    onProgramChange={(v: any) => {
-                        setRProgram(v);
-                        setRMajor(null);
-                    }}
-                    majorOptions={rMajorArr!}
-                    selectedMajor={rMajor}
-                    onMajorChange={setRMajor}
-                    selectedYear={rYear}
-                    onYearChange={setRYear}
-                    isPrinted={rIsPrinted}
-                    onPrintedChange={setRIsPrinted}
-                    range={rRange}
-                    onRangeChange={setRRange}
-                    hasActiveFilters={rHasActiveFilters}
-                    onReset={resetReplacementFilters}
-                    totalEntries={replacements?.total ?? 0}
-                    onBatchPrint={() => setOpenBatchReplacement(true)}
-                />
-                <ReplacementTable
-                    replacements={replacements?.data ?? []}
-                    total={replacements?.total}
-                    from={replacements?.from}
-                    to={replacements?.to}
-                    links={replacements?.links}
-                    onPageChange={(page) => fetchReplacements(page)}
-                    isLoading={replacementsLoading}
-                    onPrint={printStudent}
-                    onChangeStatus={fetchReplacements}
-                />
-            </div>
+            <ResponsiveTabs
+                defaultValue="new"
+                items={[
+                    {
+                        value: 'new',
+                        trigger: <>New Student</>,
+                        content: (
+                            <>
+                                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                                    <Widget
+                                        count={counts.totalUpdates}
+                                        title="Total"
+                                        description="Number of student submissions."
+                                        icon={Users}
+                                        color="chart-1"
+                                    />
+                                    <Widget
+                                        count={counts.totalNewPendings}
+                                        title="Pendings"
+                                        description="Students waiting for their first ID to be printed."
+                                        icon={Clock}
+                                        color="chart-2"
+                                    />
+                                    <Widget
+                                        count={counts.totalNewPrinted}
+                                        title="Printed"
+                                        description="Students whose first ID has been printed."
+                                        icon={Printer}
+                                        color="chart-3"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-4 rounded-xl border border-sidebar-border/70 p-4 dark:border-sidebar-border">
+                                    <Heading
+                                        title="New Student ID Requests"
+                                        description="Students currently applying for a new student ID."
+                                    />
+                                    <FilterBar
+                                        campus={campus}
+                                        searchValue={sSearch}
+                                        onSearchChange={setSSearch}
+                                        perPage={sPerPage}
+                                        onPerPageChange={setSPerPage}
+                                        sort={sSort}
+                                        onSortChange={setSSort}
+                                        order={sOrder}
+                                        onOrderChange={setSOrder}
+                                        selectedType={sType}
+                                        onTypeChange={setSType}
+                                        collegeOptions={collegeTalArr}
+                                        selectedCollege={sCollege}
+                                        onCollegeChange={(v) => {
+                                            setSCollege(v);
+                                            setSProgram(null);
+                                            setSMajor(null);
+                                        }}
+                                        programOptions={sProgramsArr!}
+                                        selectedProgram={sProgram}
+                                        onProgramChange={(v) => {
+                                            setSProgram(v);
+                                            setSMajor(null);
+                                        }}
+                                        majorOptions={sMajorArr!}
+                                        selectedMajor={sMajor}
+                                        onMajorChange={setSMajor}
+                                        selectedYear={sYear}
+                                        onYearChange={setSYear}
+                                        isPrinted={sIsPrinted}
+                                        onPrintedChange={setSIsPrinted}
+                                        range={sRange}
+                                        onRangeChange={setSRange}
+                                        dateField={sDateField}
+                                        onDateFieldChange={setSDateField}
+                                        hasActiveFilters={sHasActiveFilters}
+                                        onReset={resetStudentFilters}
+                                        totalEntries={students?.total ?? 0}
+                                        onBatchPrint={() =>
+                                            setOpenBatchPreview(true)
+                                        }
+                                        onExportStatus={exportStatus}
+                                        selectedIdNumbers={selectedIdNumbers}
+                                    />
+                                    <StudentTable
+                                        selectedIdNumbers={selectedIdNumbers}
+                                        onSelectionChange={setSelectedIdNumbers}
+                                        students={students?.data ?? []}
+                                        total={students?.total}
+                                        from={students?.from}
+                                        to={students?.to}
+                                        links={students?.links}
+                                        onPageChange={(page) =>
+                                            fetchStudents(page)
+                                        }
+                                        isLoading={studentsLoading}
+                                        onPrint={printStudent}
+                                        onChangeStatus={fetchStudents}
+                                    />
+                                </div>
+                            </>
+                        ),
+                    },
+                    {
+                        value: 'replacement',
+                        trigger: <>Replacement Student</>,
+                        content: (
+                            <div className="flex flex-col gap-4 rounded-xl border border-sidebar-border/70 p-4 px-5 dark:border-sidebar-border">
+                                <Heading
+                                    title="Replacement ID Requests"
+                                    description="Students requesting a replacement for their student ID."
+                                />
+                                <ReplacementFilterBar
+                                    searchValue={rSearch}
+                                    onSearchChange={setRSearch}
+                                    perPage={rPerPage}
+                                    onPerPageChange={setRPerPage}
+                                    sort={rSort}
+                                    onSortChange={setRSort}
+                                    order={rOrder}
+                                    onOrderChange={setROrder}
+                                    collegeOptions={collegeTalArr}
+                                    selectedCollege={rCollege}
+                                    onCollegeChange={(v) => {
+                                        setRCollege(v);
+                                        setRProgram(null);
+                                        setRMajor(null);
+                                    }}
+                                    programOptions={rProgramsArr!}
+                                    selectedProgram={rProgram}
+                                    onProgramChange={(v: any) => {
+                                        setRProgram(v);
+                                        setRMajor(null);
+                                    }}
+                                    majorOptions={rMajorArr!}
+                                    selectedMajor={rMajor}
+                                    onMajorChange={setRMajor}
+                                    selectedYear={rYear}
+                                    onYearChange={setRYear}
+                                    isPrinted={rIsPrinted}
+                                    onPrintedChange={setRIsPrinted}
+                                    range={rRange}
+                                    onRangeChange={setRRange}
+                                    hasActiveFilters={rHasActiveFilters}
+                                    onReset={resetReplacementFilters}
+                                    totalEntries={replacements?.total ?? 0}
+                                    onBatchPrint={() =>
+                                        setOpenBatchReplacement(true)
+                                    }
+                                />
+                                <ReplacementTable
+                                    replacements={replacements?.data ?? []}
+                                    total={replacements?.total}
+                                    from={replacements?.from}
+                                    to={replacements?.to}
+                                    links={replacements?.links}
+                                    onPageChange={(page) =>
+                                        fetchReplacements(page)
+                                    }
+                                    isLoading={replacementsLoading}
+                                    onPrint={printStudent}
+                                    onChangeStatus={fetchReplacements}
+                                />
+                            </div>
+                        ),
+                    },
+                    {
+                        value: 'cards',
+                        trigger: <>Manage ID Cards</>,
+                        content: '',
+                    },
+                    {
+                        value: 'employee',
+                        trigger: (
+                            <>
+                                Employee
+                                <Badge
+                                    variant="outline"
+                                    className="border-amber-500 text-amber-500 tabular-nums"
+                                >
+                                    <WrenchIcon />
+                                </Badge>
+                            </>
+                        ),
+                        content: '',
+                        disabled: true,
+                    },
+                ]}
+            />
         </div>
     );
 }
