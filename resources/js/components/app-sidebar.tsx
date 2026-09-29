@@ -9,8 +9,8 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
+import { User, type NavItem } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
 import {
     Activity,
     Building2,
@@ -23,6 +23,10 @@ import {
 } from 'lucide-react';
 import { route } from 'ziggy-js';
 import AppLogo from './app-logo';
+
+const SUPER_ADMIN_ROLE = 'super admin';
+const ALL_CAMPUS_VALUE = 'all';
+
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
@@ -30,26 +34,34 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
 ];
-const campusesNavItems: NavItem[] = [
+
+// `code` matches user.campus (tal, ali, ft, bin)
+type CampusNavItem = NavItem & { code: string };
+
+const campusesNavItems: CampusNavItem[] = [
     {
         title: 'Talisay',
         href: '/campus/Talisay',
         icon: School,
+        code: 'tal',
     },
     {
         title: 'Alijis',
         href: '/campus/Alijis',
         icon: Building2,
+        code: 'ali',
     },
     {
         title: 'Fortune Towne',
         href: '/campus/Fortune Towne',
         icon: Landmark,
+        code: 'ft',
     },
     {
         title: 'Binalbagan',
         href: '/campus/Binalbagan',
         icon: Trees,
+        code: 'bin',
     },
 ];
 
@@ -69,19 +81,35 @@ const manageNavItems: NavItem[] = [
         href: '/users',
         icon: Users,
     },
-    // {
-    //     title: 'Users',
-    //     href: dashboard(),
-    //     icon: Users,
-    // },
-    // {
-    //     title: 'Roles & Permission',
-    //     href: dashboard(),
-    //     icon: LockIcon,
-    // },
 ];
 
+type PageProps = {
+    auth: {
+        user: User;
+    };
+};
+
+const normalize = (value?: string | null) =>
+    (value ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/[_\s]+/g, ' ');
+
 export function AppSidebar() {
+    const { auth } = usePage<PageProps>().props;
+
+    const isSuperAdmin = normalize(auth.user.role) === SUPER_ADMIN_ROLE;
+    const userCampus = normalize(auth.user.campus);
+    const hasAllCampuses = isSuperAdmin || userCampus === ALL_CAMPUS_VALUE;
+
+    // Disable every campus that isn't the user's own
+    const campusItems: NavItem[] = campusesNavItems.map(
+        ({ code, ...item }) => ({
+            ...item,
+            disabled: !hasAllCampuses && code !== userCampus,
+        }),
+    );
+
     return (
         <>
             <Sidebar collapsible="icon" variant="inset">
@@ -99,8 +127,10 @@ export function AppSidebar() {
 
                 <SidebarContent>
                     <NavMain title="Main" items={mainNavItems} />
-                    <NavMain title="Campus" items={campusesNavItems} />
-                    <NavMain title="Management" items={manageNavItems} />
+                    <NavMain title="Campus" items={campusItems} />
+                    {isSuperAdmin && (
+                        <NavMain title="Management" items={manageNavItems} />
+                    )}
                 </SidebarContent>
 
                 <SidebarFooter>

@@ -18,25 +18,34 @@ export function NavMain({
 }) {
     const page = usePage();
     const currentUrl = decodeURIComponent(page.url);
+
     return (
         <SidebarGroup className="px-2 py-0">
             <SidebarGroupLabel>{title}</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item) => (
                     <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton
-                            asChild
-                            isActive={
-                                currentUrl ===
-                                decodeURIComponent(resolveUrl(item.href))
-                            }
-                            tooltip={{ children: item.title }}
-                        >
-                            <Link href={item.href} prefetch>
+                        {item.disabled ? (
+                            // Not a link, so it can't be clicked, focused or prefetched
+                            <SidebarMenuButton disabled aria-disabled="true">
                                 {item.icon && <item.icon />}
                                 <span>{item.title}</span>
-                            </Link>
-                        </SidebarMenuButton>
+                            </SidebarMenuButton>
+                        ) : (
+                            <SidebarMenuButton
+                                asChild
+                                isActive={
+                                    currentUrl ===
+                                    decodeURIComponent(resolveUrl(item.href))
+                                }
+                                tooltip={{ children: item.title }}
+                            >
+                                <Link href={item.href} prefetch>
+                                    {item.icon && <item.icon />}
+                                    <span>{item.title}</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        )}
                     </SidebarMenuItem>
                 ))}
             </SidebarMenu>
