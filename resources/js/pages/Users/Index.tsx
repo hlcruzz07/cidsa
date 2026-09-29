@@ -66,8 +66,15 @@ const roleLabel = (value: string) => ROLE_LABELS[value] ?? titleCase(value);
 
 // Only trims/lowercases stray whitespace or casing — does NOT touch the
 // space in "super admin", since that's the real enum value now.
+// Also treats underscores as spaces so "super_admin" matches "super admin".
 const normalizeRole = (value: string) =>
-    value.trim().toLowerCase().replace(/\s+/g, ' ');
+    value
+        .trim()
+        .toLowerCase()
+        .replace(/[_\s]+/g, ' ');
+
+const isSuperAdminRole = (value: string) =>
+    normalizeRole(value) === SUPER_ADMIN_ROLE;
 
 const emptyCreateForm = {
     name: '',
@@ -88,6 +95,13 @@ export default function Index() {
 
     const getInitials = useInitials();
 
+    // Super admins only get the "all" option (always present, even if the
+    // backend doesn't send it). Everyone else gets the real campuses.
+    const getCampusOptions = (isSuperAdmin: boolean) =>
+        isSuperAdmin
+            ? [ALL_CAMPUS_VALUE]
+            : campuses.filter((campus) => campus !== ALL_CAMPUS_VALUE);
+
     // ---------- Edit ----------
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [editOpen, setEditOpen] = useState(false);
@@ -96,6 +110,7 @@ export default function Index() {
         data: editData,
         setData: setEditData,
         put,
+        transform: transformEdit,
         processing: editProcessing,
         errors: editErrors,
         reset: resetEdit,
@@ -107,22 +122,20 @@ export default function Index() {
         role: '',
     });
 
-    const isEditSuperAdmin = editData.role === SUPER_ADMIN_ROLE;
-    const editCampusOptions = isEditSuperAdmin
-        ? campuses
-        : campuses.filter((campus) => campus !== ALL_CAMPUS_VALUE);
+    const isEditSuperAdmin = isSuperAdminRole(editData.role);
+    const editCampusOptions = getCampusOptions(isEditSuperAdmin);
 
     const openEdit = (row: User) => {
-        const normalizedRole = normalizeRole(row.role);
+        // Use the exact role value from the backend list so the Select matches
+        const matchedRole =
+            roles.find((r) => normalizeRole(r) === normalizeRole(row.role)) ??
+            row.role;
         setEditingUser(row);
         setEditData({
             name: row.name,
             email: row.email,
-            role: normalizedRole,
-            campus:
-                normalizedRole === SUPER_ADMIN_ROLE
-                    ? ALL_CAMPUS_VALUE
-                    : row.campus,
+            role: matchedRole,
+            campus: isSuperAdminRole(row.role) ? ALL_CAMPUS_VALUE : row.campus,
         });
         clearEditErrors();
         setEditOpen(true);
@@ -142,12 +155,11 @@ export default function Index() {
             ...prevData,
             role: value,
             // Super admins always cover every campus
-            campus:
-                value === SUPER_ADMIN_ROLE
-                    ? ALL_CAMPUS_VALUE
-                    : prevData.campus === ALL_CAMPUS_VALUE
-                      ? ''
-                      : prevData.campus,
+            campus: isSuperAdminRole(value)
+                ? ALL_CAMPUS_VALUE
+                : prevData.campus === ALL_CAMPUS_VALUE
+                  ? ''
+                  : prevData.campus,
         }));
     };
 
@@ -155,9 +167,18 @@ export default function Index() {
         e.preventDefault();
         if (!editingUser) return;
 
+        // Guarantee super admins are always sent with campus = "all"
+        transformEdit((data) => ({
+            ...data,
+            campus: isSuperAdminRole(data.role)
+                ? ALL_CAMPUS_VALUE
+                : data.campus,
+        }));
+
         put(route('user.update', editingUser.id), {
             preserveScroll: true,
             onSuccess: () => closeEdit(false),
+            onError: (err) => console.log(err),
         });
     };
 
@@ -168,16 +189,16 @@ export default function Index() {
         data: createData,
         setData: setCreateData,
         post,
+        transform: transformCreate,
         processing: createProcessing,
         errors: createErrors,
         reset: resetCreate,
         clearErrors: clearCreateErrors,
     } = useForm(emptyCreateForm);
 
-    const isCreateSuperAdmin = createData.role === SUPER_ADMIN_ROLE;
-    const createCampusOptions = isCreateSuperAdmin
-        ? campuses
-        : campuses.filter((campus) => campus !== ALL_CAMPUS_VALUE);
+    const isCreateSuperAdmin = isSuperAdminRole(createData.role);
+    const createCampusOptions = getCampusOptions(isCreateSuperAdmin);
+
     const openCreate = () => {
         setCreateData(emptyCreateForm);
         clearCreateErrors();
@@ -196,17 +217,23 @@ export default function Index() {
         setCreateData((prevData) => ({
             ...prevData,
             role: value,
-            campus:
-                value === SUPER_ADMIN_ROLE
-                    ? ALL_CAMPUS_VALUE
-                    : prevData.campus === ALL_CAMPUS_VALUE
-                      ? ''
-                      : prevData.campus,
+            campus: isSuperAdminRole(value)
+                ? ALL_CAMPUS_VALUE
+                : prevData.campus === ALL_CAMPUS_VALUE
+                  ? ''
+                  : prevData.campus,
         }));
     };
 
     const submitCreate: FormEventHandler = (e) => {
         e.preventDefault();
+
+        transformCreate((data) => ({
+            ...data,
+            campus: isSuperAdminRole(data.role)
+                ? ALL_CAMPUS_VALUE
+                : data.campus,
+        }));
 
         post(route('user.store'), {
             preserveScroll: true,
@@ -301,8 +328,7 @@ export default function Index() {
                                                 className="p-2 whitespace-nowrap"
                                                 data-label="Campus"
                                             >
-                                                {normalizeRole(row.role) ===
-                                                SUPER_ADMIN_ROLE
+                                                {isSuperAdminRole(row.role)
                                                     ? campusLabel(
                                                           ALL_CAMPUS_VALUE,
                                                       )
