@@ -14,6 +14,7 @@ class InventoryReceipt extends Model
         'delivered_by',
         'remarks',
         'received_at',
+        'received_by'
     ];
 
     protected $casts = [
@@ -23,6 +24,11 @@ class InventoryReceipt extends Model
 
     public function stock(): BelongsTo
     {
-        return $this->belongsTo(InventoryStock::class);
+        return $this->belongsTo(InventoryStock::class, 'inventory_stock_id');
+    }
+
+    public function receiver()
+    {
+        return $this->belongsTo(User::class, 'received_by');
     }
 }

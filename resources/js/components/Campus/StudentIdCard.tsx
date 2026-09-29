@@ -2,8 +2,14 @@ import { Card } from '@/components/ui/card';
 import { StudentProps } from '@/lib/custom-types';
 import JsBarcode from 'jsbarcode';
 import { useEffect, useRef, useState } from 'react';
+import { route } from 'ziggy-js';
 
 export type StudentIdCardData = StudentProps;
+
+// Resolves a stored Google Drive file id to its image URL. Returns undefined
+// for an empty value instead of throwing (Ziggy throws on a missing param).
+const driveImage = (fileId?: string | null) =>
+    fileId ? route('gdrive.image', fileId) : undefined;
 
 const formatEmergencyNumber = (num?: string | null) => {
     if (!num) return '—';
@@ -163,9 +169,9 @@ interface StudentIdCardProps {
 }
 
 export function StudentIdCard({ data, isFlipped }: StudentIdCardProps) {
-    const avatarUrl = data.picture;
+    const avatarUrl = driveImage(data.picture);
 
-    const signatureUrl = data.e_signature;
+    const signatureUrl = driveImage(data.e_signature);
 
     return (
         <div
@@ -383,9 +389,11 @@ export function StudentIdCard({ data, isFlipped }: StudentIdCardProps) {
 }
 
 export function IdCardFront({ data }: { data: StudentIdCardData }) {
-    const avatarUrl = data.picture;
+    // Same drive-id -> URL resolution as StudentIdCard, so the print layout
+    // gets real image URLs from the raw list data.
+    const avatarUrl = driveImage(data.picture);
 
-    const signatureUrl = data.e_signature;
+    const signatureUrl = driveImage(data.e_signature);
 
     return (
         <Card className="!min-w-none relative flex h-full w-full !max-w-none items-center justify-center overflow-hidden rounded-lg border-0 bg-white p-0 shadow-md">

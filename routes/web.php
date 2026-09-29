@@ -1,8 +1,14 @@
 <?php
+
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\CampusRouteController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\UserController;
+use App\Models\InventoryStock;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -27,7 +33,6 @@ Route::middleware(['auth', 'check.role:admin|super admin'])->group(function () {
     Route::get('dashboard', [CampusRouteController::class, 'dashboard'])->name('dashboard');
 
     Route::prefix('campus')->name('campus.')->group(function () {
-        // Redirect /campus to /campus/talisay
         Route::get('/', [CampusRouteController::class, 'index']);
 
         Route::get('/{campus}', [CampusRouteController::class, 'show'])
@@ -36,25 +41,16 @@ Route::middleware(['auth', 'check.role:admin|super admin'])->group(function () {
             ->middleware('campus');
     });
 
-    // STUDENT UPDATE ROUTES
     Route::middleware('check.role:super admin')->group(function () {
-        Route::put('/student/update/{id}', [StudentController::class, 'update'])->name('update.student');
-        Route::post('/student/picture/update/{id}', [StudentController::class, 'updateStudentPicture'])->name('update.student.picture');
-        Route::put('/student/status/{status}/new/{id_number}/update', [StudentController::class, 'updateStatusNew'])->name('update.student.new.status');
-        Route::put('/student/status/{status}/rep/{id}/update', [StudentController::class, 'updateStatusRep'])->name('update.student.rep.status');
+        Route::get('/users', [UserController::class, 'index'])->name('users');
+        Route::post('/accounts', [UserController::class, 'store'])->name('user.store');
+        Route::put('/user/{id}/update', [UserController::class, 'update'])->name('user.update');
+
+        Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory');
+        Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs');
+        Route::get('/api/activity-logs', [ActivityLogController::class, 'paginate'])->name('activity-logs.paginate');
 
     });
-
-
-    // IMPORT/EXPORT ROUTES
-    Route::post('/import-printed', [StudentController::class, 'importPrintedStudents'])->name('import.printed.students');
-    Route::get('/export/student/{id}', [StudentController::class, 'exportSingleStudent'])->name('export.student');
-    Route::post('/export/students', [StudentController::class, 'exportStudents'])->name('export.students');
-    Route::get('/exports/{exportId}/status', [StudentController::class, 'status'])
-        ->name('exports.status');
-    Route::get('/exports/{export}/download', [StudentController::class, 'download'])
-        ->name('exports.download');
-    Route::post('/checklists', [StudentController::class, 'storeChecklist'])->name('checklist.store');
 
 });
 

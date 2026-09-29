@@ -65,8 +65,8 @@ const manageNavItems: NavItem[] = [
         icon: Package,
     },
     {
-        title: 'Accounts',
-        href: '/accounts',
+        title: 'Users',
+        href: '/users',
         icon: Users,
     },
     // {

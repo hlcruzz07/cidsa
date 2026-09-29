@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PrintingType;
+use App\Facades\ActivityLogger;
 use App\Http\Requests\AddStudentRequest;
 use App\Http\Requests\CheckIdStatusRequest;
 use App\Http\Requests\CompleteStudentRequest;
@@ -20,7 +22,7 @@ use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Illuminate\Database\QueryException;
 use PDOException;
-
+use SebastianBergmann\Type\VoidType;
 
 class StudentController extends Controller
 {
@@ -176,112 +178,5 @@ class StudentController extends Controller
             ->first() ?? null;
     }
 
-
-    public function importPrintedStudents(Request $request)
-    {
-        $request->validate([
-            'students_file' => 'required|file|mimes:csv,txt',
-        ]);
-
-        $file = $request->file('students_file');
-        $now = Carbon::now();
-
-        $handle = fopen($file->getRealPath(), 'r');
-
-        $header = fgetcsv($handle);
-
-        $students = [];
-
-        while (($row = fgetcsv($handle)) !== false) {
-
-            // Expect only 1 column: id_number
-            $idNumber = trim($row[0] ?? '');
-
-            if ($idNumber === '') {
-                continue;
-            }
-
-            $students[] = [
-                'id_number' => $idNumber,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ];
-        }
-
-        fclose($handle);
-
-        if (empty($students)) {
-            return redirect()->back()->with('error', 'No valid student records found.');
-        }
-
-        // Insert using PrintedStudent model
-        PrintedStudents::upsert(
-            $students,
-            ['id_number'],
-            ['updated_at']
-        );
-
-        return redirect()->back()->with('success', 'Students imported successfully: ' . count($students));
-    }
-
-
-    public function update(UpdateStudentRequest $request, int $id)
-    {
-        $data = $request->except([
-            'hasMajor',
-        ]);
-
-        $this->repo->updateSingleStudent($data, $id);
-
-        return back()->with('success', 'Student information updated');
-    }
-
-
-    public function updateStatusNew(string $status, string $id_number)
-    {
-
-        switch ($status) {
-            case 'pending':
-                $this->repo->setPendingForNew($id_number);
-
-                return back()->with('success', 'Student status updated to ' . $status . ' successfully!');
-            case 'printed':
-                $this->repo->setPrintedForNew($id_number);
-                return back()->with('success', 'Student status updated to ' . $status . ' successfully!');
-            default:
-                return back()->with('error', 'Invalid status.');
-        }
-    }
-
-    public function updateStatusRep(string $status, int $id)
-    {
-
-        switch ($status) {
-            case 'pending':
-                $this->repo->setPendingForReplacement($id);
-
-                return back()->with('success', 'Student status updated to ' . $status . ' successfully!');
-            case 'printed':
-                $this->repo->setPrintedForReplacement($id);
-                return back()->with('success', 'Student status updated to ' . $status . ' successfully!');
-            default:
-                return back()->with('error', 'Invalid status.');
-        }
-    }
-
-    public function storeChecklist(Request $request, GoogleDriveService $googleDriveService)
-    {
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx',
-            'campus' => 'required|string',
-        ]);
-
-        $result = $googleDriveService->uploadChecklist(
-            $request->file('file'),
-            $request->input('campus'),
-        );
-
-        return response()->json($result);
-    }
 
 }

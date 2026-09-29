@@ -7,6 +7,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Carousel,
@@ -22,7 +23,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { StudentProps } from '@/lib/custom-types';
+import { PRINT_TYPE_LABEL, PrintType, StudentProps } from '@/lib/custom-types';
 import apiService from '@/services/apiService';
 import {
     ChevronLeft,
@@ -31,7 +32,7 @@ import {
     Printer,
     Trash2,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { toast } from 'sonner';
@@ -44,25 +45,32 @@ const DEBUG_PREVIEW_IN_NEW_TAB = false;
 const CARD_W = 448;
 const CARD_H = 282;
 const SCALE = 0.72;
-const FETCH_CHUNK = 50;
 const COUNTDOWN_SECONDS = 5;
 
 const sleep = (ms: number) =>
     new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-async function fetchCardData(idNumbers: string[]): Promise<StudentProps[]> {
-    const chunks: string[][] = [];
-    for (let i = 0; i < idNumbers.length; i += FETCH_CHUNK) {
-        chunks.push(idNumbers.slice(i, i + FETCH_CHUNK));
+// Matches the backend rule `'ids' => ['max:100']` on print.students.batch.
+// The selection can span several pages, so it may be larger than that.
+const LOG_CHUNK = 100;
+
+// Records the print in the activity log (one request per 100 students).
+async function logBatchPrint(list: StudentProps[], type: PrintType) {
+    const chunks: StudentProps[][] = [];
+    for (let i = 0; i < list.length; i += LOG_CHUNK) {
+        chunks.push(list.slice(i, i + LOG_CHUNK));
     }
-    const responses = await Promise.all(
+
+    await Promise.all(
         chunks.map((chunk) =>
-            apiService.get(route('get.students'), {
-                params: { ids: chunk },
+            apiService.post(route('students.print'), {
+                // Sent as strings to match the backend's 'ids.*' => 'string'
+                // rule; the server looks students up by primary key.
+                ids: chunk.map((s) => String(s.id)),
+                type,
             }),
         ),
     );
-    return responses.flatMap((res) => (res.data ?? []) as StudentProps[]);
 }
 
 function collectStylesHtml(): string {
@@ -101,8 +109,16 @@ const fullName = (s: StudentProps) =>
 interface BatchIdPreviewDialogProps {
     open: boolean;
     setOpen: (open: boolean) => void;
+    /** Whether these are new student IDs or replacements. */
+    printType: PrintType;
     /** Selected students, as id_number. */
     idNumbers: string[];
+    /**
+     * The selected students' data, already resolved by the parent (no
+     * fetching happens here). May be shorter than `idNumbers` if some
+     * selected students aren't available.
+     */
+    students: StudentProps[];
     /** Lets the modal remove a student from the selection. */
     onSelectionChange: (idNumbers: string[]) => void;
 }
@@ -110,12 +126,11 @@ interface BatchIdPreviewDialogProps {
 export function BatchIdPreviewDialog({
     open,
     setOpen,
+    printType,
     idNumbers,
+    students,
     onSelectionChange,
 }: BatchIdPreviewDialogProps) {
-    const [cache, setCache] = useState<Record<string, StudentProps>>({});
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [isFlipped, setIsFlipped] = useState(false);
 
     const [printDialogOpen, setPrintDialogOpen] = useState(false);
@@ -128,66 +143,15 @@ export function BatchIdPreviewDialog({
     const [api, setApi] = useState<CarouselApi>();
     const [current, setCurrent] = useState(0);
 
-    // Load only the students we don't have yet.
-    useEffect(() => {
-        if (!open) return;
-
-        const missing = idNumbers.filter((id) => !cache[id]);
-        if (missing.length === 0) {
-            setIsLoading(false);
-            return;
-        }
-
-        let cancelled = false;
-        setIsLoading(true);
-        setError(null);
-
-        fetchCardData(missing)
-            .then((rows) => {
-                if (cancelled) return;
-                setCache((prev) => {
-                    const next = { ...prev };
-                    rows.forEach((r) => {
-                        next[r.id_number] = r;
-                    });
-                    return next;
-                });
-            })
-            .catch((err: any) => {
-                if (cancelled) return;
-                setError(
-                    err?.response?.data?.error ||
-                        'Failed to load student ID card data.',
-                );
-            })
-            .finally(() => {
-                if (!cancelled) setIsLoading(false);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [open, idNumbers]);
-
     useEffect(() => {
         if (!open) {
-            setCache({});
             setIsFlipped(false);
-            setError(null);
             setCurrent(0);
             setPrintDialogOpen(false);
         }
     }, [open]);
 
-    const students = useMemo(
-        () =>
-            idNumbers
-                .map((id) => cache[id])
-                .filter((s): s is StudentProps => !!s),
-        [idNumbers, cache],
-    );
-
-    const notLoadedCount = isLoading ? 0 : idNumbers.length - students.length;
+    const notLoadedCount = Math.max(idNumbers.length - students.length, 0);
 
     useEffect(() => {
         if (!api) return;
@@ -334,7 +298,10 @@ export function BatchIdPreviewDialog({
 
     const confirmPrint = () => {
         if (students.length === 0) return;
+        // Capture now: the selection may change after the dialog closes, but
+        // the countdown callback still needs this exact list.
         const list = students;
+        const type = printType;
 
         // Close both the confirm alert and the preview dialog before the
         // countdown starts — nothing stays open while waiting.
@@ -357,6 +324,16 @@ export function BatchIdPreviewDialog({
                     );
                     return;
                 }
+
+                // Log the print without blocking it — a logging failure
+                // (network, validation) shouldn't stop the IDs from printing.
+                logBatchPrint(list, type).catch((err) => {
+                    console.error('Failed to log print:', err);
+                    toast.warning(
+                        "Printing continues, but the activity log couldn't be saved.",
+                    );
+                });
+
                 await doPrint(printWindow, list);
             },
         );
@@ -382,6 +359,9 @@ export function BatchIdPreviewDialog({
                         <DialogTitle className="flex items-center gap-2">
                             <Printer className="h-5 w-5" />
                             Batch Print Preview
+                            <Badge variant="secondary">
+                                {PRINT_TYPE_LABEL[printType]}
+                            </Badge>
                         </DialogTitle>
                         <DialogDescription>
                             {idNumbers.length} student
@@ -396,17 +376,7 @@ export function BatchIdPreviewDialog({
                         wrapper grows past the dialog once there is more than
                         one slide. */}
                     <div className="flex w-full min-w-0 flex-col items-center gap-4">
-                        {isLoading && students.length === 0 ? (
-                            <Skeleton
-                                className="rounded-lg"
-                                style={{ width: CARD_W, height: CARD_H }}
-                            />
-                        ) : error && students.length === 0 ? (
-                            <div className="flex flex-col items-center gap-2 py-12 text-sm text-destructive">
-                                <p className="font-semibold">Failed to load</p>
-                                <p className="text-muted-foreground">{error}</p>
-                            </div>
-                        ) : students.length === 0 ? (
+                        {students.length === 0 ? (
                             <div
                                 className="flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground"
                                 style={{ height: CARD_H }}
@@ -503,11 +473,9 @@ export function BatchIdPreviewDialog({
                             <p className="text-xs text-destructive">
                                 {notLoadedCount} selected student
                                 {notLoadedCount !== 1 ? 's' : ''} couldn't be
-                                loaded and won't be printed.
+                                found in the loaded list and won't be printed.
+                                Refresh the list and select again.
                             </p>
-                        )}
-                        {error && students.length > 0 && (
-                            <p className="text-sm text-destructive">{error}</p>
                         )}
 
                         <div className="flex w-full flex-wrap items-center justify-between gap-2">
@@ -534,9 +502,7 @@ export function BatchIdPreviewDialog({
                                 </Button>
                                 <Button
                                     onClick={() => setPrintDialogOpen(true)}
-                                    disabled={
-                                        students.length === 0 || isLoading
-                                    }
+                                    disabled={students.length === 0}
                                     className="min-w-[140px]"
                                 >
                                     <Printer className="h-4 w-4" />
@@ -559,7 +525,8 @@ export function BatchIdPreviewDialog({
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Print {students.length} ID
+                            Print {students.length}{' '}
+                            {PRINT_TYPE_LABEL[printType].toLowerCase()} ID
                             {students.length !== 1 ? 's' : ''}?
                         </AlertDialogTitle>
                         <AlertDialogDescription>

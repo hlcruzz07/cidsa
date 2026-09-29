@@ -11,6 +11,9 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -38,5 +41,15 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->respond(function ($response, Throwable $e, Request $request) {
+            if ($response->getStatusCode() === 403 && !$request->expectsJson()) {
+                return Inertia::render('Errors/Forbidden', [
+                    'message' => $e instanceof HttpExceptionInterface ? $e->getMessage() : null,
+                ])
+                    ->toResponse($request)
+                    ->setStatusCode(403);
+            }
+
+            return $response;
+        });
     })->create();

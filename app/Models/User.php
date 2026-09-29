@@ -56,4 +56,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(ActivityLog::class, 'user_id');
     }
+
+    public function receivedReceipts()
+    {
+        return $this->hasMany(InventoryReceipt::class, 'received_by');
+    }
+
 }

@@ -2,18 +2,20 @@ import ResponsiveTabs from '@/layouts/responsive-tabs-layout';
 import {
     PaginateStudentReplacement,
     PaginateStudents,
+    PrintType,
+    StudentProps,
 } from '@/lib/custom-types';
 import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
 import { usePage } from '@inertiajs/react';
 import { Clock, Printer, Users, WrenchIcon } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { route } from 'ziggy-js';
 import Heading from '../heading';
 import { Badge } from '../ui/badge';
 import { BatchIdPreviewDialog } from './BatchIdPreviewDialog';
-import { BatchIdPrintDialog } from './BatchIdPrintDialog';
+import { ExportPhase, ExportStatusDialog } from './ExportStatusDialog';
 import { ExportStatusOptions, FilterBar } from './FilterBar';
 import { IdPreviewDialog } from './Preview';
 import { ReplacementFilterBar } from './ReplacementFilterBar';
@@ -45,6 +47,12 @@ export function CampusStudentManager({
 
     const [students, setStudents] = useState<PaginateStudents | null>(null);
     const [studentsLoading, setStudentsLoading] = useState(false);
+
+    // Every student we've loaded so far, keyed by id_number. The selection is
+    // kept across pages, so the batch preview can't rely on the current page
+    // alone — this lets it resolve selected students from earlier pages
+    // without fetching them again. Re-fetching a page refreshes its entries.
+    const studentCache = useRef<Record<string, StudentProps>>({});
 
     const [sSearch, setSSearch] = useState<string | null>(null);
     const [sType, setSType] = useState<string | null>(null);
@@ -117,6 +125,9 @@ export function CampusStudentManager({
             const { data } = await apiService.get(route('filter.paginate'), {
                 params: { ...sFilterParams(), ...(page ? { page } : {}) },
             });
+            (data?.data ?? []).forEach((s: StudentProps) => {
+                studentCache.current[s.id_number] = s;
+            });
             setStudents(data);
 
             if (onFilterChange) onFilterChange({ params: sFilterParams() });
@@ -161,13 +172,53 @@ export function CampusStudentManager({
     ]);
 
     const [openPreview, setOpenPreview] = useState(false);
-    const [selectedId, setSelectedId] = useState<number | null>(null);
-    const printStudent = (id: number) => {
+    // The preview now receives the student object straight from the table
+    // data (like StudentEditModal) instead of fetching it by id.
+    const [selectedStudent, setSelectedStudent] = useState<StudentProps | null>(
+        null,
+    );
+    // Whether the open preview is for a new student ID or a replacement.
+    const [previewPrintType, setPreviewPrintType] =
+        useState<PrintType>('new_student');
+    const openStudentPreview = (
+        student: StudentProps | undefined,
+        type: PrintType,
+    ) => {
+        if (!student) {
+            toast.error(
+                'Could not find that student. Please refresh the list.',
+            );
+            return;
+        }
+        setSelectedStudent(student);
+        setPreviewPrintType(type);
         setOpenPreview(true);
-        setSelectedId(id);
     };
+    const printStudent = (id: number) =>
+        openStudentPreview(
+            students?.data?.find((s) => s.id === id),
+            'new_student',
+        );
+    const printReplacement = (id: number) =>
+        openStudentPreview(
+            replacements?.data?.find((r) => r.id === id) as unknown as
+                | StudentProps
+                | undefined,
+            'replacement_student',
+        );
     const [selectedIdNumbers, setSelectedIdNumbers] = useState<string[]>([]);
     const [openBatchPreview, setOpenBatchPreview] = useState(false);
+
+    // Selected students resolved from the cache, in selection order. `students`
+    // is a dependency so entries refresh after a page is re-fetched.
+    const selectedStudents = useMemo(
+        () =>
+            selectedIdNumbers
+                .map((idNumber) => studentCache.current[idNumber])
+                .filter((s): s is StudentProps => !!s),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [selectedIdNumbers, students],
+    );
 
     const [replacements, setReplacements] =
         useState<PaginateStudentReplacement | null>(null);
@@ -279,6 +330,13 @@ export function CampusStudentManager({
     ]);
 
     const [openBatchReplacement, setOpenBatchReplacement] = useState(false);
+
+    // Export status modal state.
+    const [exportOpen, setExportOpen] = useState(false);
+    const [exportPhase, setExportPhase] = useState<ExportPhase>('idle');
+    const [exportBytes, setExportBytes] = useState(0);
+    const [exportError, setExportError] = useState<string | null>(null);
+
     const extractErrorMessage = async (
         err: any,
         fallback: string,
@@ -301,6 +359,11 @@ export function CampusStudentManager({
     };
 
     const exportStatus = async (options: ExportStatusOptions) => {
+        setExportError(null);
+        setExportBytes(0);
+        setExportPhase('fetching');
+        setExportOpen(true);
+
         try {
             const response = await apiService.get(route('api.export.status'), {
                 params: {
@@ -311,6 +374,14 @@ export function CampusStudentManager({
                     year_level: options.yearLevels,
                 },
                 responseType: 'blob',
+                onDownloadProgress: (e) => {
+                    // First bytes arriving means the server finished building
+                    // the file and the download has started.
+                    setExportPhase((p) =>
+                        p === 'fetching' ? 'downloading' : p,
+                    );
+                    setExportBytes(e.loaded);
+                },
             });
 
             const blob = new Blob([response.data], {
@@ -326,14 +397,16 @@ export function CampusStudentManager({
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            toast.success('Exported successfully.');
+            setExportPhase('done');
+            setTimeout(() => setExportOpen(false), 1500);
         } catch (err) {
             const message = await extractErrorMessage(
                 err,
                 'Failed to export status. Please try again.',
             );
             console.error('Error exporting status:', err);
-            toast.error(message);
+            setExportError(message);
+            setExportPhase('error');
         }
     };
 
@@ -342,20 +415,27 @@ export function CampusStudentManager({
             <IdPreviewDialog
                 open={openPreview}
                 setOpen={setOpenPreview}
-                id={selectedId}
+                student={selectedStudent}
+                printType={previewPrintType}
+                onPrinted={() => {
+                    fetchStudents();
+                    fetchReplacements();
+                }}
             />
             <BatchIdPreviewDialog
                 open={openBatchPreview}
                 setOpen={setOpenBatchPreview}
+                printType="new_student"
                 idNumbers={selectedIdNumbers}
+                students={selectedStudents}
                 onSelectionChange={setSelectedIdNumbers}
             />
-            <BatchIdPrintDialog
-                open={openBatchReplacement}
-                setOpen={setOpenBatchReplacement}
-                campus={campus}
-                mode="replacement"
-                onClose={fetchReplacements}
+            <ExportStatusDialog
+                open={exportOpen}
+                phase={exportPhase}
+                receivedBytes={exportBytes}
+                errorMessage={exportError}
+                onClose={() => setExportOpen(false)}
             />
 
             <ResponsiveTabs
@@ -515,7 +595,7 @@ export function CampusStudentManager({
                                         fetchReplacements(page)
                                     }
                                     isLoading={replacementsLoading}
-                                    onPrint={printStudent}
+                                    onPrint={printReplacement}
                                     onChangeStatus={fetchReplacements}
                                 />
                             </div>

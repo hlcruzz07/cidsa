@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\PrintingType;
+use App\Facades\ActivityLogger;
 use App\Http\Controllers\Controller;
 use App\Models\Student;
 use App\Repositories\StudentRepository;
 use App\Services\GoogleDriveService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class StudentApiController extends Controller
 {
@@ -20,9 +23,6 @@ class StudentApiController extends Controller
     {
 
         $filters = $request->all();
-
-
-
         return $this->studentRepository->filterPaginate($filters);
     }
 
@@ -30,21 +30,7 @@ class StudentApiController extends Controller
     {
 
 
-        $filters = $request->only([
-            'search',
-            'college',
-            'program',
-            'major',
-            'year',
-            'is_printed',
-            'from',
-            'to',
-            'sort',
-            'order',
-            'perPage',
-            'campus',
-        ]);
-
+        $filters = $request->all();
 
 
         $data = $this->studentRepository->filterPaginateReplacement($filters);
@@ -79,23 +65,6 @@ class StudentApiController extends Controller
         return $this->studentRepository->countStudentUpdatesPerCampus($filters['timeRange']);
     }
 
-
-    public function getStudentById(string $id)
-    {
-
-        $student = $this->studentRepository->find($id);
-
-        $student['picture'] = route('gdrive.image', [
-            'fileId' => $student['picture']
-        ]);
-
-        $student['e_signature'] = route('gdrive.image', [
-            'fileId' => $student['e_signature']
-        ]);
-
-
-        return $student;
-    }
 
     public function getStudentByIds(Request $request)
     {
@@ -136,6 +105,34 @@ class StudentApiController extends Controller
             'status' => 'unprinted',
             'student' => $student,
         ]);
+    }
+    public function printStudentById(Request $request)
+    {
+
+
+        $validated = $request->validate([
+            'id' => ['required', 'exists:students,id'],
+            'type' => ['required', Rule::enum(PrintingType::class)],
+        ]);
+
+        $student = Student::findOrFail($validated['id']);
+
+        ActivityLogger::print($student, $validated['type']);
+    }
+
+    public function printStudentByIds(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'max:100'],
+            'ids.*' => ['string', 'distinct'],
+            'type' => ['required', Rule::enum(PrintingType::class)],
+        ]);
+
+        $type = PrintingType::from($validated['type']);
+
+        $students = Student::findMany($validated['ids']);
+
+        ActivityLogger::printMany($students, $type);
     }
 
 }

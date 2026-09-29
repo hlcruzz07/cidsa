@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserCampus;
 use App\Models\Student;
 use App\Traits\ResolvesCampusConnection;
 use Illuminate\Http\JsonResponse;
@@ -31,7 +32,6 @@ class StudentYearLevelSyncController extends Controller
         return now()->year;
     }
 
-
     public function sync(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -39,6 +39,7 @@ class StudentYearLevelSyncController extends Controller
         ]);
 
         $campus = $validated['campus'];
+
 
         try {
             $connection = $this->connectionForCampus($campus);

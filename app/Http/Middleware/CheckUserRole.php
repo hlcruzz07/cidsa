@@ -18,7 +18,7 @@ class CheckUserRole
         $allowedRoles = explode('|', $roles);
 
         if (!$request->user() || !in_array($request->user()->role, $allowedRoles)) {
-            abort(403, 'Unauthorized');
+            abort(403, 'User Unauthorized');
         }
 
         return $next($request);

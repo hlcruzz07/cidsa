@@ -13,7 +13,6 @@ import { useInitials } from '@/hooks/use-initials';
 import { StudentProps } from '@/lib/custom-types';
 import { ChangeLogsModal } from '@/pages/Campus/Modal/ChangeLogsModal';
 import { StudentEditModal } from '@/pages/Campus/Modal/StudentEditModal';
-import { router } from '@inertiajs/react';
 import dayjs from 'dayjs';
 import {
     CheckIcon,
@@ -159,23 +158,6 @@ export function StudentTable({
     };
 
     const clearSelection = () => updateSelection([]);
-
-    const handleStatus = (status: 'pending' | 'printed', id_number: string) => {
-        router.put(
-            route('update.student.new.status', {
-                status,
-                id_number,
-            }),
-            {},
-            {
-                preserveScroll: true,
-                preserveState: true,
-                onSuccess: () => {
-                    onChangeStatus();
-                },
-            },
-        );
-    };
 
     const showFooter =
         links.length > 0 || (isLoading && lastLayout.current.hadFooter);
@@ -594,38 +576,6 @@ export function StudentTable({
                                                             <HistoryIcon />
                                                             Update Logs
                                                         </DropdownMenuItem>
-
-                                                        {/* {row.printed_exists ? (
-                                                            <DropdownMenuItem
-                                                                disabled={
-                                                                    !row.is_completed
-                                                                }
-                                                                onClick={() =>
-                                                                    handleStatus(
-                                                                        'pending',
-                                                                        row.id_number,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <ClockIcon />
-                                                                Mark as Pending
-                                                            </DropdownMenuItem>
-                                                        ) : (
-                                                            <DropdownMenuItem
-                                                                disabled={
-                                                                    !row.is_completed
-                                                                }
-                                                                onClick={() =>
-                                                                    handleStatus(
-                                                                        'printed',
-                                                                        row.id_number,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <CheckCheckIcon />
-                                                                Mark as Printed
-                                                            </DropdownMenuItem>
-                                                        )} */}
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </div>

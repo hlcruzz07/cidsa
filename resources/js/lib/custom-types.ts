@@ -1,3 +1,5 @@
+import { User } from '@/types';
+
 export type StudentProps = {
     id: number;
     id_number: string;
@@ -96,3 +98,82 @@ export interface StudentChangeLog {
     created_at: string;
     updated_at: string;
 }
+export interface InventoryReceiptProps {
+    id: number;
+    inventory_stock_id: number;
+    quantity: number;
+    ref_no: string;
+    delivered_by: string | null;
+    remarks: string | null;
+    received_at: string | null;
+    received_by: number | null;
+    created_at: string | null;
+    updated_at: string | null;
+    stock?: { id: number; campus: string };
+    receiver?: User | null;
+}
+
+export interface PaginateInventoryReceipts {
+    data: InventoryReceiptProps[];
+    total: number;
+    from: number | null;
+    to: number | null;
+    current_page: number;
+    last_page: number;
+    links: Array<{ url: string | null; label: string; active: boolean }>;
+}
+export interface InventoryStockProps {
+    id: number;
+    campus: string;
+    quantity: number;
+}
+
+export interface ActivityLogProps {
+    id: number;
+    action: string;
+    ip_address: string | null;
+    user_agent: string | null;
+    browser: string | null;
+    print_type: string | null;
+    created_at: string;
+    user: { id: number; name: string; email: string; campus: string } | null;
+    student: {
+        id: number;
+        id_number: string;
+        first_name: string;
+        last_name: string;
+    } | null;
+}
+
+export interface PaginateActivityLogs {
+    data: ActivityLogProps[];
+    total: number;
+    from: number | null;
+    to: number | null;
+    current_page: number;
+    last_page: number;
+    links: Array<{ url: string | null; label: string; active: boolean }>;
+}
+
+export interface ActivityLogSummary {
+    total: number;
+    logins: number;
+    prints: number;
+    exports: number;
+    syncs: number;
+    recent: number;
+    monthly: {
+        label: string;
+        month: string;
+        total: number;
+        logins: number;
+        prints: number;
+        exports: number;
+    }[];
+}
+export type PrintType = 'new_student' | 'replacement_student';
+
+export const PRINT_TYPE_LABEL: Record<PrintType, string> = {
+    new_student: 'New',
+    replacement_student: 'Replacement',
+};

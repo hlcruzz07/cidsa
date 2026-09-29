@@ -1,12 +1,8 @@
 import DashboardWidget from '@/components/Dashboard/DasboardWidgets';
 import { DashboardChart } from '@/components/Dashboard/DashboardChart';
 import AppLayout from '@/layouts/app-layout';
-import { DateRange, PaginateStudents } from '@/lib/custom-types';
-import apiService from '@/services/apiService';
 import { type BreadcrumbItem } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
-import { route } from 'ziggy-js';
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Dashboard',
@@ -25,48 +21,6 @@ type CampusCountProps = {
 
 export default function Dashboard() {
     const { campusCounts } = usePage<CampusCountProps>().props;
-
-    const [students, setStudents] = useState<PaginateStudents | null>(null);
-
-    const [searchValue, setSearchValue] = useState<string | null>(null);
-    const [range, setRange] = useState<DateRange | undefined>(undefined);
-    const [perPage, setPerPage] = useState<number>(10);
-    const [sort, setSort] = useState('created_at');
-    const [order, setOrder] = useState<'asc' | 'desc'>('desc');
-
-    const startOfDay = (d?: Date) =>
-        d ? new Date(d.setHours(0, 0, 0, 0)).toISOString() : null;
-
-    const endOfDay = (d?: Date) =>
-        d ? new Date(d.setHours(23, 59, 59, 999)).toISOString() : null;
-
-    const handleFilter = async () => {
-        try {
-            const params = {
-                params: {
-                    search: searchValue || null,
-
-                    from: startOfDay(range?.from),
-                    to: endOfDay(range?.to),
-                    perPage: perPage,
-                    sort: sort,
-                    order: order,
-                },
-            };
-            const { data: paginateData } = await apiService.get(
-                route('filter.paginate.all'),
-                params,
-            );
-
-            setStudents(paginateData);
-        } catch (error) {
-            console.error('Error fetching students:', error);
-        }
-    };
-
-    useEffect(() => {
-        handleFilter();
-    }, [searchValue, range, perPage, sort, order]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

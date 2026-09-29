@@ -8,15 +8,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useInitials } from '@/hooks/use-initials';
 import { StudentReplacement } from '@/lib/custom-types';
-import { router } from '@inertiajs/react';
 import dayjs from 'dayjs';
-import {
-    CheckCheckIcon,
-    CheckIcon,
-    ClockIcon,
-    EllipsisIcon,
-    PrinterIcon,
-} from 'lucide-react';
+import { CheckIcon, ClockIcon, EllipsisIcon, PrinterIcon } from 'lucide-react';
 import { route } from 'ziggy-js';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -76,23 +69,6 @@ export function ReplacementTable({
     }
 
     const getInitials = useInitials();
-
-    const handleStatus = (status: 'pending' | 'printed', id: number) => {
-        router.put(
-            route('update.student.rep.status', {
-                status,
-                id,
-            }),
-            {},
-            {
-                preserveScroll: true,
-                preserveState: true,
-                onSuccess: () => {
-                    onChangeStatus();
-                },
-            },
-        );
-    };
 
     return (
         <div className="relative mt-3 overflow-x-auto md:shadow-md lg:border">
@@ -331,32 +307,6 @@ export function ReplacementTable({
                                                     >
                                                         <PrinterIcon />
                                                         Preview & Print ID
-                                                    </DropdownMenuItem>
-                                                )}
-
-                                                {r.is_printed ? (
-                                                    <DropdownMenuItem
-                                                        onClick={() =>
-                                                            handleStatus(
-                                                                'pending',
-                                                                r.id,
-                                                            )
-                                                        }
-                                                    >
-                                                        <ClockIcon />
-                                                        Mark as Pending
-                                                    </DropdownMenuItem>
-                                                ) : (
-                                                    <DropdownMenuItem
-                                                        onClick={() =>
-                                                            handleStatus(
-                                                                'printed',
-                                                                r.id,
-                                                            )
-                                                        }
-                                                    >
-                                                        <CheckCheckIcon />
-                                                        Mark as Printed
                                                     </DropdownMenuItem>
                                                 )}
                                             </DropdownMenuContent>

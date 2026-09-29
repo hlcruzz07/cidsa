@@ -2,29 +2,43 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserCampus;
+use App\Enums\UserRole;
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
-class DatabaseSeeder extends Seeder
+class UserSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
 
-        User::firstOrCreate(
-            ['email' => 'haroldlyndon.cruz@chmsu.edu.ph'],
+        $users = [
             [
                 'name' => 'Harold Cruz',
-                'password' => null,
-                'email_verified_at' => now(),
-                'role' => 'super admin',
-                'campus' => 'all'
-            ]
-        );
+                'email' => 'haroldlyndon.cruz@chmsu.edu.ph',
+                'password' => '',
+                'role' => UserRole::SUPER_ADMIN->value,
+                'campus' => UserCampus::ALL->value,
+            ],
+            [
+                'name' => 'Christian Anthony Gemelo',
+                'email' => 'christian.gemelo@chmsu.edu.ph',
+                'password' => '',
+                'role' => UserRole::ADMIN->value,
+                'campus' => UserCampus::ALL->value,
+            ],
+            [
+                'name' => 'John Kevin Moraca',
+                'email' => 'johnkevin.moraca@chmsu.edu.ph',
+                'password' => '',
+                'role' => UserRole::ADMIN->value,
+                'campus' => UserCampus::ALL->value,
+            ],
+        ];
 
-
+        foreach ($users as $user) {
+            User::create($user);
+        }
     }
 }

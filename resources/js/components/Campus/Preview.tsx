@@ -7,6 +7,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -14,10 +15,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { StudentProps } from '@/lib/custom-types';
+import { PRINT_TYPE_LABEL, PrintType, StudentProps } from '@/lib/custom-types';
 import apiService from '@/services/apiService';
-import { IdCard, Loader2, Printer } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { IdCard, Printer } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { toast } from 'sonner';
@@ -33,9 +34,13 @@ const SCALE = 0.72;
 const COUNTDOWN_SECONDS = 5;
 
 interface IdPreviewDialogProps {
-    id: number | null;
+    student: StudentProps | null;
+    /** Whether this is a new student ID or a replacement. */
+    printType: PrintType;
     open: boolean;
     setOpen: (open: boolean) => void;
+    /** Called after the print has been recorded on the server. */
+    onPrinted?: () => void;
 }
 
 // setTimeout-based on purpose: once the print tab is focused, this page can
@@ -71,11 +76,14 @@ function collectStylesHtml(): string {
     return stylesHtml;
 }
 
-export function IdPreviewDialog({ id, open, setOpen }: IdPreviewDialogProps) {
+export function IdPreviewDialog({
+    student,
+    printType,
+    open,
+    setOpen,
+    onPrinted,
+}: IdPreviewDialogProps) {
     const [isFlipped, setIsFlipped] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [cardData, setCardData] = useState<StudentProps | null>(null);
 
     const [printDialogOpen, setPrintDialogOpen] = useState(false);
 
@@ -84,34 +92,29 @@ export function IdPreviewDialog({ id, open, setOpen }: IdPreviewDialogProps) {
     // it manually (X, Escape, outside click), which should cancel the print.
     const selfClosingRef = useRef(false);
 
-    useEffect(() => {
-        if (!open || !id) return;
-
-        const fetchStudent = async () => {
-            setIsLoading(true);
-            setError(null);
-
-            try {
-                const res = await apiService.get(route('get.student', id));
-                setCardData(res.data);
-            } catch (err: any) {
-                setError(
-                    err?.response?.data?.error ||
-                        'Failed to load student ID card data.',
-                );
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchStudent();
-    }, [id, open]);
-
     const countdown = usePrintCountdown({ seconds: COUNTDOWN_SECONDS });
 
-    // Renders the ID off-screen, waits for fonts + AutoFitText to settle,
-    // then writes the final print layout into `printWindow` and prints.
+    // Records the print on the server, renders the ID off-screen, waits for
+    // fonts + AutoFitText to settle, then writes the final print layout into
+    // `printWindow` and prints.
     const doPrint = async (printWindow: Window, data: StudentProps) => {
+        // Record the print first. The activity log rows are the stock
+        // deduction, so if this fails we don't print at all.
+        try {
+            await apiService.post(route('student.print'), {
+                id: data.id,
+                type: printType,
+            });
+        } catch (e) {
+            console.error('Error recording print:', e);
+            printWindow.close();
+            toast.error('Failed to record the print. The ID was not printed.');
+            return;
+        }
+
+        // Let the parent refresh its lists (Printed status, counts, etc.).
+        onPrinted?.();
+
         const tempContainer = document.createElement('div');
         tempContainer.style.cssText = `position:fixed;top:-9999px;left:-9999px;width:${CARD_W}px;opacity:0;pointer-events:none;`;
         document.body.appendChild(tempContainer);
@@ -216,8 +219,10 @@ export function IdPreviewDialog({ id, open, setOpen }: IdPreviewDialogProps) {
     };
 
     const confirmPrint = () => {
-        if (!cardData) return;
-        const data = cardData;
+        if (!student) return;
+        // Capture now: the parent may clear `student` after the dialog closes,
+        // but the countdown callback still needs it.
+        const data = student;
 
         // Close both the confirm alert and the preview dialog before the
         // countdown starts, as requested — nothing stays open while waiting.
@@ -258,7 +263,6 @@ export function IdPreviewDialog({ id, open, setOpen }: IdPreviewDialogProps) {
                             // Closed manually — cancel any pending print.
                             countdown.cancel();
                         }
-                        setCardData(null);
                         setIsFlipped(false);
                         setPrintDialogOpen(false);
                     }
@@ -269,7 +273,10 @@ export function IdPreviewDialog({ id, open, setOpen }: IdPreviewDialogProps) {
                     <DialogHeader className="no-print">
                         <DialogTitle className="flex items-center gap-2">
                             <IdCard className="h-5 w-5" />
-                            ID Preview — {cardData?.first_name}
+                            ID Preview — {student?.first_name}
+                            <Badge variant="secondary">
+                                {PRINT_TYPE_LABEL[printType]}
+                            </Badge>
                         </DialogTitle>
                     </DialogHeader>
 
@@ -278,23 +285,7 @@ export function IdPreviewDialog({ id, open, setOpen }: IdPreviewDialogProps) {
                             className="flex w-full items-center justify-center"
                             style={{ minHeight: 282 }}
                         >
-                            {isLoading ? (
-                                <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
-                                    <Loader2 className="h-8 w-8 animate-spin" />
-                                    <p className="text-sm">
-                                        Loading ID card data…
-                                    </p>
-                                </div>
-                            ) : error && !cardData ? (
-                                <div className="flex flex-col items-center gap-2 py-12 text-sm text-destructive">
-                                    <p className="font-semibold">
-                                        Failed to load
-                                    </p>
-                                    <p className="text-muted-foreground">
-                                        {error}
-                                    </p>
-                                </div>
-                            ) : cardData ? (
+                            {student ? (
                                 <div
                                     className="no-print"
                                     style={{
@@ -308,7 +299,7 @@ export function IdPreviewDialog({ id, open, setOpen }: IdPreviewDialogProps) {
                                         style={{ perspective: '1000px' }}
                                     >
                                         <StudentIdCard
-                                            data={cardData}
+                                            data={student}
                                             isFlipped={isFlipped}
                                         />
                                     </div>
@@ -316,13 +307,7 @@ export function IdPreviewDialog({ id, open, setOpen }: IdPreviewDialogProps) {
                             ) : null}
                         </div>
 
-                        {error && cardData && (
-                            <p className="no-print text-sm text-destructive">
-                                {error}
-                            </p>
-                        )}
-
-                        {!isLoading && cardData && (
+                        {student && (
                             <div className="no-print flex flex-wrap justify-center gap-2">
                                 <Button
                                     variant="outline"
@@ -357,17 +342,20 @@ export function IdPreviewDialog({ id, open, setOpen }: IdPreviewDialogProps) {
             >
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Print this ID?</AlertDialogTitle>
+                        <AlertDialogTitle>
+                            Print this{' '}
+                            {PRINT_TYPE_LABEL[printType].toLowerCase()} ID?
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
                             After a {COUNTDOWN_SECONDS}-second countdown, this
                             will print the front and back of the ID (2 pages)
                             for{' '}
                             <span className="font-medium text-foreground">
                                 {[
-                                    cardData?.first_name,
-                                    cardData?.middle_init,
-                                    cardData?.last_name,
-                                    cardData?.suffix,
+                                    student?.first_name,
+                                    student?.middle_init,
+                                    student?.last_name,
+                                    student?.suffix,
                                 ]
                                     .filter(Boolean)
                                     .join(' ')}

@@ -10,12 +10,13 @@ class InventoryStock extends Model
 {
     protected $fillable = [
         'campus',
-        'quantity',
     ];
 
     public function receipts(): HasMany
     {
         return $this->hasMany(InventoryReceipt::class);
     }
+
+
 
 }

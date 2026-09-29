@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\InventoryApiController;
+use App\Http\Controllers\Api\InventoryAuditApiController;
 use App\Http\Controllers\Api\StudentApiController;
 use App\Http\Controllers\StudentPrintStatusExportController;
 use App\Http\Controllers\StudentYearLevelSyncController;
@@ -10,28 +12,31 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'check.role:admin|super admin'])->group(function () {
-
+    Route::get('/api/student-chart', [StudentApiController::class, 'studentsChart']);
+    Route::get('/api/dashboard-chart', [StudentApiController::class, 'dashboardChart']);
+    Route::get('/api/students', [StudentApiController::class, 'getStudentByIds'])->name('get.students');
+    Route::get('/gdrive-image/{fileId}', [StudentApiController::class, 'image'])->name('gdrive.image');
     Route::get('/api/student/filterPaginate', [StudentApiController::class, 'filterPaginate'])->name('filter.paginate');
     Route::get('/api/student/filterPaginateReplacement', [StudentApiController::class, 'filterPaginateReplacement'])->name('filter.paginate.replacements');
 
-    Route::get('/api/student-chart', [StudentApiController::class, 'studentsChart']);
-    Route::get('/api/dashboard-chart', [StudentApiController::class, 'dashboardChart']);
-
-    Route::get('/api/student/{id}', [StudentApiController::class, 'getStudentById'])->name('get.student');
-    Route::get('/api/students', [StudentApiController::class, 'getStudentByIds'])->name('get.students');
-
-    Route::get('/gdrive-image/{fileId}', [StudentApiController::class, 'image'])
-        ->name('gdrive.image');
-    Route::get('/api/export-status', [StudentPrintStatusExportController::class, 'export'])
-        ->name('api.export.status');
-
-    Route::post('/api/student/sync-year-level', [StudentYearLevelSyncController::class, 'sync'])
-        ->name('api.student.sync-year-level');
+    Route::middleware('campus')->group(function () {
+        Route::get('/api/export-status', [StudentPrintStatusExportController::class, 'export'])->name('api.export.status');
+        Route::post('/api/student/sync-year-level', [StudentYearLevelSyncController::class, 'sync'])->name('api.student.sync-year-level');
+    });
 });
 
 Route::post('/api/student/status/{id_number}/{last_name}', [StudentApiController::class, 'checkStatus'])->name('api.student.status');
 
 Route::middleware(['auth', 'check.role:super admin'])->group(function () {
+
+    Route::get('/inventory/receipts', [InventoryApiController::class, 'paginate'])->name('inventory.receipts.paginate');
+    Route::post('/inventory/receipts', [InventoryApiController::class, 'store'])->name('inventory.receipts.store');
+    Route::patch('/inventory/receipts/{receipt}/receive', [InventoryApiController::class, 'receive'])->name('inventory.receipts.receive');
+    Route::get('/inventory/stocks/{stock}/audit', [InventoryAuditApiController::class, 'show'])->name('inventory.audit');
+    Route::get('/inventory/stocks/{stock}/audit/docx', [InventoryAuditApiController::class, 'docx'])->name('inventory.audit.docx');
+    Route::get('/inventory/{stock}/ledger', [InventoryAuditApiController::class, 'ledger'])->name('inventory.ledger');
+    Route::post('/student/print', [StudentApiController::class, 'printStudentById'])->name('student.print');
+    Route::post('/students/print', [StudentApiController::class, 'printStudentByIds'])->name('students.print');
 
     Route::get('/students/audit/unenrolled', function (Request $request) {
         $AUDIT_CAMPUS_CONNECTIONS = [
@@ -259,14 +264,12 @@ Route::middleware(['auth', 'check.role:super admin'])->group(function () {
 
         $campusConnections = [
             'Talisay' => 'tal_mysql',
-            'Alijis' => 'ali_mysql',       // placeholder — confirm actual connection name
+            'Alijis' => 'ali_mysql',
             'Fortune Towne' => 'ft_mysql',
-            'Binalbagan' => 'bin_mysql',   // placeholder — confirm actual connection name
+            'Binalbagan' => 'bin_mysql',
         ];
 
-        // 1. What does the LOCAL students table say? Same dual search — by
-        // id_number if given, by last_name (LIKE) if given, matching both when
-        // both are present.
+
         $localQuery = DB::table('students')->select('id_number', 'campus', 'last_name', 'created_at');
 
         if ($idNumber) {

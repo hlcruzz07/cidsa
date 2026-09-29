@@ -636,6 +636,7 @@ export function FilterBar({
                         </DropdownMenuContent>
                     </DropdownMenu>
 
+                    {/* More actions: Print IDs, Export List, Sync Data */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
@@ -980,6 +981,7 @@ export function FilterBar({
                                         </SelectContent>
                                     </Select>
                                 </div>
+
                                 <Calendar
                                     mode="range"
                                     selected={range}

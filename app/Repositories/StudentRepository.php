@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Enums\UserCampus;
 use App\Models\PrintedStudents;
 use App\Models\Student;
 use App\Models\StudentChangeLog;
@@ -35,9 +36,64 @@ class StudentRepository
         ],
     ];
 
+    /**
+     * SIS database connection per campus code (UserCampus values).
+     */
+    protected const CONNECTIONS = [
+        'tal' => 'tal_mysql',
+        'ali' => 'ali_mysql',
+        'ft' => 'ft_mysql',
+        'bin' => 'bin_mysql',
+    ];
+
     public function __construct(protected Student $model, protected GoogleDriveService $googleDriveService, protected PrintedStudents $printedStudents, protected StudentReplacement $studentReplacement)
     {
 
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Campus helpers
+    |--------------------------------------------------------------------------
+    | Callers may pass a campus as a code ("ali") or a label ("Alijis").
+    | These helpers resolve either form through UserCampus so the rest of
+    | the repository never has to care which one it received.
+    */
+
+    /**
+     * SIS DB connection for a campus given as a code or label.
+     */
+    protected function connectionFor(string $campus): ?string
+    {
+        $case = UserCampus::fromLabelOrValue($campus);
+
+        return $case ? (self::CONNECTIONS[$case->value] ?? null) : null;
+    }
+
+    /**
+     * Campus label as stored in students.campus ("Alijis"), whatever
+     * form came in. Falls back to the raw value if it can't be resolved.
+     */
+    protected function campusLabel(string $campus): string
+    {
+        return UserCampus::fromLabelOrValue($campus)?->label() ?? $campus;
+    }
+
+    /**
+     * Apply the students.campus filter to a query. "all" (super admins)
+     * means no campus restriction, so the filter is skipped entirely.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     */
+    protected function applyCampusFilter($query, string $campus): void
+    {
+        $case = UserCampus::fromLabelOrValue($campus);
+
+        if ($case === UserCampus::ALL) {
+            return;
+        }
+
+        $query->where('campus', $case?->label() ?? $campus);
     }
 
     public function all()
@@ -52,13 +108,7 @@ class StudentRepository
 
     public function getStudentById(string $id_number, string $campus, string $lname, string $birthdate): ?array
     {
-        $connection = match (strtolower($campus)) {
-            'talisay' => 'tal_mysql',
-            'alijis' => 'ali_mysql',
-            'fortune towne' => 'ft_mysql',
-            'binalbagan' => 'bin_mysql',
-            default => null,
-        };
+        $connection = $this->connectionFor($campus);
 
         if (!$connection) {
             return null;
@@ -118,7 +168,7 @@ class StudentRepository
             'last_name' => strtoupper($student->student_lastname),
             'suffix' => $suffix,
             'year' => $this->formatYearLevel($student->yearlevel),
-            'campus' => ucwords(strtolower($campus)),
+            'campus' => $this->campusLabel($campus),
             'program' => $student->program_title,
         ];
     }
@@ -156,13 +206,7 @@ class StudentRepository
         string $id_number,
         string $campus
     ): bool {
-        $connection = match (strtolower($campus)) {
-            'talisay' => 'tal_mysql',
-            'alijis' => 'ali_mysql',
-            'fortune towne' => 'ft_mysql',
-            'binalbagan' => 'bin_mysql',
-            default => null,
-        };
+        $connection = $this->connectionFor($campus);
 
         if (!$connection) {
             return false;
@@ -199,8 +243,9 @@ class StudentRepository
 
     public function filterPaginate(array $filters)
     {
-        $query = $this->model->query()
-            ->where('campus', $filters['campus']);
+        $query = $this->model->query();
+
+        $this->applyCampusFilter($query, $filters['campus']);
 
         // 🔍 Search
         if (!empty($filters['search'])) {
@@ -282,7 +327,7 @@ class StudentRepository
             ->with('student') // eager-load student for the table
             ->whereHas('student', function ($q) use ($filters) {
                 // 🏫 Campus — scoped to the student record
-                $q->where('campus', $filters['campus']);
+                $this->applyCampusFilter($q, $filters['campus']);
 
                 // 🔍 Search — student fields
                 if (!empty($filters['search'])) {
@@ -333,7 +378,7 @@ class StudentRepository
             );
         }
 
-        // 📅 Date range — on the replacement record's updated_at
+        // 📅 Date range — on the replacement record's created_at
         if (!empty($filters['from']) && !empty($filters['to'])) {
             if ($filters['from'] === $filters['to']) {
                 $query->whereDate('created_at', '=', $filters['from']);
@@ -509,27 +554,30 @@ class StudentRepository
     //Widgets Data
     public function countStudentsHasUpdatesByCampus(string $campus): int
     {
-        return $this->model
-            ->where('campus', $campus)
-            ->whereNotNull('updated_at')
-            ->count();
+        $query = $this->model->query()->whereNotNull('updated_at');
+
+        $this->applyCampusFilter($query, $campus);
+
+        return $query->count();
     }
 
 
     public function countNewPendingStudentByCampus(string $campus): int
     {
-        return $this->model
-            ->where('campus', $campus)
-            ->whereDoesntHave('printed')
-            ->count();
+        $query = $this->model->query()->whereDoesntHave('printed');
+
+        $this->applyCampusFilter($query, $campus);
+
+        return $query->count();
     }
 
     public function countNewPrintedStudentByCampus(string $campus): int
     {
-        return $this->model
-            ->where('campus', $campus)
-            ->whereHas('printed')
-            ->count();
+        $query = $this->model->query()->whereHas('printed');
+
+        $this->applyCampusFilter($query, $campus);
+
+        return $query->count();
     }
 
     public function countReplacementPendingByCampus(string $campus): int
@@ -537,7 +585,7 @@ class StudentRepository
         return $this->studentReplacement
             ->where('is_printed', false)
             ->whereHas('student', function ($query) use ($campus) {
-                $query->where('campus', $campus);
+                $this->applyCampusFilter($query, $campus);
             })
             ->count();
     }
@@ -555,8 +603,11 @@ class StudentRepository
             default => $now->copy(),
         };
 
-        return $this->model
-            ->where('campus', $campus)
+        $query = $this->model->query();
+
+        $this->applyCampusFilter($query, $campus);
+
+        return $query
             ->whereBetween('created_at', [$startDate, $now])
             ->selectRaw('DATE(created_at) as date, college, COUNT(*) as total')
             ->groupBy('date', 'college')
@@ -606,14 +657,13 @@ class StudentRepository
             if (!isset($result[$date])) {
                 $result[$date] = ['date' => $date];
             }
-            // Map campus to key
-            $campusKey = match ($row->campus) {
-                'Talisay' => 'tal',
-                'Alijis' => 'ali',
-                'Binalbagan' => 'bin',
-                'Fortune Town' => 'ft',
-                default => strtolower($row->campus),
-            };
+
+            // Map campus label/code to its canonical code ("Alijis" -> "ali").
+            // Resolving through the enum also fixes the old "Fortune Town"
+            // typo that made the Fortune Towne series fall through to default.
+            $campusKey = UserCampus::fromLabelOrValue($row->campus)?->value
+                ?? strtolower($row->campus);
+
             $result[$date][$campusKey] = $row->total;
         }
 
@@ -623,7 +673,11 @@ class StudentRepository
 
     public function countStudentsByCampus(string $campus): int
     {
-        return $this->model->where('campus', $campus)->count() ?? 0;
+        $query = $this->model->query();
+
+        $this->applyCampusFilter($query, $campus);
+
+        return $query->count();
     }
 
     public function setPendingForNew(string $id_number)
@@ -660,14 +714,6 @@ class StudentRepository
             'id_number' => $id_number,
         ]);
     }
-
-    public function fetchStudentByIdNumberLname(string $id_number, string $lname)
-    {
-        $student = $this->model->where('id_number', $id_number)->where('last_name', $lname)->first();
-
-        return $student;
-    }
-
 
 
     public function getStudentByIds(array $ids)

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Facades\ActivityLogger;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,8 +23,9 @@ class GoogleAuthController extends Controller
         $user = User::where('email', $googleUser->getEmail())->first();
 
         if (!$user) {
-            abort(403, 'Your account is not authorized.');
+            return back()->with('error', 'Account Unauthorized');
         }
+        ActivityLogger::login($user);
 
         Auth::login($user);
 
