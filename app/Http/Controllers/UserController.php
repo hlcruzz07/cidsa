@@ -28,7 +28,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
-            'campus' => ['required', Rule::enum(UserCampus::class)],
+            'campus' => ['required_if:role,admin', Rule::enum(UserCampus::class)],
             'role' => ['required', Rule::enum(UserRole::class)],
         ]);
 
@@ -48,7 +48,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($id)],
-            'campus' => ['required', Rule::enum(UserCampus::class)],
+            'campus' => ['required_if:role,admin', Rule::enum(UserCampus::class)],
             'role' => ['required', Rule::enum(UserRole::class)],
         ]);
 

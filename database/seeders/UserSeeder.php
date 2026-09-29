@@ -11,9 +11,6 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Clear all existing users first
-        User::truncate();
-
         $users = [
             [
                 'name' => 'Harold Cruz',
@@ -39,7 +36,9 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($users as $user) {
-            User::create($user);
+            User::updateOrCreate([
+                'email' => $user['email'],
+            ], $user);
         }
     }
 }
