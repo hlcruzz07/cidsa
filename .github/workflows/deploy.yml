@@ -146,7 +146,7 @@ jobs:
 
             echo "⚙️ Laravel setup"
             $PHP artisan migrate --force
-            $PHP artisan db:seed 
+            $PHP artisan db:seed --force
 
             echo "🧹 Optimize"
             $PHP artisan optimize:clear
