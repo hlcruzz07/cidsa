@@ -6,21 +6,32 @@ import { route } from 'ziggy-js';
 export default function Login() {
     return (
         <AuthLayout
-            title="CIDSA Administrator Login"
-            description="Sign in using your authorized account"
+            title="Administrator login"
+            description="Sign in with your authorized Google account to continue."
         >
             <Head title="Log in" />
 
-            <a href={route('google.redirect')} className="mx-auto block">
+            <div className="flex flex-col gap-4">
                 <Button
-                    type="button"
-                    className="w-full cursor-pointer"
+                    asChild
                     variant="outline"
+                    size="lg"
+                    className="w-full cursor-pointer"
                 >
-                    <img src="/google-logo.webp" className="h-5 w-5" />
-                    Sign in with Google
+                    <a href={route('google.redirect')}>
+                        <img
+                            src="/google-logo.webp"
+                            alt=""
+                            className="h-5 w-5"
+                        />
+                        Sign in with Google
+                    </a>
                 </Button>
-            </a>
+
+                <p className="text-center text-xs text-muted-foreground">
+                    Only accounts approved by CIDSA can access this portal.
+                </p>
+            </div>
         </AuthLayout>
     );
 }
