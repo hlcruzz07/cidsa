@@ -8,6 +8,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { User } from '@/types';
 import dayjs from 'dayjs';
 import { EyeIcon } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
@@ -23,7 +24,7 @@ export interface ActivityLogEntry {
     browser: string | null;
     print_type: string | null;
     created_at: string;
-    user: { id: number; name: string; email: string; campus: string } | null;
+    user: User | null;
     student: {
         id: number;
         id_number: string;
@@ -111,6 +112,25 @@ function DetailRow({
             <span className="text-right text-sm font-medium">{value}</span>
         </div>
     );
+}
+
+function formatCampus(campus: string, role: string) {
+    if (role === 'super admin') {
+        return 'Super Administrator';
+    }
+
+    switch (campus) {
+        case 'tal':
+            return 'Talisay Campus';
+        case 'ali':
+            return 'Alijis Campus';
+        case 'ft':
+            return 'Fortune Towne Campus';
+        case 'bin':
+            return 'Binalbagan Campus';
+        default:
+            return 'Unknown Campus';
+    }
 }
 
 export function ActivityLogTable({
@@ -213,7 +233,10 @@ export function ActivityLogTable({
                                                     {log.user.name}
                                                 </span>
                                                 <span className="text-[10px] text-muted-foreground">
-                                                    {log.user.campus}
+                                                    {formatCampus(
+                                                        log.user.campus,
+                                                        log.user.role,
+                                                    )}
                                                 </span>
                                             </div>
                                         ) : (

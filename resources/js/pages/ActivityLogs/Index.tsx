@@ -39,7 +39,7 @@ export default function Index() {
             color: WIDGET_COLORS[0],
         },
         {
-            title: 'Logins',
+            title: 'User Logins',
             count: summary.logins,
             description: 'User login events',
             icon: LogInIcon,
@@ -60,9 +60,9 @@ export default function Index() {
             color: WIDGET_COLORS[3],
         },
         {
-            title: 'Last 7 Days',
-            count: summary.recent,
-            description: 'Activity in the past week',
+            title: 'System Syncs',
+            count: summary.syncs,
+            description: 'System synchronization events',
             icon: RefreshCwIcon,
             color: WIDGET_COLORS[4],
         },
