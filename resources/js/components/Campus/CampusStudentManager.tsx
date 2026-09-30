@@ -4,6 +4,7 @@ import {
     PaginateStudents,
     PrintType,
     StudentProps,
+    StudentReplacement,
 } from '@/lib/custom-types';
 import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
@@ -16,15 +17,21 @@ import Heading from '../heading';
 import { Badge } from '../ui/badge';
 import { BatchIdPreviewDialog } from './BatchIdPreviewDialog';
 import { ExportPhase, ExportStatusDialog } from './ExportStatusDialog';
-import { ExportStatusOptions, FilterBar } from './FilterBar';
+import {
+    ExportStatusOptions,
+    FilterBar,
+    DateField as StudentDateField,
+} from './FilterBar';
 import { IdPreviewDialog } from './Preview';
-import { ReplacementFilterBar } from './ReplacementFilterBar';
+import {
+    DateField as ReplacementDateField,
+    ReplacementFilterBar,
+} from './ReplacementFilterBar';
 import { ReplacementTable } from './ReplacementTable';
 import { StudentTable } from './StudentTable';
 import Widget from './Widget';
 
 type DateRange = { from: Date; to?: Date };
-type DateField = 'created_at' | 'updated_at';
 interface CampusStudentManagerProps {
     campus: string;
     onFilterChange?: (params: any) => void;
@@ -62,7 +69,8 @@ export function CampusStudentManager({
     const [sYear, setSYear] = useState<string | null>(null);
     const [sIsPrinted, setSIsPrinted] = useState<boolean | null>(null);
     const [sRange, setSRange] = useState<DateRange | undefined>();
-    const [sDateField, setSDateField] = useState<DateField>('created_at');
+    const [sDateField, setSDateField] =
+        useState<StudentDateField>('created_at');
     const [sPerPage, setSPerPage] = useState(10);
     const [sSort, setSSort] = useState('created_at');
     const [sOrder, setSOrder] = useState<'asc' | 'desc'>('desc');
@@ -199,13 +207,9 @@ export function CampusStudentManager({
             students?.data?.find((s) => s.id === id),
             'new_student',
         );
-    const printReplacement = (id: number) =>
-        openStudentPreview(
-            replacements?.data?.find((r) => r.id === id) as unknown as
-                | StudentProps
-                | undefined,
-            'replacement_student',
-        );
+    const printReplacement = (student: StudentProps) =>
+        openStudentPreview(student, 'replacement_student');
+
     const [selectedIdNumbers, setSelectedIdNumbers] = useState<string[]>([]);
     const [openBatchPreview, setOpenBatchPreview] = useState(false);
 
@@ -224,13 +228,31 @@ export function CampusStudentManager({
         useState<PaginateStudentReplacement | null>(null);
     const [replacementsLoading, setReplacementsLoading] = useState(false);
 
+    const replacementCache = useRef<Record<string, StudentProps>>({});
+    const [selectedReplacementIdNumbers, setSelectedReplacementIdNumbers] =
+        useState<string[]>([]);
+    const [openBatchReplacement, setOpenBatchReplacement] = useState(false);
+
+    const selectedReplacementStudents = useMemo(
+        () =>
+            selectedReplacementIdNumbers
+                .map((idNumber) => replacementCache.current[idNumber])
+                .filter((s): s is StudentProps => !!s),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [selectedReplacementIdNumbers, replacements],
+    );
+
     const [rSearch, setRSearch] = useState<string | null>(null);
+    const [rType, setRType] = useState<string | null>(null);
     const [rCollege, setRCollege] = useState<string | null>(null);
     const [rProgram, setRProgram] = useState<string | null>(null);
     const [rMajor, setRMajor] = useState<string | null>(null);
     const [rYear, setRYear] = useState<string | null>(null);
     const [rIsPrinted, setRIsPrinted] = useState<boolean | null>(null);
+    const [rReason, setRReason] = useState<string | null>(null);
     const [rRange, setRRange] = useState<DateRange | undefined>();
+    const [rDateField, setRDateField] =
+        useState<ReplacementDateField>('created_at');
     const [rPerPage, setRPerPage] = useState(10);
     const [rSort, setRSort] = useState('created_at');
     const [rOrder, setROrder] = useState<'asc' | 'desc'>('desc');
@@ -242,13 +264,16 @@ export function CampusStudentManager({
 
     const rFilterParams = () => ({
         search: rSearch || null,
+        type: rType || null,
         college: rCollege || null,
         program: rProgram || null,
         major: rMajor || null,
         year: rYear || null,
         is_printed: rIsPrinted,
+        reason: rReason || null,
         from: startOfDay(rRange?.from),
         to: endOfDay(rRange?.to),
+        dateField: rDateField,
         perPage: rPerPage,
         sort: rSort,
         order: rOrder,
@@ -259,24 +284,30 @@ export function CampusStudentManager({
         () =>
             !!(
                 rSearch ||
+                rType ||
                 rCollege ||
                 rProgram ||
                 rMajor ||
                 rYear ||
                 rIsPrinted !== null ||
+                rReason ||
                 rRange ||
+                rDateField !== 'created_at' ||
                 rPerPage !== 10 ||
                 rSort !== 'created_at' ||
                 rOrder !== 'desc'
             ),
         [
             rSearch,
+            rType,
             rCollege,
             rProgram,
             rMajor,
             rYear,
             rIsPrinted,
+            rReason,
             rRange,
+            rDateField,
             rPerPage,
             rSort,
             rOrder,
@@ -290,6 +321,11 @@ export function CampusStudentManager({
                 route('filter.paginate.replacements'),
                 { params: { ...rFilterParams(), ...(page ? { page } : {}) } },
             );
+            (data?.data ?? []).forEach((r: StudentReplacement) => {
+                if (r.student) {
+                    replacementCache.current[r.student.id_number] = r.student;
+                }
+            });
             setReplacements(data);
         } catch (e) {
             console.error('Error fetching replacements:', e);
@@ -300,13 +336,15 @@ export function CampusStudentManager({
 
     const resetReplacementFilters = () => {
         setRSearch(null);
+        setRType(null);
         setRCollege(null);
         setRProgram(null);
         setRMajor(null);
         setRYear(null);
         setRIsPrinted(null);
-
+        setRReason(null);
         setRRange(undefined);
+        setRDateField('created_at');
         setRSort('created_at');
         setROrder('desc');
         setRPerPage(10);
@@ -317,19 +355,19 @@ export function CampusStudentManager({
         return () => clearTimeout(t);
     }, [
         rSearch,
+        rType,
         rCollege,
         rProgram,
         rMajor,
         rYear,
         rIsPrinted,
-
+        rReason,
         rRange,
+        rDateField,
         rPerPage,
         rSort,
         rOrder,
     ]);
-
-    const [openBatchReplacement, setOpenBatchReplacement] = useState(false);
 
     // Export status modal state.
     const [exportOpen, setExportOpen] = useState(false);
@@ -429,6 +467,22 @@ export function CampusStudentManager({
                 idNumbers={selectedIdNumbers}
                 students={selectedStudents}
                 onSelectionChange={setSelectedIdNumbers}
+                onPrinted={() => {
+                    fetchStudents();
+                    fetchReplacements();
+                }}
+            />
+            <BatchIdPreviewDialog
+                open={openBatchReplacement}
+                setOpen={setOpenBatchReplacement}
+                printType="replacement_student"
+                idNumbers={selectedReplacementIdNumbers}
+                students={selectedReplacementStudents}
+                onSelectionChange={setSelectedReplacementIdNumbers}
+                onPrinted={() => {
+                    fetchStudents();
+                    fetchReplacements();
+                }}
             />
             <ExportStatusDialog
                 open={exportOpen}
@@ -542,69 +596,124 @@ export function CampusStudentManager({
                         value: 'replacement',
                         trigger: <>Replacement Student</>,
                         content: (
-                            <div className="flex flex-col gap-4 rounded-xl border border-sidebar-border/70 p-4 px-5 dark:border-sidebar-border">
-                                <Heading
-                                    title="Replacement ID Requests"
-                                    description="Students requesting a replacement for their student ID."
-                                />
-                                <ReplacementFilterBar
-                                    searchValue={rSearch}
-                                    onSearchChange={setRSearch}
-                                    perPage={rPerPage}
-                                    onPerPageChange={setRPerPage}
-                                    sort={rSort}
-                                    onSortChange={setRSort}
-                                    order={rOrder}
-                                    onOrderChange={setROrder}
-                                    collegeOptions={collegeTalArr}
-                                    selectedCollege={rCollege}
-                                    onCollegeChange={(v) => {
-                                        setRCollege(v);
-                                        setRProgram(null);
-                                        setRMajor(null);
-                                    }}
-                                    programOptions={rProgramsArr!}
-                                    selectedProgram={rProgram}
-                                    onProgramChange={(v: any) => {
-                                        setRProgram(v);
-                                        setRMajor(null);
-                                    }}
-                                    majorOptions={rMajorArr!}
-                                    selectedMajor={rMajor}
-                                    onMajorChange={setRMajor}
-                                    selectedYear={rYear}
-                                    onYearChange={setRYear}
-                                    isPrinted={rIsPrinted}
-                                    onPrintedChange={setRIsPrinted}
-                                    range={rRange}
-                                    onRangeChange={setRRange}
-                                    hasActiveFilters={rHasActiveFilters}
-                                    onReset={resetReplacementFilters}
-                                    totalEntries={replacements?.total ?? 0}
-                                    onBatchPrint={() =>
-                                        setOpenBatchReplacement(true)
-                                    }
-                                />
-                                <ReplacementTable
-                                    replacements={replacements?.data ?? []}
-                                    total={replacements?.total}
-                                    from={replacements?.from}
-                                    to={replacements?.to}
-                                    links={replacements?.links}
-                                    onPageChange={(page) =>
-                                        fetchReplacements(page)
-                                    }
-                                    isLoading={replacementsLoading}
-                                    onPrint={printReplacement}
-                                    onChangeStatus={fetchReplacements}
-                                />
-                            </div>
+                            <>
+                                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                                    <Widget
+                                        count={counts.totalReplacement ?? 0}
+                                        title="Total"
+                                        description="Number of replacement submissions."
+                                        icon={Users}
+                                        color="chart-1"
+                                    />
+                                    <Widget
+                                        count={
+                                            counts.totalPendingReplacement ?? 0
+                                        }
+                                        title="Pendings"
+                                        description="Students waiting for their replacement ID to be printed."
+                                        icon={Clock}
+                                        color="chart-2"
+                                    />
+                                    <Widget
+                                        count={
+                                            counts.totalPrintedReplacement ?? 0
+                                        }
+                                        title="Printed"
+                                        description="Students whose replacement ID has been printed."
+                                        icon={Printer}
+                                        color="chart-3"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-4 rounded-xl border border-sidebar-border/70 p-4 dark:border-sidebar-border">
+                                    <Heading
+                                        title="Replacement ID Requests"
+                                        description="Students requesting a replacement for their student ID."
+                                    />
+                                    <ReplacementFilterBar
+                                        searchValue={rSearch}
+                                        onSearchChange={setRSearch}
+                                        perPage={rPerPage}
+                                        onPerPageChange={setRPerPage}
+                                        sort={rSort}
+                                        onSortChange={setRSort}
+                                        order={rOrder}
+                                        onOrderChange={setROrder}
+                                        selectedType={rType}
+                                        onTypeChange={setRType}
+                                        collegeOptions={collegeTalArr}
+                                        selectedCollege={rCollege}
+                                        onCollegeChange={(v) => {
+                                            setRCollege(v);
+                                            setRProgram(null);
+                                            setRMajor(null);
+                                        }}
+                                        programOptions={rProgramsArr!}
+                                        selectedProgram={rProgram}
+                                        onProgramChange={(v: any) => {
+                                            setRProgram(v);
+                                            setRMajor(null);
+                                        }}
+                                        majorOptions={rMajorArr!}
+                                        selectedMajor={rMajor}
+                                        onMajorChange={setRMajor}
+                                        selectedYear={rYear}
+                                        onYearChange={setRYear}
+                                        isPrinted={rIsPrinted}
+                                        onPrintedChange={setRIsPrinted}
+                                        selectedReason={rReason}
+                                        onReasonChange={setRReason}
+                                        range={rRange}
+                                        onRangeChange={setRRange}
+                                        dateField={rDateField}
+                                        onDateFieldChange={setRDateField}
+                                        hasActiveFilters={rHasActiveFilters}
+                                        onReset={resetReplacementFilters}
+                                        totalEntries={replacements?.total ?? 0}
+                                        selectedIdNumbers={
+                                            selectedReplacementIdNumbers
+                                        }
+                                        onBatchPrint={() =>
+                                            setOpenBatchReplacement(true)
+                                        }
+                                    />
+                                    <ReplacementTable
+                                        selectedIdNumbers={
+                                            selectedReplacementIdNumbers
+                                        }
+                                        onSelectionChange={
+                                            setSelectedReplacementIdNumbers
+                                        }
+                                        replacements={replacements?.data ?? []}
+                                        total={replacements?.total}
+                                        from={replacements?.from}
+                                        to={replacements?.to}
+                                        links={replacements?.links}
+                                        onPageChange={(page) =>
+                                            fetchReplacements(page)
+                                        }
+                                        isLoading={replacementsLoading}
+                                        onPrint={printReplacement}
+                                        onChangeStatus={fetchReplacements}
+                                    />
+                                </div>
+                            </>
                         ),
                     },
                     {
                         value: 'cards',
-                        trigger: <>Manage ID Cards</>,
+                        trigger: (
+                            <>
+                                Manage ID Cards
+                                <Badge
+                                    variant="outline"
+                                    className="border-amber-500 text-amber-500 tabular-nums"
+                                >
+                                    <WrenchIcon />
+                                </Badge>
+                            </>
+                        ),
                         content: '',
+                        disabled: true,
                     },
                     {
                         value: 'employee',

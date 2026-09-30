@@ -32,7 +32,7 @@ export default function ResponsiveTabs({
             <TabsList
                 className={
                     isMobile
-                        ? 'w-full flex-nowrap justify-start overflow-x-auto'
+                        ? 'h-auto! w-full flex-col items-stretch justify-start gap-1 bg-transparent p-0'
                         : 'h-fit w-max flex-col items-stretch justify-start gap-1 bg-transparent p-0'
                 }
             >

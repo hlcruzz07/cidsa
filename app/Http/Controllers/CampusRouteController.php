@@ -46,7 +46,9 @@ class CampusRouteController extends Controller
             'totalUpdates' => $this->students->countStudentsHasUpdatesByCampus($campus),
             'totalNewPendings' => $this->students->countNewPendingStudentByCampus($campus),
             'totalNewPrinted' => $this->students->countNewPrintedStudentByCampus($campus),
-            'totalPendingReplacement' => $this->students->countReplacementPendingByCampus($campus)
+            'totalReplacement' => $this->students->countReplacementTotalByCampus($campus),
+            'totalPendingReplacement' => $this->students->countReplacementPendingByCampus($campus),
+            'totalPrintedReplacement' => $this->students->countReplacementPrintedByCampus($campus),
         ];
 
         $programs = Student::query()->whereNotNull('program')->where('campus', $campus)->distinct()->orderBy('program')->pluck('program')->map(fn($program) => ['name' => $program])->values();

@@ -64,7 +64,7 @@ type DateRange = {
 // Which timestamp column the date range picker filters against. Keep in
 // sync with the `dateField` values StudentRepository::filterPaginate
 // accepts ('created_at' | 'updated_at').
-type DateField = 'created_at' | 'updated_at';
+export type DateField = 'created_at' | 'updated_at';
 
 const DATE_FIELD_LABELS: Record<DateField, string> = {
     created_at: 'Date Created',

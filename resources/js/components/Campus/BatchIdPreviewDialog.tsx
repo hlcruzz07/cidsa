@@ -122,6 +122,7 @@ interface BatchIdPreviewDialogProps {
     students: StudentProps[];
     /** Lets the modal remove a student from the selection. */
     onSelectionChange: (idNumbers: string[]) => void;
+    onPrinted?: () => void;
 }
 
 export function BatchIdPreviewDialog({
@@ -131,6 +132,7 @@ export function BatchIdPreviewDialog({
     idNumbers,
     students,
     onSelectionChange,
+    onPrinted,
 }: BatchIdPreviewDialogProps) {
     const [isFlipped, setIsFlipped] = useState(false);
 
@@ -336,6 +338,7 @@ export function BatchIdPreviewDialog({
                 });
 
                 await doPrint(printWindow, list);
+                onPrinted?.();
             },
         );
     };

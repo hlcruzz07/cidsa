@@ -329,17 +329,6 @@ class StudentRepository
                 // 🏫 Campus — scoped to the student record
                 $this->applyCampusFilter($q, $filters['campus']);
 
-                // 🔍 Search — student fields
-                if (!empty($filters['search'])) {
-                    $search = $filters['search'];
-                    $q->where(function ($s) use ($search) {
-                        $s->where('id_number', 'like', "%{$search}%")
-                            ->orWhere('first_name', 'like', "%{$search}%")
-                            ->orWhere('last_name', 'like', "%{$search}%")
-                            ->orWhere('suffix', 'like', "%{$search}%");
-                    });
-                }
-
                 // 🎓 Student type (Graduate / Undergraduate)
                 if (!empty($filters['type'])) {
                     if ($filters['type'] === 'Graduate Studies') {
@@ -370,20 +359,44 @@ class StudentRepository
                 }
             });
 
+        // 🔍 Search — student fields and replacement fields (reason, receipt)
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('student_replacements.reason', 'like', "%{$search}%")
+                    ->orWhere('student_replacements.receipt', 'like', "%{$search}%")
+                    ->orWhereHas('student', function ($s) use ($search) {
+                        $s->where('id_number', 'like', "%{$search}%")
+                            ->orWhere('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('suffix', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // ❓ Reason filter
+        if (!empty($filters['reason'])) {
+            $query->where('student_replacements.reason', 'like', "%{$filters['reason']}%");
+        }
+
         // 🖨️ is_printed lives on StudentReplacement itself
         if (!is_null($filters['is_printed'] ?? null)) {
             $query->where(
-                'is_printed',
+                'student_replacements.is_printed',
                 filter_var($filters['is_printed'], FILTER_VALIDATE_BOOLEAN)
             );
         }
 
-        // 📅 Date range — on the replacement record's created_at
+        // 📅 Date range — supports created_at (Date Requested), printed_at (Date Printed), updated_at
+        $dateField = in_array($filters['dateField'] ?? null, ['created_at', 'printed_at', 'updated_at'], true)
+            ? $filters['dateField']
+            : 'created_at';
+
         if (!empty($filters['from']) && !empty($filters['to'])) {
             if ($filters['from'] === $filters['to']) {
-                $query->whereDate('created_at', '=', $filters['from']);
+                $query->whereDate("student_replacements.{$dateField}", '=', $filters['from']);
             } else {
-                $query->whereBetween('created_at', [
+                $query->whereBetween("student_replacements.{$dateField}", [
                     $filters['from'],
                     $filters['to'],
                 ]);
@@ -418,7 +431,6 @@ class StudentRepository
 
                 return $replacement;
             });
-
     }
 
     public function filterPaginateAll(array $filters)
@@ -580,10 +592,29 @@ class StudentRepository
         return $query->count();
     }
 
+    public function countReplacementTotalByCampus(string $campus): int
+    {
+        return $this->studentReplacement
+            ->whereHas('student', function ($query) use ($campus) {
+                $this->applyCampusFilter($query, $campus);
+            })
+            ->count();
+    }
+
     public function countReplacementPendingByCampus(string $campus): int
     {
         return $this->studentReplacement
             ->where('is_printed', false)
+            ->whereHas('student', function ($query) use ($campus) {
+                $this->applyCampusFilter($query, $campus);
+            })
+            ->count();
+    }
+
+    public function countReplacementPrintedByCampus(string $campus): int
+    {
+        return $this->studentReplacement
+            ->where('is_printed', true)
             ->whereHas('student', function ($query) use ($campus) {
                 $this->applyCampusFilter($query, $campus);
             })
