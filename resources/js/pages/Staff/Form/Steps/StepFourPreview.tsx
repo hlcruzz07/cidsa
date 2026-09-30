@@ -44,7 +44,8 @@ export default function StepFourPreview({ data, staff }: StepFourPreviewProps) {
         data.emergency_suffix ? `${data.emergency_suffix}.` : '',
     ]
         .filter(Boolean)
-        .join(' ');
+        .join(' ')
+        .toUpperCase();
 
     const formattedPhone = data.emergency_phone
         ? `0${data.emergency_phone.toString().slice(0, 3)}-${data.emergency_phone.toString().slice(3)}`

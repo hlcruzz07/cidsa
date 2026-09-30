@@ -358,7 +358,8 @@ export function IdPreviewDialog({
                                     student?.suffix,
                                 ]
                                     .filter(Boolean)
-                                    .join(' ')}
+                                    .join(' ')
+                                    .toUpperCase()}
                             </span>
                             . Make sure popups are allowed for this site.
                         </AlertDialogDescription>

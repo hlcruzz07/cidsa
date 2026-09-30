@@ -105,7 +105,8 @@ export function ReplacementTable({
                                 r.student?.suffix,
                             ]
                                 .filter(Boolean)
-                                .join(' ');
+                                .join(' ')
+                                .toUpperCase();
 
                             return (
                                 <tr key={r.id} className="hover:bg-muted/50">
@@ -140,7 +141,8 @@ export function ReplacementTable({
                                                             r.student?.suffix,
                                                         ]
                                                             .filter(Boolean)
-                                                            .join(' ')}
+                                                            .join(' ')
+                                                            .toUpperCase()}
                                                     />
                                                     <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
                                                         {getInitials(fullName)}

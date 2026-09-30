@@ -375,7 +375,8 @@ export function StudentTable({
                                                             row.suffix,
                                                         ]
                                                             .filter(Boolean)
-                                                            .join(' ')}
+                                                            .join(' ')
+                                                            .toUpperCase()}
                                                     </h4>
 
                                                     <div className="flex items-center gap-2">

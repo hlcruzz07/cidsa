@@ -49,6 +49,7 @@ export function ChangeLogsModal({
           ]
               .filter(Boolean)
               .join(' ')
+              .toUpperCase()
         : '';
 
     return (

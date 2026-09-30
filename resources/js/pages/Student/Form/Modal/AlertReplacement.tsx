@@ -71,7 +71,8 @@ export default function AlertReplacement({
                                             data.student.suffix,
                                         ]
                                             .filter(Boolean)
-                                            .join(' ')}
+                                            .join(' ')
+                                            .toUpperCase()}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">

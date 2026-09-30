@@ -214,7 +214,8 @@ export function StudentIdCard({ data, isFlipped }: StudentIdCardProps) {
                                     data.suffix,
                                 ]
                                     .filter(Boolean)
-                                    .join(' ')}
+                                    .join(' ')
+                                    .toUpperCase()}
                                 className="text-center text-lg font-bold tracking-[-0.525] uppercase"
                             />
                         </div>
@@ -312,12 +313,18 @@ export function StudentIdCard({ data, isFlipped }: StudentIdCardProps) {
                                         data.emergency_suffix,
                                     ]
                                         .filter(Boolean)
-                                        .join(' ')}
+                                        .join(' ')
+                                        .toUpperCase()}
                                 </h2>
                                 <div className="leading-3.25">
                                     <p className="font-arial text-[13px] text-black">
-                                        Brgy.{' '}
-                                        {`${data.barangay}, ${data.city}, ${data.zip_code}`}
+                                        {[
+                                            'Brgy. ' + data.barangay,
+                                            data.city,
+                                            data.zip_code,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(', ')}
                                     </p>
                                 </div>
                                 <p className="font-arial mt-0.25 text-[13px] font-bold text-black">
@@ -423,7 +430,8 @@ export function IdCardFront({ data }: { data: StudentIdCardData }) {
                                 data.suffix,
                             ]
                                 .filter(Boolean)
-                                .join(' ')}
+                                .join(' ')
+                                .toUpperCase()}
                             className="text-center text-lg font-bold tracking-[-0.525] uppercase"
                         />
                     </div>
@@ -516,7 +524,8 @@ export function IdCardBack({ data }: { data: StudentIdCardData }) {
                                     data.emergency_suffix,
                                 ]
                                     .filter(Boolean)
-                                    .join(' ')}
+                                    .join(' ')
+                                    .toUpperCase()}
                             </h2>
                             <div className="leading-3.25">
                                 <p className="font-arial text-[13px] text-black">

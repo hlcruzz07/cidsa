@@ -257,7 +257,8 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
                             data.suffix,
                         ]
                             .filter(Boolean)
-                            .join(' ')}
+                            .join(' ')
+                            .toUpperCase()}
                         disabled
                     />
                 </div>

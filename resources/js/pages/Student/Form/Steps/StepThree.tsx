@@ -661,7 +661,8 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
                                                         student.suffix,
                                                     ]
                                                         .filter(Boolean)
-                                                        .join(' ')}
+                                                        .join(' ')
+                                                        .toUpperCase()}
                                                 </h1>
                                                 <h1 className="capitalized text-[9px] font-medium md:text-base lg:text-lg dark:text-black">
                                                     {data.program}
@@ -725,7 +726,8 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
                                                         data.emergency_suffix,
                                                     ]
                                                         .filter(Boolean)
-                                                        .join(' ')}
+                                                        .join(' ')
+                                                        .toUpperCase()}
                                                 </p>
                                                 <p className="text-xs capitalize md:text-sm lg:text-lg">
                                                     Brgy.{' '}

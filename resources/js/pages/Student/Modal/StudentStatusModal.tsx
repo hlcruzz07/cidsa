@@ -95,7 +95,8 @@ export default function StudentStatusModal({
                                                 result.student.suffix,
                                             ]
                                                 .filter(Boolean)
-                                                .join(' ')}
+                                                .join(' ')
+                                                .toUpperCase()}
                                         </span>
                                     </div>
                                 </div>

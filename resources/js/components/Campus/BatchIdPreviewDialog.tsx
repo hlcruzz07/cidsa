@@ -104,7 +104,8 @@ function collectStylesHtml(): string {
 const fullName = (s: StudentProps) =>
     [s.first_name, s.middle_init, s.last_name, s.suffix]
         .filter(Boolean)
-        .join(' ');
+        .join(' ')
+        .toUpperCase();
 
 interface BatchIdPreviewDialogProps {
     open: boolean;
