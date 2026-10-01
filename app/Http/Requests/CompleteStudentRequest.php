@@ -44,36 +44,35 @@ class CompleteStudentRequest extends FormRequest
                         return;
                     }
 
-                    if ($value === 'new') {
+                    $hasPrintedId = $student->printed()->exists();
 
-                        if ($student->printed()->exists()) {
+                    if ($value === 'new') {
+                        if ($hasPrintedId) {
                             $fail(
                                 'Your ID has already been printed. If you need changes or a new ID, please submit a Replacement request instead.'
                             );
-
-                            return;
                         }
 
+                        return;
                     }
 
-                    // REPLACEMENT application
-                    if ($value === 'replacement') {
+                    // Replacement application
+                    if (!$hasPrintedId) {
+                        $fail(
+                            'You can\'t request for replacement because you don\'t have an ID. Please apply for a new ID first.'
+                        );
 
-                        $hasPendingReplacement = $student->replacements()
-                            ->where('is_printed', false)
-                            ->exists();
+                        return;
+                    }
 
-                        if ($hasPendingReplacement) {
-                            $fail(
-                                'You already have a pending replacement request. Please wait for it to be printed before submitting another replacement request.'
-                            );
-                        }
+                    $hasPendingReplacement = $student->replacements()
+                        ->where('is_printed', false)
+                        ->exists();
 
-                        if (!$student->printed()->exists()) {
-                            $fail(
-                                'You can\'t request for replacement because you don\'t have an ID. Please apply for new ID first.'
-                            );
-                        }
+                    if ($hasPendingReplacement) {
+                        $fail(
+                            'You already have a pending replacement request. Please wait for it to be printed before submitting another replacement request.'
+                        );
                     }
                 },
             ],
