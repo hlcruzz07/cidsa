@@ -68,6 +68,12 @@ class CompleteStudentRequest extends FormRequest
                                 'You already have a pending replacement request. Please wait for it to be printed before submitting another replacement request.'
                             );
                         }
+
+                        if (!$student->printed()->exists()) {
+                            $fail(
+                                'You can\'t request for replacement because you don\'t have an ID. Please apply for new ID first.'
+                            );
+                        }
                     }
                 },
             ],
