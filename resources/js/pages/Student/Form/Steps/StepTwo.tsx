@@ -1,5 +1,6 @@
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -10,7 +11,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { FormDataProps } from '@/lib/form-type';
@@ -19,18 +19,24 @@ import {
     resizeWithFaceCentering,
 } from '@/lib/image-remover';
 import { cleanMask } from '@/lib/mask-utils';
+import { cn } from '@/lib/utils';
 import * as hf from '@huggingface/transformers';
 import { usePage } from '@inertiajs/react';
 import * as imageConversion from 'image-conversion';
 import {
     Ban,
     Camera,
-    ImageIcon,
+    CheckCircle2,
     ImageUpIcon,
     InfoIcon,
+    PenLine,
+    RefreshCw,
+    ScanFace,
     Shirt,
     Smile,
     Square,
+    Trash2,
+    UserPlus,
 } from 'lucide-react';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -62,6 +68,35 @@ type LoadedModel = {
     processor: any;
 };
 
+// Each `min` matches a setProgress(...) value in handleFileChange, and the
+// label describes the work that runs AFTER that value is set.
+const PROGRESS_STAGES = [
+    { min: 0, label: 'Validating your photo...' },
+    // getModel(): downloads/initializes RMBG-1.4 (instant if preloaded)
+    { min: 10, label: 'Loading the AI model...' },
+    // createObjectURL + RawImage.fromURL + processor(image)
+    { min: 50, label: 'Decoding and resizing your photo...' },
+    // await model({ input: pixel_values })
+    { min: 60, label: 'Running the AI to find the person...' },
+    // normalize tensor -> mask pixels -> cleanMask()
+    { min: 65, label: 'Cleaning up the mask edges...' },
+    // draw image + mask with 'destination-in'
+    { min: 70, label: 'Cutting out the background...' },
+    // canvas.toBlob(..., 'image/png')
+    { min: 80, label: 'Exporting the transparent image...' },
+    // applyWhiteBackground()
+    { min: 85, label: 'Adding a white background...' },
+    // resizeWithFaceCentering(320x378)
+    { min: 90, label: 'Resizing and centering the face...' },
+    // imageConversion.compress() to JPEG
+    { min: 99, label: 'Compressing to JPG...' },
+    { min: 100, label: 'Done!' },
+];
+
+const getStageLabel = (progress: number) =>
+    [...PROGRESS_STAGES].reverse().find((s) => progress >= s.min)?.label ??
+    PROGRESS_STAGES[0].label;
+
 const GUIDELINES = [
     {
         Icon: Camera,
@@ -85,6 +120,47 @@ const GUIDELINES = [
     },
 ];
 
+// What to tell the student, depending on the kind of request.
+const REQUEST_INFO = {
+    new: {
+        Icon: UserPlus,
+        title: 'New ID request',
+        description:
+            'Upload your photo and e-signature to proceed with your application.',
+        points: [
+            'Your photo and e-signature are required. They will be printed on your ID.',
+            'Not following the photo guidelines may result for your ID to be not included to printing.',
+            'You can review how your ID will look in the final step.',
+        ],
+    },
+    replacement: {
+        Icon: RefreshCw,
+        title: 'Replacement request',
+        description:
+            'A new photo and e-signature are optional for a replacement ID.',
+        points: [
+            'Upload a new photo or e-signature only if you want them updated.',
+            'You can continue to the next step without uploading either one.',
+            'If you do upload a photo, it must follow the same guidelines as a new request.',
+        ],
+    },
+} as const;
+
+function RequirementBadge({ required }: { required: boolean }) {
+    return (
+        <span
+            className={cn(
+                'rounded-full px-2 py-0.5 text-xs font-medium',
+                required
+                    ? 'bg-destructive/10 text-destructive'
+                    : 'bg-muted text-muted-foreground',
+            )}
+        >
+            {required ? 'Required' : 'Optional'}
+        </span>
+    );
+}
+
 export default function StepTwo({
     data,
     setData,
@@ -92,11 +168,17 @@ export default function StepTwo({
     setError,
 }: StepTwoProps) {
     const { student } = usePage<PageProps>().props;
+    const isReplacement = data.type === 'replacement';
+    const info = REQUEST_INFO[isReplacement ? 'replacement' : 'new'];
+
     const [previewUrl, setPreviewUrl] = useState('/placeholder.jpg');
+    const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
     const [isBgRemoving, setIsBgRemoving] = useState<boolean>(false);
     const [progress, setProgress] = useState<number>(0);
     const [guidelinesOpen, setGuidelinesOpen] = useState(false);
     const [dontShowAgain, setDontShowAgain] = useState(false);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Holds the loaded model/processor once ready, so we don't re-download
     // or re-initialize them every time the user picks a file.
@@ -166,6 +248,22 @@ export default function StepTwo({
         };
     }, [data.picture]);
 
+    // Signature blob URL: created once per file and revoked on change,
+    // instead of creating a new one on every render.
+    useEffect(() => {
+        if (!data.e_signature) {
+            setSignatureUrl(null);
+            return;
+        }
+
+        const url = URL.createObjectURL(data.e_signature);
+        setSignatureUrl(url);
+
+        return () => {
+            URL.revokeObjectURL(url);
+        };
+    }, [data.e_signature]);
+
     useEffect(() => {
         if (isBgRemoving) {
             document.body.classList.add('overflow-hidden');
@@ -222,7 +320,7 @@ export default function StepTwo({
 
             const { model, processor } = await getModel();
 
-            setProgress(45);
+            setProgress(50);
 
             imageSrc = URL.createObjectURL(file);
 
@@ -235,6 +333,11 @@ export default function StepTwo({
             const outputs = await model({
                 input: inputs.pixel_values,
             });
+
+            // Inference is done; the next block is synchronous mask work.
+            // Yield once so React can paint the new stage label first.
+            setProgress(65);
+            await new Promise((resolve) => setTimeout(resolve, 0));
 
             const outputTensor =
                 (outputs as any).output ??
@@ -290,10 +393,10 @@ export default function StepTwo({
                 rawMaskData.data[i * 4 + 3] = alpha;
             }
 
-            // ✅ Clean the mask: threshold speckles, erode fringe, feather edges
+            // Clean the mask: threshold speckles, erode fringe, feather edges
             const cleanedMask = cleanMask(rawMaskData, width, height, {
                 threshold: 100,
-                closeRadius: 4, // ← new param, fills interior dots
+                closeRadius: 4, // fills interior dots
                 erodeRadius: 1,
                 blurRadius: 2,
             });
@@ -351,7 +454,7 @@ export default function StepTwo({
                 378,
             );
 
-            setProgress(95);
+            setProgress(99);
 
             const finalBlob: Blob = await (imageConversion.compress as any)(
                 centeredBlob,
@@ -384,229 +487,299 @@ export default function StepTwo({
                 URL.revokeObjectURL(imageSrc);
             }
 
+            // Reset so picking the same file again still fires onChange.
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+
             setIsBgRemoving(false);
             setProgress(0);
         }
     };
+
     const handleSaveSignature = (file: File) => {
         setData('e_signature', file);
     };
 
-    return (
-        <div className="space-y-5">
-            {isBgRemoving && (
-                <div className="fixed inset-0 z-100 flex h-screen w-screen items-center justify-center bg-black/70 backdrop-blur-sm">
-                    <div className="relative flex flex-col items-center rounded-3xl border border-white/10 bg-white/5 px-10 py-8 shadow-2xl backdrop-blur-md">
-                        <div className="relative flex h-32 w-32 items-center justify-center">
-                            {/* Animated Ring */}
-                            <div className="absolute inset-0">
-                                <div className="h-full w-full animate-spin rounded-full border-4 border-white/20 border-t-green-500" />
-                            </div>
+    const handleRemovePicture = () => {
+        setData('picture', null);
+        setError('picture', null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
 
-                            {/* Logo */}
-                            <img
-                                src="/logo.webp"
-                                alt="CHMSU Logo"
-                                className="animate-float relative z-10 h-20 w-20"
-                                loading="eager"
+    const handleRemoveSignature = () => {
+        setData('e_signature', null);
+        setError('e_signature', null);
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Processing overlay */}
+            {isBgRemoving && (
+                <div
+                    role="status"
+                    className="fixed inset-0 z-100 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm"
+                >
+                    <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 text-card-foreground shadow-xl">
+                        <div className="relative mx-auto flex h-28 w-28 items-center justify-center">
+                            <div className="absolute inset-0 animate-spin rounded-full border-4 border-muted border-t-primary" />
+                            <ScanFace
+                                className="animate-float relative z-10 h-12 w-12 text-primary"
+                                strokeWidth={1.5}
                             />
                         </div>
 
-                        {/* Text */}
                         <div className="mt-6 text-center">
-                            <h1 className="text-lg font-semibold text-white">
-                                Processing Picture
-                                <span className="ms-2 inline-flex">
-                                    <span className="animate-bounce">.</span>
-                                    <span
-                                        className="animate-bounce"
-                                        style={{ animationDelay: '0.2s' }}
-                                    >
-                                        .
-                                    </span>
-                                    <span
-                                        className="animate-bounce"
-                                        style={{ animationDelay: '0.4s' }}
-                                    >
-                                        .
-                                    </span>
-                                </span>
-                            </h1>
-
-                            <p className="mt-2 text-sm text-gray-300">
-                                Please wait while we prepare your image
+                            <h2 className="text-lg font-semibold">
+                                Processing your photo
+                            </h2>
+                            <p
+                                className="mt-1 text-sm text-muted-foreground"
+                                aria-live="polite"
+                            >
+                                {getStageLabel(progress)}
                             </p>
                         </div>
 
-                        {/* Progress */}
-                        <div className="mt-6 w-72">
-                            <Progress value={progress} className="h-3" />
-
-                            <div className="mt-2 flex justify-between text-sm text-white">
-                                <span>Uploading</span>
-                                <span>{progress}%</span>
+                        <div className="mt-6">
+                            <Progress value={progress} className="h-2.5" />
+                            <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                                <span>This runs on your device</span>
+                                <span className="font-medium text-foreground">
+                                    {progress}%
+                                </span>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
 
+            {/* Header */}
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <Heading
                     title="Photo & E-Signature Upload"
-                    description="Upload your picture and provide your e-signature to proceed with your application."
+                    description={info.description}
                 />
-            </div>
 
-            <Dialog
-                open={guidelinesOpen}
-                onOpenChange={handleGuidelinesOpenChange}
-            >
-                <DialogTrigger asChild>
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        className="mb-5 w-full gap-2"
-                    >
-                        View Guidelines
-                        <InfoIcon className="h-4 w-4" />
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-xl font-bold text-primary">
-                            <InfoIcon className="h-5 w-5" />
-                            Picture Guidelines
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 text-sm">
-                        {GUIDELINES.map(({ Icon, text }, i) => (
-                            <div
-                                key={i}
-                                className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md dark:border-gray-600 dark:bg-gray-700"
-                            >
-                                <div className="flex gap-4">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                                        <Icon className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <p className="leading-relaxed dark:text-gray-100">
-                                        {text}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <DialogFooter className="mt-2 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-2">
-                            <Checkbox
-                                id="dont-show-guidelines"
-                                checked={dontShowAgain}
-                                onCheckedChange={(checked) =>
-                                    setDontShowAgain(checked === true)
-                                }
-                            />
-                            <Label
-                                htmlFor="dont-show-guidelines"
-                                className="cursor-pointer text-sm font-normal text-gray-500 dark:text-gray-300"
-                            >
-                                Don't show this again
-                            </Label>
-                        </div>
+                <Dialog
+                    open={guidelinesOpen}
+                    onOpenChange={handleGuidelinesOpenChange}
+                >
+                    <DialogTrigger asChild>
                         <Button
                             type="button"
-                            className="rounded-xl sm:ml-auto"
-                            onClick={() => handleGuidelinesOpenChange(false)}
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
                         >
-                            Got it
+                            <InfoIcon className="h-4 w-4" />
+                            Photo guidelines
                         </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    </DialogTrigger>
+                    <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2 text-xl">
+                                <InfoIcon className="h-5 w-5 text-primary" />
+                                Picture guidelines
+                            </DialogTitle>
+                        </DialogHeader>
 
-            <div className="space-y-8">
-                {/* Upload Section */}
-                <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
-                    <div className="mb-4 flex items-center gap-2">
-                        <ImageIcon className="h-5 w-5 text-primary" />
-                        <h2 className="text-lg font-semibold">Photo Preview</h2>
+                        <ul className="space-y-3 text-sm">
+                            {GUIDELINES.map(({ Icon, text }, i) => (
+                                <li
+                                    key={i}
+                                    className="flex items-start gap-3 rounded-xl border border-border bg-card p-3 text-card-foreground"
+                                >
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                        <Icon className="h-4 w-4" />
+                                    </div>
+                                    <p className="pt-1.5 leading-relaxed">
+                                        {text}
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+
+                        <DialogFooter className="mt-2 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="dont-show-guidelines"
+                                    checked={dontShowAgain}
+                                    onCheckedChange={(checked) =>
+                                        setDontShowAgain(checked === true)
+                                    }
+                                />
+                                <Label
+                                    htmlFor="dont-show-guidelines"
+                                    className="cursor-pointer text-sm font-normal text-muted-foreground"
+                                >
+                                    Don't show this again
+                                </Label>
+                            </div>
+                            <Button
+                                type="button"
+                                className="sm:ml-auto"
+                                onClick={() =>
+                                    handleGuidelinesOpenChange(false)
+                                }
+                            >
+                                Got it
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
+            {/* Request-type notice */}
+            <Alert className="border-primary/30 bg-primary/5 *:[svg]:text-primary">
+                <info.Icon />
+                <AlertTitle>{info.title}</AlertTitle>
+                <AlertDescription>
+                    <ul className="list-disc space-y-1 ps-4">
+                        {info.points.map((point) => (
+                            <li key={point}>{point}</li>
+                        ))}
+                    </ul>
+                </AlertDescription>
+            </Alert>
+
+            <div className="grid items-start gap-6 md:grid-cols-2">
+                {/* Photo */}
+                <section className="rounded-2xl border border-border bg-card p-5 text-card-foreground">
+                    <div className="mb-4 flex items-center justify-between gap-2">
+                        <h2 className="text-base font-semibold">ID photo</h2>
+                        <RequirementBadge required={!isReplacement} />
                     </div>
 
-                    <div className="overflow-hidden rounded-2xl border border-dashed border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-900">
+                    {/* Same aspect ratio as the processed output (320x378) */}
+                    <div className="relative mx-auto aspect-[320/378] w-full max-w-xs overflow-hidden rounded-xl border border-dashed border-border bg-muted">
                         <img
                             src={previewUrl}
-                            alt="Preview"
-                            className="h-auto max-h-[500px] w-full object-contain"
+                            alt="ID photo preview"
+                            className="h-full w-full object-cover"
                         />
                     </div>
 
-                    <Input
+                    <div className="mt-3 flex items-center justify-center gap-1.5 text-sm">
+                        {data.picture ? (
+                            <>
+                                <CheckCircle2 className="h-4 w-4 text-primary" />
+                                <span className="font-medium">Photo ready</span>
+                            </>
+                        ) : (
+                            <span className="text-muted-foreground">
+                                No photo uploaded yet
+                            </span>
+                        )}
+                    </div>
+
+                    <input
+                        ref={fileInputRef}
                         type="file"
                         name="picture"
                         id="picture"
                         accept=".jpg,.jpeg,.png"
                         onChange={handleFileChange}
-                        className="hidden"
+                        className="sr-only"
+                        tabIndex={-1}
                     />
 
-                    <Button
-                        type="button"
-                        className="mt-5 h-12 w-full rounded-xl text-base font-medium"
-                    >
-                        <Label
-                            htmlFor="picture"
-                            className="flex h-full w-full cursor-pointer items-center justify-center gap-2"
+                    <div className="mt-4 flex gap-2">
+                        <Button
+                            type="button"
+                            className="h-11 flex-1 gap-2"
+                            onClick={() => fileInputRef.current?.click()}
                         >
-                            <ImageUpIcon className="h-5 w-5" />
-                            Upload ID Picture
-                        </Label>
-                    </Button>
+                            <ImageUpIcon className="h-4 w-4" />
+                            {data.picture ? 'Replace photo' : 'Upload ID photo'}
+                        </Button>
+                        {data.picture && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-11 w-11 shrink-0"
+                                onClick={handleRemovePicture}
+                                aria-label="Remove photo"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
 
-                    <p className="mt-2 text-center text-xs text-gray-400">
-                        JPG or PNG, max 2MB.
+                    <p className="mt-3 text-center text-xs text-muted-foreground">
+                        JPG, JPEG or PNG, max 2MB.
                     </p>
 
                     <InputError message={errors.picture} className="mt-3" />
-                </div>
+                </section>
 
-                {/* Signature Section */}
-                <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-lg dark:border-gray-700 dark:bg-gray-800">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <Label className="text-base font-semibold">
-                                E - Signature{' '}
-                            </Label>
-                            <p className="mt-1 text-sm text-gray-500">
-                                Draw or upload your signature.
-                            </p>
-                        </div>
-
-                        <SignatureModal
-                            idNumber={student.id_number}
-                            onSave={handleSaveSignature}
-                        />
+                {/* Signature */}
+                <section className="rounded-2xl border border-border bg-card p-5 text-card-foreground">
+                    <div className="mb-4 flex items-center justify-between gap-2">
+                        <h2 className="text-base font-semibold">E-signature</h2>
+                        <RequirementBadge required={!isReplacement} />
                     </div>
 
-                    <div className="mt-5 flex h-64 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-white">
-                        {data.e_signature ? (
+                    {/* Stays white on purpose: signature ink is dark and
+                        would disappear on a dark card background. */}
+                    <div className="flex h-56 items-center justify-center overflow-hidden rounded-xl border border-dashed border-border bg-white">
+                        {signatureUrl ? (
                             <img
-                                src={URL.createObjectURL(data.e_signature)}
-                                alt="Signature Preview"
+                                src={signatureUrl}
+                                alt="Signature preview"
                                 className="max-h-full w-auto p-4"
                             />
                         ) : (
-                            <div className="text-center">
-                                <h1 className="text-xl font-semibold tracking-widest text-gray-400 italic">
-                                    Signature Preview
-                                </h1>
-                                <p className="mt-2 text-sm text-gray-400">
-                                    No signature uploaded yet
+                            <div className="flex flex-col items-center gap-2 text-center text-neutral-400">
+                                <PenLine className="h-8 w-8" />
+                                <p className="text-sm">
+                                    No signature added yet
                                 </p>
                             </div>
                         )}
                     </div>
 
+                    <div className="mt-3 flex items-center justify-center gap-1.5 text-sm">
+                        {data.e_signature ? (
+                            <>
+                                <CheckCircle2 className="h-4 w-4 text-primary" />
+                                <span className="font-medium">
+                                    Signature ready
+                                </span>
+                            </>
+                        ) : (
+                            <span className="text-muted-foreground">
+                                Draw or upload your signature
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-2">
+                        <div className="flex-1 [&>*]:w-full">
+                            <SignatureModal
+                                idNumber={student.id_number}
+                                onSave={handleSaveSignature}
+                            />
+                        </div>
+                        {data.e_signature && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="shrink-0"
+                                onClick={handleRemoveSignature}
+                                aria-label="Remove signature"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
+
                     <InputError message={errors.e_signature} className="mt-3" />
-                </div>
+                </section>
             </div>
         </div>
     );

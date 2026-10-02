@@ -56,7 +56,6 @@ class CompleteStudentRequest extends FormRequest
                         return;
                     }
 
-                    // Replacement application
                     if (!$hasPrintedId) {
                         $fail(
                             'You can\'t request for replacement because you don\'t have an ID. Please apply for a new ID first.'

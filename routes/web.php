@@ -7,9 +7,11 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\StudentNoticeController;
 use App\Http\Controllers\UserController;
 use App\Models\InventoryStock;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::middleware('guest')->group(function () {
     Route::get('/', [StudentController::class, 'index'])->name('home');
@@ -41,6 +43,9 @@ Route::middleware(['auth', 'check.role:admin|super admin'])->group(function () {
             ->middleware('campus');
     });
 
+    Route::post('student-notices', [StudentNoticeController::class, 'store'])->name('student-notices.store');
+    Route::delete('student-notices/{studentNotice}', [StudentNoticeController::class, 'destroy'])->name('student-notices.destroy');
+
     Route::middleware('check.role:super admin')->group(function () {
         Route::get('/users', [UserController::class, 'index'])->name('users');
         Route::post('/accounts', [UserController::class, 'store'])->name('user.store');
@@ -52,6 +57,10 @@ Route::middleware(['auth', 'check.role:admin|super admin'])->group(function () {
 
     });
 
+});
+
+Route::get('test', function () {
+    return Inertia::render('Test/Index');
 });
 
 require __DIR__ . '/settings.php';

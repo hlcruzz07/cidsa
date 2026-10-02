@@ -9,27 +9,101 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useInitials } from '@/hooks/use-initials';
 import { StudentProps } from '@/lib/custom-types';
+import { cn } from '@/lib/utils';
 import { ChangeLogsModal } from '@/pages/Campus/Modal/ChangeLogsModal';
 import { StudentEditModal } from '@/pages/Campus/Modal/StudentEditModal';
 import dayjs from 'dayjs';
 import {
     CheckIcon,
     ClockIcon,
-    EllipsisIcon,
+    EllipsisVertical,
     HistoryIcon,
+    type LucideIcon,
+    MessagesCircle,
     PrinterIcon,
     UserSearch,
     X,
 } from 'lucide-react';
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { route } from 'ziggy-js';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Badge } from '../ui/badge';
+import { StudentNoticeDialog } from './StudentNoticeDialog';
 
 // Used only until the table has rendered real rows at least once.
 const DEFAULT_SKELETON_ROWS = 10;
 const DEFAULT_ROW_HEIGHT = 48; // unprinted row: 32px avatar + 16px padding
+
+const DATE_FORMAT = 'MMM D, YYYY · h:mm A';
+
+// Active = not soft-deleted and of the type this table works with.
+const getActiveNotices = (student: StudentProps, type: string) =>
+    (student.notices ?? []).filter((n) => !n.deleted_at && n.type === type);
+
+// Two-line label for dropdown actions: what it does + a short hint on when
+// it's available, so staff can tell what each action is for.
+function ActionLabel({ title, hint }: { title: string; hint: string }) {
+    return (
+        <span className="flex flex-col">
+            <span>{title}</span>
+            <span className="text-[10px] font-normal text-muted-foreground">
+                {hint}
+            </span>
+        </span>
+    );
+}
+
+// Compact count pill with a tooltip for context. Dimmed at 0 so only
+// non-empty relations stand out.
+function CountChip({
+    icon: Icon,
+    count,
+    label,
+    alert = false,
+    children,
+}: {
+    icon: LucideIcon;
+    count: number;
+    label: string; // singular, e.g. "active notice"
+    alert?: boolean;
+    children?: React.ReactNode;
+}) {
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <span
+                    tabIndex={0}
+                    className={cn(
+                        'inline-flex cursor-default items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        count === 0
+                            ? 'border-transparent text-muted-foreground/40'
+                            : alert
+                              ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                              : 'bg-muted text-foreground',
+                    )}
+                >
+                    <Icon className="size-3" />
+                    {count}
+                </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs space-y-1.5">
+                <p className="font-semibold">
+                    {count} {label}
+                    {count === 1 ? '' : 's'}
+                </p>
+                {children}
+            </TooltipContent>
+        </Tooltip>
+    );
+}
 
 interface StudentTableProps {
     students: StudentProps[];
@@ -52,6 +126,8 @@ interface StudentTableProps {
      */
     selectedIdNumbers?: string[];
     onSelectionChange?: (idNumbers: string[]) => void;
+    /** Notice type saved with each notice sent from this table. */
+    noticeType?: string;
 }
 
 export function StudentTable({
@@ -66,12 +142,14 @@ export function StudentTable({
     onChangeStatus,
     selectedIdNumbers,
     onSelectionChange,
+    noticeType = 'new_student',
 }: StudentTableProps) {
     const headers = [
         'Name',
         'Campus / Department',
         'Program / Major',
         'Year Level',
+        'Records',
         'Date',
         'Action',
     ];
@@ -88,6 +166,31 @@ export function StudentTable({
     // trigger either modal independently.
     const [logsStudent, setLogsStudent] = useState<StudentProps | null>(null);
     const [logsOpen, setLogsOpen] = useState(false);
+
+    // Notice modal. Only the id_number is stored, and the student is looked up
+    // from the current `students` list on every render, so after a notice is
+    // sent/resolved and the parent refetches, the modal shows fresh data
+    // instead of a stale snapshot. The ref keeps the last known row so the
+    // modal doesn't blank out while the list is reloading.
+    const [noticeIdNumber, setNoticeIdNumber] = useState<string | null>(null);
+    const [noticeOpen, setNoticeOpen] = useState(false);
+    const lastNoticeStudent = useRef<StudentProps | null>(null);
+    const foundNoticeStudent =
+        students.find((s) => s.id_number === noticeIdNumber) ?? null;
+    if (foundNoticeStudent) lastNoticeStudent.current = foundNoticeStudent;
+    const noticeStudent = foundNoticeStudent ?? lastNoticeStudent.current;
+
+    // Students with an active notice can't be printed or selected for
+    // batch printing until the notice is resolved.
+    const noticeBlocked = useMemo(
+        () =>
+            new Set(
+                students
+                    .filter((s) => getActiveNotices(s, noticeType).length > 0)
+                    .map((s) => s.id_number),
+            ),
+        [students, noticeType],
+    );
 
     // ─── Loading skeleton sizing ──────────────────────────────────────────────
     // Rows vary in height (a printed row has an extra "Printed" date line), so
@@ -123,17 +226,31 @@ export function StudentTable({
         onSelectionChange?.(next);
     };
 
-    const visibleIdNumbers = useMemo(
-        () => students.map((s) => s.id_number),
-        [students],
+    // If a student gets a notice while already selected, drop them from the
+    // selection so they can't slip into a batch print.
+    useEffect(() => {
+        if (noticeBlocked.size === 0) return;
+        if (selected.some((id) => noticeBlocked.has(id))) {
+            updateSelection(selected.filter((id) => !noticeBlocked.has(id)));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [noticeBlocked, selected]);
+
+    // Only rows without an active notice can be selected.
+    const selectableIdNumbers = useMemo(
+        () =>
+            students
+                .filter((s) => !noticeBlocked.has(s.id_number))
+                .map((s) => s.id_number),
+        [students, noticeBlocked],
     );
 
     const allVisibleSelected =
-        visibleIdNumbers.length > 0 &&
-        visibleIdNumbers.every((id) => selectedSet.has(id));
+        selectableIdNumbers.length > 0 &&
+        selectableIdNumbers.every((id) => selectedSet.has(id));
     const someVisibleSelected =
         !allVisibleSelected &&
-        visibleIdNumbers.some((id) => selectedSet.has(id));
+        selectableIdNumbers.some((id) => selectedSet.has(id));
 
     const toggleOne = (idNumber: string, checked: boolean) => {
         if (checked) {
@@ -147,10 +264,10 @@ export function StudentTable({
 
     const toggleVisible = () => {
         if (allVisibleSelected) {
-            const visibleSet = new Set(visibleIdNumbers);
+            const visibleSet = new Set(selectableIdNumbers);
             updateSelection(selected.filter((id) => !visibleSet.has(id)));
         } else {
-            const missing = visibleIdNumbers.filter(
+            const missing = selectableIdNumbers.filter(
                 (id) => !selectedSet.has(id),
             );
             updateSelection([...selected, ...missing]);
@@ -158,12 +275,11 @@ export function StudentTable({
     };
 
     const clearSelection = () => updateSelection([]);
-
     const showFooter =
         links.length > 0 || (isLoading && lastLayout.current.hadFooter);
 
     return (
-        <>
+        <TooltipProvider delayDuration={150}>
             <StudentEditModal
                 student={selectedStudent}
                 open={editOpen}
@@ -177,8 +293,14 @@ export function StudentTable({
                 onOpenChange={setLogsOpen}
             />
 
-            {/* Selection bar — selection persists across pages, so show the
-                running total and a way to reset it. */}
+            <StudentNoticeDialog
+                student={noticeStudent}
+                open={noticeOpen}
+                onOpenChange={setNoticeOpen}
+                type={noticeType}
+                onSuccess={onChangeStatus}
+            />
+
             {selected.length > 0 && (
                 <div className="mt-3 flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-xs">
                     <span className="font-medium text-foreground">
@@ -212,7 +334,8 @@ export function StudentTable({
                                     }
                                     onCheckedChange={toggleVisible}
                                     disabled={
-                                        isLoading || students.length === 0
+                                        isLoading ||
+                                        selectableIdNumbers.length === 0
                                     }
                                     aria-label="Select visible students"
                                 />
@@ -270,6 +393,14 @@ export function StudentTable({
                                         <td className="p-2">
                                             <Skeleton className="h-3 w-14" />
                                         </td>
+                                        {/* Records */}
+                                        <td className="p-2">
+                                            <div className="flex items-center gap-1">
+                                                <Skeleton className="h-5 w-9 rounded-md" />
+                                                <Skeleton className="h-5 w-9 rounded-md" />
+                                                <Skeleton className="h-5 w-9 rounded-md" />
+                                            </div>
+                                        </td>
                                         {/* Date */}
                                         <td className="p-2">
                                             <div className="flex flex-col gap-1.5">
@@ -298,9 +429,37 @@ export function StudentTable({
                             </tr>
                         ) : (
                             students.map((row) => {
-                                const isSelected = selectedSet.has(
+                                const hasNotice = noticeBlocked.has(
                                     row.id_number,
                                 );
+                                const isSelected =
+                                    !hasNotice &&
+                                    selectedSet.has(row.id_number);
+                                const activeNotices = getActiveNotices(
+                                    row,
+                                    noticeType,
+                                );
+                                const activeNoticeCount = activeNotices.length;
+                                const resolvedNotices = (
+                                    row.resolved_notices ?? []
+                                ).filter((n) => n.type === noticeType);
+                                const resolvedNoticeCount =
+                                    resolvedNotices.length;
+                                const changeLogCount =
+                                    row.change_logs?.length ?? 0;
+                                const noticeCreatedAt =
+                                    activeNotices[0]?.created_at;
+                                const printHint = !row.is_completed
+                                    ? 'Unavailable: form not completed'
+                                    : hasNotice
+                                      ? 'Blocked: resolve the notice first'
+                                      : "Print this student's ID";
+                                const noticeHint =
+                                    activeNoticeCount > 0
+                                        ? 'View or resolve the active notice'
+                                        : row.printed
+                                          ? 'Unavailable: ID already printed'
+                                          : 'Flag a rule violation and hold printing';
 
                                 return (
                                     <tr
@@ -310,6 +469,12 @@ export function StudentTable({
                                         <td className="w-8 p-2">
                                             <Checkbox
                                                 checked={isSelected}
+                                                disabled={hasNotice}
+                                                title={
+                                                    hasNotice
+                                                        ? 'Resolve the notice to select this student'
+                                                        : undefined
+                                                }
                                                 onCheckedChange={(checked) =>
                                                     toggleOne(
                                                         row.id_number,
@@ -447,6 +612,126 @@ export function StudentTable({
                                             {row.year}
                                         </td>
 
+                                        <td
+                                            className="p-2 whitespace-nowrap"
+                                            data-label="Records"
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                <CountChip
+                                                    icon={MessagesCircle}
+                                                    count={activeNoticeCount}
+                                                    label="active notice"
+                                                    alert
+                                                >
+                                                    {activeNoticeCount === 0 ? (
+                                                        <p className="opacity-70">
+                                                            No notice. This
+                                                            student can be
+                                                            printed.
+                                                        </p>
+                                                    ) : (
+                                                        <>
+                                                            {activeNotices.map(
+                                                                (n) => (
+                                                                    <div
+                                                                        key={
+                                                                            n.id
+                                                                        }
+                                                                        className="space-y-0.5"
+                                                                    >
+                                                                        <p className="line-clamp-3 break-words whitespace-pre-wrap">
+                                                                            {
+                                                                                n.message
+                                                                            }
+                                                                        </p>
+                                                                        <p className="text-[10px] opacity-70">
+                                                                            {n
+                                                                                .user
+                                                                                ?.name ??
+                                                                                'Unknown user'}
+                                                                            {n.created_at &&
+                                                                                ` · ${dayjs(n.created_at).format(DATE_FORMAT)}`}
+                                                                        </p>
+                                                                    </div>
+                                                                ),
+                                                            )}
+                                                            <p className="text-[10px] opacity-70">
+                                                                Printing is on
+                                                                hold until
+                                                                resolved.
+                                                            </p>
+                                                        </>
+                                                    )}
+                                                </CountChip>
+
+                                                <CountChip
+                                                    icon={CheckIcon}
+                                                    count={resolvedNoticeCount}
+                                                    label="resolved notice"
+                                                >
+                                                    {resolvedNoticeCount ===
+                                                    0 ? (
+                                                        <p className="opacity-70">
+                                                            No resolved notices
+                                                            yet.
+                                                        </p>
+                                                    ) : (
+                                                        <>
+                                                            {resolvedNotices
+                                                                .slice(0, 3)
+                                                                .map((n) => (
+                                                                    <div
+                                                                        key={
+                                                                            n.id
+                                                                        }
+                                                                        className="space-y-0.5"
+                                                                    >
+                                                                        <p className="line-clamp-2 break-words whitespace-pre-wrap">
+                                                                            {
+                                                                                n.message
+                                                                            }
+                                                                        </p>
+                                                                        {n.deleted_at && (
+                                                                            <p className="text-[10px] opacity-70">
+                                                                                Resolved{' '}
+                                                                                {dayjs(
+                                                                                    n.deleted_at,
+                                                                                ).format(
+                                                                                    DATE_FORMAT,
+                                                                                )}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            {resolvedNoticeCount >
+                                                                3 && (
+                                                                <p className="text-[10px] opacity-70">
+                                                                    +
+                                                                    {resolvedNoticeCount -
+                                                                        3}{' '}
+                                                                    more in the
+                                                                    Notice
+                                                                    dialog.
+                                                                </p>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </CountChip>
+
+                                                <CountChip
+                                                    icon={HistoryIcon}
+                                                    count={changeLogCount}
+                                                    label="update log"
+                                                >
+                                                    <p className="opacity-70">
+                                                        {changeLogCount === 0
+                                                            ? "This student's record has not been changed."
+                                                            : 'Open Update Logs in the actions menu to see what changed.'}
+                                                    </p>
+                                                </CountChip>
+                                            </div>
+                                        </td>
+
                                         <td className="p-2 text-[10px]! whitespace-nowrap">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-1.5">
@@ -458,7 +743,7 @@ export function StudentTable({
                                                             ? dayjs(
                                                                   row.created_at,
                                                               ).format(
-                                                                  'MMM D, YYYY · h:mm A',
+                                                                  DATE_FORMAT,
                                                               )
                                                             : '—'}
                                                     </span>
@@ -487,7 +772,7 @@ export function StudentTable({
                                                             ? dayjs(
                                                                   row.updated_at,
                                                               ).format(
-                                                                  'MMM D, YYYY · h:mm A',
+                                                                  DATE_FORMAT,
                                                               )
                                                             : '—'}
                                                     </span>
@@ -503,7 +788,22 @@ export function StudentTable({
                                                                 row.printed
                                                                     .created_at,
                                                             ).format(
-                                                                'MMM D, YYYY · h:mm A',
+                                                                DATE_FORMAT,
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {noticeCreatedAt && (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="w-14 shrink-0 font-medium text-muted-foreground">
+                                                            Noticed
+                                                        </span>
+                                                        <span className="font-medium text-destructive">
+                                                            {dayjs(
+                                                                noticeCreatedAt,
+                                                            ).format(
+                                                                DATE_FORMAT,
                                                             )}
                                                         </span>
                                                     </div>
@@ -522,12 +822,12 @@ export function StudentTable({
                                                             size="icon-sm"
                                                             aria-label="Actions"
                                                         >
-                                                            <EllipsisIcon />
+                                                            <EllipsisVertical />
                                                         </Button>
                                                     </DropdownMenuTrigger>
 
                                                     <DropdownMenuContent
-                                                        className="w-max"
+                                                        className="w-64"
                                                         align="end"
                                                     >
                                                         <DropdownMenuLabel>
@@ -545,13 +845,17 @@ export function StudentTable({
                                                             }}
                                                         >
                                                             <UserSearch />
-                                                            View
+                                                            <ActionLabel
+                                                                title="View"
+                                                                hint="See this student's full record"
+                                                            />
                                                         </DropdownMenuItem>
 
                                                         {onPrint && (
                                                             <DropdownMenuItem
                                                                 disabled={
-                                                                    !row.is_completed
+                                                                    !row.is_completed ||
+                                                                    hasNotice
                                                                 }
                                                                 onClick={() =>
                                                                     onPrint(
@@ -560,7 +864,12 @@ export function StudentTable({
                                                                 }
                                                             >
                                                                 <PrinterIcon />
-                                                                Print
+                                                                <ActionLabel
+                                                                    title="Print"
+                                                                    hint={
+                                                                        printHint
+                                                                    }
+                                                                />
                                                             </DropdownMenuItem>
                                                         )}
 
@@ -575,7 +884,50 @@ export function StudentTable({
                                                             }}
                                                         >
                                                             <HistoryIcon />
-                                                            Update Logs
+                                                            <ActionLabel
+                                                                title="Update Logs"
+                                                                hint="See changes made to this record"
+                                                            />
+                                                            {changeLogCount >
+                                                                0 && (
+                                                                <Badge>
+                                                                    {
+                                                                        changeLogCount
+                                                                    }
+                                                                </Badge>
+                                                            )}
+                                                        </DropdownMenuItem>
+
+                                                        <DropdownMenuItem
+                                                            disabled={
+                                                                !!row.printed &&
+                                                                activeNoticeCount ===
+                                                                    0
+                                                            }
+                                                            onClick={() => {
+                                                                setNoticeIdNumber(
+                                                                    row.id_number,
+                                                                );
+                                                                setNoticeOpen(
+                                                                    true,
+                                                                );
+                                                            }}
+                                                        >
+                                                            <MessagesCircle />
+                                                            <ActionLabel
+                                                                title="Notice"
+                                                                hint={
+                                                                    noticeHint
+                                                                }
+                                                            />
+                                                            {activeNoticeCount >
+                                                                0 && (
+                                                                <Badge>
+                                                                    {
+                                                                        activeNoticeCount
+                                                                    }
+                                                                </Badge>
+                                                            )}
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -596,9 +948,6 @@ export function StudentTable({
                                     <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
                                         {isLoading ? (
                                             <>
-                                                {/* Same box sizes as the real footer:
-                                                    text-sm line (h-5) and pagination
-                                                    buttons (py-1 + 16px line = h-6). */}
                                                 <Skeleton className="h-5 w-32" />
                                                 <Skeleton className="h-6 w-56" />
                                             </>
@@ -677,6 +1026,6 @@ export function StudentTable({
                     )}
                 </table>
             </div>
-        </>
+        </TooltipProvider>
     );
 }

@@ -117,6 +117,10 @@ class StudentApiController extends Controller
 
         $student = Student::findOrFail($validated['id']);
 
+        $student->printed()->create([
+            'id_number' => $student['id_number']
+        ]);
+
         ActivityLogger::print($student, $validated['type']);
     }
 
@@ -131,6 +135,12 @@ class StudentApiController extends Controller
         $type = PrintingType::from($validated['type']);
 
         $students = Student::findMany($validated['ids']);
+
+        foreach ($students as $student) {
+            $student->printed()->create([
+                'id_number' => $student['id_number']
+            ]);
+        }
 
         ActivityLogger::printMany($students, $type);
     }

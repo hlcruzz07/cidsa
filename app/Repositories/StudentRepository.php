@@ -317,14 +317,19 @@ class StudentRepository
 
         return $query
             ->withExists('printed')
-            ->with(['printed', 'replacements', 'changeLogs'])
+            ->with(['printed', 'replacements', 'changeLogs', 'notices.user', 'resolvedNotices.user',])
             ->paginate($perPage);
     }
 
     public function filterPaginateReplacement(array $filters)
     {
         $query = StudentReplacement::query()
-            ->with('student') // eager-load student for the table
+            ->with([
+                'student.printed',
+                'student.changeLogs',
+                'student.notices.user:id,name,role',
+                'student.resolvedNotices.user:id,name,role',
+            ])
             ->whereHas('student', function ($q) use ($filters) {
                 // 🏫 Campus — scoped to the student record
                 $this->applyCampusFilter($q, $filters['campus']);
@@ -432,7 +437,6 @@ class StudentRepository
                 return $replacement;
             });
     }
-
     public function filterPaginateAll(array $filters)
     {
         $query = $this->model->query();
@@ -537,7 +541,7 @@ class StudentRepository
         return $result;
     }
 
-    public function updateOrCreate(array $data, string $id_number): Student
+    public function updateOrCreate(array $data, string $id_number, bool $disableTimestamps = false): Student
     {
         $student = $this->model->firstOrNew(['id_number' => $id_number]);
         $existed = $student->exists;
@@ -545,6 +549,11 @@ class StudentRepository
         $originalBeforeSave = $existed ? $student->getOriginal() : [];
 
         $student->fill($data);
+
+        if ($disableTimestamps) {
+            $student->timestamps = false;
+        }
+
         $student->save();
 
         if ($existed) {
@@ -554,7 +563,6 @@ class StudentRepository
 
         return $student;
     }
-
 
 
 

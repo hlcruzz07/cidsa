@@ -38,6 +38,8 @@ export type StudentProps = {
         created_at: string;
     };
     change_logs?: StudentChangeLog[];
+    notices?: StudentNotice[];
+    resolved_notices?: StudentProps['notices'];
 };
 
 export type UserProps = {
@@ -177,3 +179,26 @@ export const PRINT_TYPE_LABEL: Record<PrintType, string> = {
     new_student: 'New',
     replacement_student: 'Replacement',
 };
+export interface RejectedStudent {
+    id?: number;
+    id_number: string;
+    type: string;
+    name: string;
+    campus: string;
+    reason: string;
+    rejected_by?: number;
+    created_at?: string;
+}
+
+export interface StudentNotice {
+    id?: number;
+    id_number: string;
+    type: string;
+    message: string;
+    posted_by?: number;
+    created_at?: string;
+    updated_at?: string;
+    deleted_at?: string | null;
+    user?: User;
+    student?: StudentProps;
+}

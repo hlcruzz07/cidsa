@@ -107,11 +107,15 @@ class StudentController extends Controller
             $data['emergency_middle_init'] = !empty($data['emergency_middle_init']) ? $data['emergency_middle_init'] . '.' : null;
 
             DB::transaction(function () use ($request, $data) {
+                $isReplacement = $request->type === 'replacement';
 
-                $student = $this->repo->updateOrCreate($data, $data['id_number']);
+                $student = $this->repo->updateOrCreate(
+                    $data,
+                    $data['id_number'],
+                    disableTimestamps: $isReplacement
+                );
 
-                if ($request->type === 'replacement') {
-
+                if ($isReplacement) {
                     $uploadedReceipt = $this->repo->storeFile(
                         $request->file('receipt'),
                         $data['campus'],
@@ -130,7 +134,6 @@ class StudentController extends Controller
                     ]);
                 }
             });
-
             session()->forget('student');
 
             return redirect()->route('home')->with([

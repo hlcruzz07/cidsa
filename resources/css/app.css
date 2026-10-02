@@ -120,7 +120,7 @@ input[type='number'] {
     --muted-foreground: oklch(0.72 0.02 165.94);
     --accent: oklch(0.3 0.04 165.94);
     --accent-foreground: oklch(0.95 0.01 165.94);
-    --destructive: oklch(0.396 0.141 25.723);
+    --destructive: oklch(59.52% 0.18048 23.721);
     --destructive-foreground: oklch(0.637 0.237 25.331);
     --border: oklch(0.3 0.02 165.94);
     --input: oklch(0.3 0.02 165.94);

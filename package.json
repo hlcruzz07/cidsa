@@ -69,6 +69,7 @@
         "exceljs": "^4.4.0",
         "face-api.js": "^0.22.2",
         "globals": "^15.14.0",
+        "html5-qrcode": "^2.3.8",
         "image-conversion": "^2.1.1",
         "input-otp": "^1.4.2",
         "jsbarcode": "^3.12.3",

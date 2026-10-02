@@ -90,7 +90,7 @@ export default function StepTwo({
         if (modelRef.current) return Promise.resolve(modelRef.current);
         if (!modelLoadingRef.current) {
             modelLoadingRef.current = (async () => {
-                hf.env.allowRemoteModels = false;
+                hf.env.allowRemoteModels = true;
                 hf.env.allowLocalModels = true;
                 hf.env.localModelPath = `${window.location.origin}/models/`;
                 const [model, processor] = await Promise.all([

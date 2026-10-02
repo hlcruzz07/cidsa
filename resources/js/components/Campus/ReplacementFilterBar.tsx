@@ -30,7 +30,6 @@ import {
     ChevronDownIcon,
     ChevronsLeftRight,
     ClockIcon,
-    FileQuestionIcon,
     PrinterCheckIcon,
     Search,
     Trash2Icon,
@@ -591,47 +590,6 @@ export function ReplacementFilterBar({
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
-
-                    {/* Reason */}
-                    {onReasonChange && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="rounded-full!"
-                                >
-                                    <FileQuestionIcon /> Reason
-                                    {selectedReason && (
-                                        <Badge className="ml-1 text-[10px]">
-                                            {selectedReason}
-                                        </Badge>
-                                    )}
-                                    <ChevronDownIcon className="h-3.5 w-3.5" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                className="w-max"
-                                align="start"
-                            >
-                                {reasonOptions.map((item) => (
-                                    <DropdownMenuCheckboxItem
-                                        key={item}
-                                        checked={selectedReason === item}
-                                        onSelect={() =>
-                                            onReasonChange(
-                                                selectedReason === item
-                                                    ? null
-                                                    : item,
-                                            )
-                                        }
-                                    >
-                                        {item}
-                                    </DropdownMenuCheckboxItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
 
                     {/* Status (is_printed) */}
                     <DropdownMenu>

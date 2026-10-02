@@ -1,5 +1,6 @@
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -14,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { FormDataProps } from '@/lib/form-type';
 import { campusDirectoryArr } from '@/lib/utils';
 import apiService from '@/services/apiService';
-import { AsteriskIcon, LockIcon } from 'lucide-react';
+import { AsteriskIcon, LockIcon, TriangleAlertIcon } from 'lucide-react';
 import { useState } from 'react';
 import { route } from 'ziggy-js';
 import AlertReplacement from '../Modal/AlertReplacement';
@@ -189,6 +190,18 @@ export default function StepOne({ data, setData, errors }: StepOneProps) {
             </div>
             {data.type === 'replacement' && (
                 <>
+                    <Alert className="border-orange-500 bg-orange-100 dark:border-orange-700 dark:bg-orange-900/30">
+                        <TriangleAlertIcon color="orange" />
+                        <AlertTitle>
+                            Upload your official cashier receipt
+                        </AlertTitle>
+                        <AlertDescription>
+                            Submit the receipt issued by the cashier as proof of
+                            payment. If you upload any other image or document,
+                            your replacement request will be rejected.
+                        </AlertDescription>
+                    </Alert>
+
                     {data.receipt && (
                         <div className="flex items-center justify-center">
                             <img

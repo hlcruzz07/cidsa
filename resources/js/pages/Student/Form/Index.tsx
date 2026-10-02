@@ -549,19 +549,22 @@ export default function Index() {
                             <StepThreePreview data={data} />
 
                             <div className="mt-6 space-y-4">
-                                <div className="flex items-start gap-2 rounded-xl border border-border p-3">
+                                {/* Row highlights when checked; uses theme
+                                    variables so it works in light and dark. */}
+                                <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-card-foreground transition-colors has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5">
                                     <Checkbox
                                         id="confirm_info"
                                         checked={data.confirm_info || false}
+                                        aria-invalid={!!errors.confirm_info}
                                         onCheckedChange={(checked) => {
                                             const value = checked === true;
                                             setData('confirm_info', value);
                                         }}
-                                        className="mt-1"
+                                        className="mt-0.5 size-5 border-2 border-primary/60 bg-background data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                                     />
                                     <Label
                                         htmlFor="confirm_info"
-                                        className="inline-block text-sm leading-normal"
+                                        className="inline-block cursor-pointer text-sm leading-normal"
                                     >
                                         I hereby confirm that all the
                                         information I have provided is{' '}
@@ -573,19 +576,20 @@ export default function Index() {
                                 </div>
                                 <InputError message={errors.confirm_info} />
 
-                                <div className="flex items-start gap-2 rounded-xl border border-border p-3">
+                                <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-card-foreground transition-colors has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5">
                                     <Checkbox
                                         id="data_privacy"
                                         checked={data.data_privacy || false}
+                                        aria-invalid={!!errors.data_privacy}
                                         onCheckedChange={(checked) => {
                                             const value = checked === true;
                                             setData('data_privacy', value);
                                         }}
-                                        className="mt-1"
+                                        className="mt-0.5 size-5 border-2 border-primary/60 bg-background data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                                     />
                                     <Label
                                         htmlFor="data_privacy"
-                                        className="inline-block text-sm leading-normal"
+                                        className="inline-block cursor-pointer text-sm leading-normal"
                                     >
                                         I agree to the processing of my personal
                                         information in accordance with{' '}

@@ -283,6 +283,7 @@ export default function StepThree({ data, setData, errors }: StepThreeProps) {
                                     'Spouse',
                                     'Grand Father',
                                     'Grand Mother',
+                                    'Friend',
                                 ].map((relation) => (
                                     <SelectItem key={relation} value={relation}>
                                         {relation}
@@ -558,6 +559,9 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
     const { student } = usePage<PageProps>().props;
     const [isFlipped, setIsFlipped] = useState(false);
 
+    // Set by handleSubmitReplacement() in the parent form.
+    const isReplacement = data.type === 'replacement';
+
     const previewPicture = useMemo(() => {
         if (!data.picture) return '/placeholder.jpg';
         return URL.createObjectURL(data.picture);
@@ -567,23 +571,85 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
         if (!data.e_signature) return;
         return URL.createObjectURL(data.e_signature);
     }, [data.e_signature]);
-    const isComplete = useMemo(() => {
-        return !!(
-            data.picture &&
-            data.e_signature &&
-            data.college_name &&
-            data.program &&
-            (!data.hasMajor || data.major) && // only require major if hasMajor is true
-            data.emergency_first_name &&
-            data.emergency_last_name &&
-            data.relationship &&
-            data.contact_number &&
-            data.province &&
-            data.city &&
-            data.barangay &&
-            data.zip_code
-        );
+
+    const missingFields = useMemo(() => {
+        const checks: {
+            ok: boolean;
+            group: string;
+            label: string;
+            // Optional checks never block the preview when missing.
+            optional?: boolean;
+        }[] = [
+            {
+                ok: !!data.picture,
+                group: 'Photo & E-Signature',
+                label: 'ID picture',
+                optional: isReplacement,
+            },
+            {
+                ok: !!data.e_signature,
+                group: 'Photo & E-Signature',
+                label: 'E-signature',
+                optional: isReplacement,
+            },
+            { ok: !!data.college_name, group: 'Course', label: 'College' },
+            { ok: !!data.program, group: 'Course', label: 'Program' },
+            {
+                ok: !data.hasMajor || !!data.major,
+                group: 'Course',
+                label: 'Major',
+            },
+            {
+                ok: !!data.emergency_first_name,
+                group: 'Emergency Contact',
+                label: 'First name',
+            },
+            {
+                ok: !!data.emergency_last_name,
+                group: 'Emergency Contact',
+                label: 'Last name',
+            },
+            {
+                ok: !!data.relationship,
+                group: 'Emergency Contact',
+                label: 'Relationship',
+            },
+            {
+                ok: !!data.contact_number,
+                group: 'Emergency Contact',
+                label: 'Contact number',
+            },
+            {
+                ok: !!data.province,
+                group: 'Emergency Contact',
+                label: 'Province',
+            },
+            {
+                ok: !!data.city,
+                group: 'Emergency Contact',
+                label: 'City / Municipality',
+            },
+            {
+                ok: !!data.barangay,
+                group: 'Emergency Contact',
+                label: 'Barangay',
+            },
+            {
+                ok: !!data.zip_code,
+                group: 'Emergency Contact',
+                label: 'Zip code',
+            },
+        ];
+
+        // Group the missing (and required) labels by section for display
+        return checks
+            .filter((c) => !c.ok && !c.optional)
+            .reduce<Record<string, string[]>>((acc, c) => {
+                (acc[c.group] ??= []).push(c.label);
+                return acc;
+            }, {});
     }, [
+        isReplacement,
         data.picture,
         data.e_signature,
         data.college_name,
@@ -600,8 +666,33 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
         data.zip_code,
     ]);
 
+    const isComplete = Object.keys(missingFields).length === 0;
+
     return (
         <>
+            {!isComplete && (
+                <Alert>
+                    <AlertCircleIcon />
+                    <AlertTitle>Preview unavailable</AlertTitle>
+                    <AlertDescription>
+                        <p>Complete the following to see your ID preview:</p>
+                        <div className="mt-2 space-y-2">
+                            {Object.entries(missingFields).map(
+                                ([group, labels]) => (
+                                    <div key={group}>
+                                        <p className="font-medium">{group}</p>
+                                        <ul className="list-disc ps-5">
+                                            {labels.map((label) => (
+                                                <li key={label}>{label}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ),
+                            )}
+                        </div>
+                    </AlertDescription>
+                </Alert>
+            )}
             {isComplete && (
                 <div className="space-y-5">
                     <Heading
@@ -649,10 +740,14 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
                                     <div className="flex w-full">
                                         <div className="flex grow items-center justify-center">
                                             <div className="flex flex-col items-center text-center">
-                                                <img
-                                                    src={previewSig}
-                                                    className="lg::w-auto w-20 md:w-40"
-                                                />
+                                                {/* Signature is optional for replacement students */}
+                                                {previewSig && (
+                                                    <img
+                                                        src={previewSig}
+                                                        className="lg::w-auto w-20 md:w-40"
+                                                        alt="Signature"
+                                                    />
+                                                )}
                                                 <h1 className="text-sm font-extrabold uppercase md:text-xl lg:text-3xl dark:text-black">
                                                     {[
                                                         student.first_name,
@@ -730,9 +825,9 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
                                                         .toUpperCase()}
                                                 </p>
                                                 <p className="text-xs capitalize md:text-sm lg:text-lg">
-                                                    Brgy.{' '}
                                                     {[
-                                                        data.barangay,
+                                                        'Brgy. ' +
+                                                            data.barangay,
                                                         data.city,
                                                         data.zip_code,
                                                     ]

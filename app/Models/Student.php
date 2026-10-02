@@ -61,4 +61,16 @@ class Student extends Model
     {
         return $this->hasMany(ActivityLog::class, 'student_id');
     }
+
+    public function notices()
+    {
+        return $this->hasMany(StudentNotice::class, 'id_number', 'id_number');
+    }
+
+    public function resolvedNotices()
+    {
+        return $this->hasMany(StudentNotice::class, 'id_number', 'id_number')
+            ->onlyTrashed()
+            ->latest('deleted_at');
+    }
 }

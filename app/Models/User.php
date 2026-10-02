@@ -62,4 +62,8 @@ class User extends Authenticatable
         return $this->hasMany(InventoryReceipt::class, 'received_by');
     }
 
+    public function rejectedStudentRequests()
+    {
+        return $this->hasMany(RejectedStudentRequest::class, 'rejected_by');
+    }
 }
