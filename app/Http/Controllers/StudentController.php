@@ -103,8 +103,8 @@ class StudentController extends Controller
             }
 
             $data['is_completed'] = true;
-            $data['middle_init'] = !empty($data['middle_init']) ? $data['middle_init'] . '.' : null;
             $data['emergency_middle_init'] = !empty($data['emergency_middle_init']) ? $data['emergency_middle_init'] . '.' : null;
+
 
             DB::transaction(function () use ($request, $data) {
                 $isReplacement = $request->type === 'replacement';

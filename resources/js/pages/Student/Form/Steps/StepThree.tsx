@@ -816,7 +816,10 @@ export function StepThreePreview({ data }: { data: FormDataProps }) {
                                                 <p className="text-base font-bold md:text-2xl">
                                                     {[
                                                         data.emergency_first_name,
-                                                        data.emergency_middle_init,
+                                                        data.emergency_middle_init
+                                                            ? data.emergency_middle_init +
+                                                              '.'
+                                                            : null,
                                                         data.emergency_last_name,
                                                         data.emergency_suffix,
                                                     ]
